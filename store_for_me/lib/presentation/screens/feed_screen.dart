@@ -150,7 +150,7 @@ class _PostCard extends StatelessWidget {
                   child: post.shopLogo.isNotEmpty
                       ? ClipOval(
                           child: CachedNetworkImage(
-                            imageUrl: '${AppConstants.uploadsUrl}${post.shopLogo}',
+                            imageUrl: AppConstants.getImageUrl(post.shopLogo),
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
@@ -191,7 +191,7 @@ class _PostCard extends StatelessWidget {
                   itemCount: post.images.length,
                   itemBuilder: (context, i) {
                     return CachedNetworkImage(
-                      imageUrl: '${AppConstants.uploadsUrl}${post.images[i]}',
+                      imageUrl: AppConstants.getImageUrl(post.images[i]),
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(color: AppColors.shimmerBase),
                       errorWidget: (_, __, ___) => Container(

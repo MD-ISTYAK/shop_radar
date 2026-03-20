@@ -29,22 +29,11 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// Multer config for social media uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) =>
-    cb(null, `social-${Date.now()}-${Math.round(Math.random() * 1e6)}${path.extname(file.originalname)}`),
-});
+const { storage } = require('../config/cloudinary');
 
 const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB for videos
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp|mp4|mov|avi/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    if (ext) return cb(null, true);
-    cb(new Error('Only image and video files are allowed'));
-  },
 });
 
 const postUpload = upload.fields([

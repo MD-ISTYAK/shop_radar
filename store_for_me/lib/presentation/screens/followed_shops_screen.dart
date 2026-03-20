@@ -82,7 +82,7 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
                                     height: 56,
                                     child: shop.logo.isNotEmpty
                                         ? CachedNetworkImage(
-                                            imageUrl: '${AppConstants.uploadsUrl}${shop.logo}',
+                                            imageUrl: AppConstants.getImageUrl(shop.logo),
                                             fit: BoxFit.cover,
                                             errorWidget: (_, __, ___) => Container(
                                               color: AppColors.primaryLight.withAlpha(30),

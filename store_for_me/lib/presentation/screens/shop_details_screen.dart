@@ -51,7 +51,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: shop.banner.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: '${AppConstants.uploadsUrl}${shop.banner}',
+                      imageUrl: AppConstants.getImageUrl(shop.banner),
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(color: AppColors.primaryLight.withAlpha(51)),
                       errorWidget: (_, __, ___) => _buildBannerPlaceholder(),

@@ -112,7 +112,7 @@ class _PostsList extends ConsumerWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: CachedNetworkImage(
-                          imageUrl: '${AppConstants.uploadsUrl}${post.images[i]}',
+                          imageUrl: AppConstants.getImageUrl(post.images[i]),
                           width: 200,
                           fit: BoxFit.cover,
                         ),
@@ -291,7 +291,7 @@ class _StoriesList extends ConsumerWidget {
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: CachedNetworkImage(
-                imageUrl: '${AppConstants.uploadsUrl}${story.imageUrl}',
+                imageUrl: AppConstants.getImageUrl(story.imageUrl),
                 width: 50,
                 height: 50,
                 fit: BoxFit.cover,

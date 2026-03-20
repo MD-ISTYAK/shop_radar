@@ -23,13 +23,13 @@ const createPost = async (req, res, next) => {
       type: type || 'post',
     };
 
-    // Handle image uploads
+    // Handle image uploads (Cloudinary gives full URL in path)
     if (req.files && req.files.images) {
-      postData.images = req.files.images.map((f) => `/uploads/${f.filename}`);
+      postData.images = req.files.images.map((f) => f.path);
     }
     // Handle video upload for reels
     if (req.files && req.files.video && req.files.video[0]) {
-      postData.videoUrl = `/uploads/${req.files.video[0].filename}`;
+      postData.videoUrl = req.files.video[0].path;
       postData.type = 'reel';
     }
 
@@ -343,7 +343,7 @@ const createStory = async (req, res, next) => {
     const story = await Story.create({
       shopId: shop._id,
       ownerId: req.user._id,
-      imageUrl: `/uploads/${req.file.filename}`,
+      imageUrl: req.file.path,
       caption: req.body.caption || '',
     });
 

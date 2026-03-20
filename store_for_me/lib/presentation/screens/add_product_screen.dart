@@ -351,7 +351,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: CachedNetworkImage(
-                                imageUrl: '${AppConstants.uploadsUrl}$url',
+                                imageUrl: AppConstants.getImageUrl(url),
                                 width: 110,
                                 height: 110,
                                 fit: BoxFit.cover,

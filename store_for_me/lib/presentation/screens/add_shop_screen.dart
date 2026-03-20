@@ -300,7 +300,7 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
                 : hasExisting
                     ? _buildImagePreview(
                         CachedNetworkImage(
-                          imageUrl: '${AppConstants.uploadsUrl}$existingUrl',
+                          imageUrl: AppConstants.getImageUrl(existingUrl),
                           fit: BoxFit.cover,
                           placeholder: (_, __) => Container(color: AppColors.shimmerBase),
                           errorWidget: (_, __, ___) => _buildPlaceholderContent(icon, hint),

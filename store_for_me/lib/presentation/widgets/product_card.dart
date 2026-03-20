@@ -49,7 +49,7 @@ class ProductCard extends StatelessWidget {
                       width: double.infinity,
                       child: product.images.isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: '${AppConstants.uploadsUrl}${product.images.first}',
+                              imageUrl: AppConstants.getImageUrl(product.images.first),
                               fit: BoxFit.cover,
                               placeholder: (_, __) => Container(
                                 color: AppColors.shimmerBase,

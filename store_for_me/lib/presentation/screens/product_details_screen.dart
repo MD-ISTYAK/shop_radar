@@ -57,7 +57,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                                 onPageChanged: (i) => setState(() => _currentImageIndex = i),
                                 itemBuilder: (context, index) {
                                   return CachedNetworkImage(
-                                    imageUrl: '${AppConstants.uploadsUrl}${product.images[index]}',
+                                    imageUrl: AppConstants.getImageUrl(product.images[index]),
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     placeholder: (_, __) => Container(color: AppColors.shimmerBase),

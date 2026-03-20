@@ -33,10 +33,10 @@ const createShop = async (req, res, next) => {
       phone,
     };
 
-    // Handle file uploads
+    // Handle file uploads (Cloudinary gives full URL in path)
     if (req.files) {
-      if (req.files.logo) shopData.logo = `/uploads/${req.files.logo[0].filename}`;
-      if (req.files.banner) shopData.banner = `/uploads/${req.files.banner[0].filename}`;
+      if (req.files.logo) shopData.logo = req.files.logo[0].path;
+      if (req.files.banner) shopData.banner = req.files.banner[0].path;
     }
 
     const shop = await Shop.create(shopData);
@@ -158,10 +158,10 @@ const updateShop = async (req, res, next) => {
       delete updates.latitude;
     }
 
-    // Handle file uploads
+    // Handle file uploads (Cloudinary gives full URL in path)
     if (req.files) {
-      if (req.files.logo) updates.logo = `/uploads/${req.files.logo[0].filename}`;
-      if (req.files.banner) updates.banner = `/uploads/${req.files.banner[0].filename}`;
+      if (req.files.logo) updates.logo = req.files.logo[0].path;
+      if (req.files.banner) updates.banner = req.files.banner[0].path;
     }
 
     shop = await Shop.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });

@@ -68,7 +68,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                             child: conv.shop != null && conv.shop!.logo.isNotEmpty
                                 ? ClipOval(
                                     child: CachedNetworkImage(
-                                      imageUrl: '${AppConstants.uploadsUrl}${conv.shop!.logo}',
+                                      imageUrl: AppConstants.getImageUrl(conv.shop!.logo),
                                       width: 48,
                                       height: 48,
                                       fit: BoxFit.cover,

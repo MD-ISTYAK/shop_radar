@@ -179,7 +179,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: CachedNetworkImage(
-                                          imageUrl: '${AppConstants.uploadsUrl}${shop.logo}',
+                                          imageUrl: AppConstants.getImageUrl(shop.logo),
                                           width: 50,
                                           height: 50,
                                           fit: BoxFit.cover,
@@ -439,7 +439,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                         height: 60,
                                         child: product.images.isNotEmpty
                                             ? CachedNetworkImage(
-                                                imageUrl: '${AppConstants.uploadsUrl}${product.images.first}',
+                                                imageUrl: AppConstants.getImageUrl(product.images.first),
                                                 fit: BoxFit.cover,
                                                 placeholder: (_, __) => Container(color: AppColors.shimmerBase),
                                                 errorWidget: (_, __, ___) => Container(

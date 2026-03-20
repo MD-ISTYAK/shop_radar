@@ -3,11 +3,22 @@ class AppConstants {
 
   // API — Change this IP when switching devices
   static const String _ip = '192.168.1.19';
+  static const bool useLocal = false; // Toggle this for local testing
 
-  // static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android emulator
-  // static const String baseUrl = 'http://localhost:5000/api'; // iOS simulator
-  static const String baseUrl = 'http://$_ip:5000/api';
-  static const String uploadsUrl = 'http://$_ip:5000';
+  static const String baseUrl = useLocal 
+      ? 'http://$_ip:5000/api' 
+      : 'https://shop-radar-z0xe.onrender.com/api';
+      
+  static const String uploadsUrl = useLocal 
+      ? 'http://$_ip:5000' 
+      : ''; // Cloudinary URLs are absolute
+
+  /// Helper to get full image URL, handles both local and Cloudinary paths
+  static String getImageUrl(String? path) {
+    if (path == null || path.isEmpty) return '';
+    if (path.startsWith('http')) return path;
+    return '$uploadsUrl$path';
+  }
 
   // Storage keys
   static const String tokenKey = 'auth_token';

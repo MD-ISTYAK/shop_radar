@@ -40,7 +40,7 @@ class ShopCard extends StatelessWidget {
                 height: 110,
                 child: shop.logo.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: '${AppConstants.uploadsUrl}${shop.logo}',
+                        imageUrl: AppConstants.getImageUrl(shop.logo),
                         fit: BoxFit.cover,
                         placeholder: (_, __) => Container(
                           color: AppColors.shimmerBase,

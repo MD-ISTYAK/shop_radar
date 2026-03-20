@@ -25,9 +25,9 @@ const addProduct = async (req, res, next) => {
       stock: parseInt(stock),
     };
 
-    // Handle image uploads
+    // Handle image uploads (Cloudinary gives full URL in path)
     if (req.files && req.files.length > 0) {
-      productData.images = req.files.map((file) => `/uploads/${file.filename}`);
+      productData.images = req.files.map((file) => file.path);
     }
 
     const product = await Product.create(productData);
@@ -119,9 +119,9 @@ const updateProduct = async (req, res, next) => {
     if (updates.discount) updates.discount = parseFloat(updates.discount);
     if (updates.stock) updates.stock = parseInt(updates.stock);
 
-    // Handle image uploads
+    // Handle image uploads (Cloudinary gives full URL in path)
     if (req.files && req.files.length > 0) {
-      updates.images = req.files.map((file) => `/uploads/${file.filename}`);
+      updates.images = req.files.map((file) => file.path);
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
