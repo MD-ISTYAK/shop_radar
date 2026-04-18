@@ -198,8 +198,7 @@ const checkout = async (req, res, next) => {
       }
 
       const orderId = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const userOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      const pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       const order = await Order.create({
         orderId,
@@ -211,8 +210,8 @@ const checkout = async (req, res, next) => {
         deliveryType,
         deliveryAddress: deliveryAddress || '',
         deliveryLocation: { type: 'Point', coordinates: userLoc },
-        userOtp,
-        pickupCode,
+        userOtp: verificationCode,
+        pickupCode: verificationCode,
         status: 'pending',
         timeline: [{ status: 'pending', note: 'Order placed' }],
       });
@@ -229,7 +228,7 @@ const checkout = async (req, res, next) => {
           deliveryAddress: deliveryAddress || '',
           userLocation: { type: 'Point', coordinates: userLoc },
           shopLocation: { type: 'Point', coordinates: shopLoc },
-          pickupCode,
+          pickupCode: verificationCode,
           status: 'pending',
           deliveryFee,
           totalAmount: orderData.totalAmount,

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/constants/app_constants.dart';
 
@@ -178,7 +179,7 @@ class ApiService {
 
   Future<Response> completeShopPickup(String id, String otp) {
     debugPrint('DIO POST: /orders/$id/complete-pickup');
-    debugPrint('PAYLOAD: {"otp": "$otp"}');
+    debugPrint('PAYLOAD (Verification Code): {"otp": "$otp"}');
     return _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
   }
 
