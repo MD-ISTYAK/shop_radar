@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
-import '../providers/cart_provider.dart';
+import '../providers/deal_provider.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/shop_card.dart';
 import '../widgets/common_widgets.dart';
@@ -18,14 +19,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
-  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(shopProvider.notifier).fetchNearbyShops();
-      ref.read(cartProvider.notifier).fetchCart();
+      ref.read(dealProvider.notifier).fetchTrendingDeals();
       ref.read(notificationProvider.notifier).fetchNotifications();
     });
   }
@@ -39,240 +39,331 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final shopState = ref.watch(shopProvider);
-    final cartState = ref.watch(cartProvider);
     final authState = ref.watch(authProvider);
+    final dealState = ref.watch(dealProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hi, ${authState.user?.name.split(' ').first ?? 'there'}! 👋',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Discover nearby shops',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await ref.read(shopProvider.notifier).fetchNearbyShops();
+            await ref.read(dealProvider.notifier).fetchTrendingDeals();
+          },
+          child: CustomScrollView(
+            slivers: [
+              // === HEADER ===
+              SliverToBoxAdapter(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.primary, AppColors.primaryDark],
                     ),
                   ),
-                  // Followed shops
-                  IconButton(
-                    onPressed: () => Navigator.pushNamed(context, '/followed-shops'),
-                    icon: const Icon(Icons.favorite_outlined, size: 24, color: AppColors.error),
-                    tooltip: 'Followed Shops',
-                  ),
-                  // Chat
-                  IconButton(
-                    onPressed: () => Navigator.pushNamed(context, '/chat-list'),
-                    icon: const Icon(Icons.chat_outlined, size: 24),
-                    tooltip: 'Messages',
-                  ),
-                  // Notifications
-                  Stack(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      IconButton(
-                        onPressed: () => Navigator.pushNamed(context, '/notifications'),
-                        icon: const Icon(Icons.notifications_outlined, size: 26),
-                      ),
-                      if (ref.watch(notificationProvider).unreadCount > 0)
-                        Positioned(
-                          right: 4,
-                          top: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                            child: Text(
-                              '${ref.watch(notificationProvider).unreadCount}',
-                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hi, ${authState.user?.name.split(' ').first ?? 'there'}! 👋',
+                                  style: const TextStyle(
+                                    fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
+                                  ),
+                                ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Discover shops around you',
+                                  style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(200)),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  // Cart icon
-                  Stack(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pushNamed(context, '/cart'),
-                        icon: const Icon(Icons.shopping_cart_outlined, size: 26),
-                      ),
-                      if (cartState.itemCount > 0)
-                        Positioned(
-                          right: 4,
-                          top: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.error,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              '${cartState.itemCount}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                          // Notification bell
+                          Stack(
+                            children: [
+                              IconButton(
+                                onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
                               ),
+                              if (ref.watch(notificationProvider).unreadCount > 0)
+                                Positioned(
+                                  right: 6, top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                                    child: Text(
+                                      '${ref.watch(notificationProvider).unreadCount}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          // Emergency SOS
+                          IconButton(
+                            onPressed: () => Navigator.pushNamed(context, '/emergency'),
+                            icon: const Icon(Icons.emergency, color: Colors.redAccent, size: 26),
+                            tooltip: 'Emergency SOS',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Search bar
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 10)],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => ref.read(shopProvider.notifier).setSearchQuery(v),
+                          decoration: InputDecoration(
+                            hintText: 'Search shops, products...',
+                            prefixIcon: const Icon(Icons.search, color: AppColors.textLight),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_searchController.text.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.clear, size: 20),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      ref.read(shopProvider.notifier).setSearchQuery('');
+                                    },
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.mic, color: AppColors.primary),
+                                  onPressed: () {
+                                    // TODO: Voice search
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),
+                      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1),
                     ],
                   ),
-                  // Logout
-                  IconButton(
-                    onPressed: () async {
-                      await ref.read(authProvider.notifier).logout();
-                      if (mounted) {
-                        Navigator.pushReplacementNamed(context, '/login');
-                      }
-                    },
-                    icon: const Icon(Icons.logout, size: 24),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 2))],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    ref.read(shopProvider.notifier).setSearchQuery(value);
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search shops...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.textLight),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 20),
-                            onPressed: () {
-                              _searchController.clear();
-                              ref.read(shopProvider.notifier).setSearchQuery('');
-                            },
-                          )
-                        : null,
-                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // Categories
-            SizedBox(
-              height: 42,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: AppConstants.shopCategories.length,
-                itemBuilder: (context, index) {
-                  final category = AppConstants.shopCategories[index];
-                  final isSelected = shopState.selectedCategory == category;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: FilterChip(
-                      selected: isSelected,
-                      label: Text(
-                        category,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          color: isSelected ? Colors.white : AppColors.textSecondary,
-                        ),
-                      ),
-                      backgroundColor: AppColors.card,
-                      selectedColor: AppColors.primary,
-                      checkmarkColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isSelected ? AppColors.primary : AppColors.divider,
-                        ),
-                      ),
-                      onSelected: (_) {
-                        ref.read(shopProvider.notifier).setCategory(category);
-                      },
-                    ),
-                  );
-                },
+              // === QUICK ACTIONS ===
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildQuickAction(Icons.map_rounded, 'Map View', AppColors.info, () => Navigator.pushNamed(context, '/discover')),
+                      _buildQuickAction(Icons.local_offer, 'Deals', AppColors.success, () => Navigator.pushNamed(context, '/deals')),
+                      _buildQuickAction(Icons.question_answer, 'Ask', AppColors.warning, () => Navigator.pushNamed(context, '/community')),
+                      _buildQuickAction(Icons.leaderboard, 'Badges', AppColors.primary, () => Navigator.pushNamed(context, '/badges')),
+                    ],
+                  ).animate().fadeIn(duration: 600.ms),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // Shops list
-            Expanded(
-              child: shopState.isLoading
-                  ? const LoadingIndicator(message: 'Finding nearby shops...')
-                  : shopState.shops.isEmpty
-                      ? EmptyStateWidget(
-                          icon: Icons.store_outlined,
-                          title: 'No shops found',
-                          subtitle: 'Try a different search or category',
-                          buttonText: 'Refresh',
-                          onButtonPressed: () {
-                            ref.read(shopProvider.notifier).fetchNearbyShops();
-                          },
-                        )
-                      : RefreshIndicator(
-                          onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: shopState.shops.length,
-                            itemBuilder: (context, index) {
-                              final shop = shopState.shops[index];
-                              return ShopCard(
-                                shop: shop,
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/shop-details', arguments: shop.id);
-                                },
-                              );
-                            },
+              // === CATEGORIES ===
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 46,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: AppConstants.shopCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = AppConstants.shopCategories[index];
+                      final isSelected = shopState.selectedCategory == category;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: FilterChip(
+                          selected: isSelected,
+                          label: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isSelected ? Colors.white : AppColors.textSecondary,
+                            ),
                           ),
+                          backgroundColor: AppColors.card,
+                          selectedColor: AppColors.primary,
+                          checkmarkColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: isSelected ? AppColors.primary : AppColors.divider),
+                          ),
+                          onSelected: (_) => ref.read(shopProvider.notifier).setCategory(category),
                         ),
-            ),
-          ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
+              // === TRENDING DEALS BANNER ===
+              if (dealState.trendingDeals.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 22),
+                            const SizedBox(width: 6),
+                            const Text('Trending Deals', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () => Navigator.pushNamed(context, '/deals'),
+                              child: const Text('See All'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(
+                        height: 120,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: dealState.trendingDeals.length.clamp(0, 5),
+                          itemBuilder: (context, index) {
+                            final deal = dealState.trendingDeals[index];
+                            return Container(
+                              width: 260,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [AppColors.primary.withAlpha(220), AppColors.accent.withAlpha(200)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    deal.title,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(deal.shopName, style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 12)),
+                                  const Spacer(),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                                        child: Text(
+                                          '${deal.discountPercent}% OFF',
+                                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        '₹${deal.dealPrice.toInt()}',
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ).animate().fadeIn(delay: (100 * index).ms);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // === NEARBY SHOPS ===
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Row(
+                    children: [
+                      const Text('Nearby Shops', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.sort, size: 18),
+                        label: const Text('Sort', style: TextStyle(fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (shopState.isLoading)
+                const SliverFillRemaining(
+                  child: LoadingIndicator(message: 'Finding nearby shops...'),
+                )
+              else if (shopState.shops.isEmpty)
+                SliverFillRemaining(
+                  child: EmptyStateWidget(
+                    icon: Icons.store_outlined,
+                    title: 'No shops found',
+                    subtitle: 'Try a different search or category',
+                    buttonText: 'Refresh',
+                    onButtonPressed: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final shop = shopState.shops[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: ShopCard(
+                          shop: shop,
+                          onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
+                        ),
+                      ).animate().fadeIn(delay: (60 * index).ms).slideY(begin: 0.05);
+                    },
+                    childCount: shopState.shops.length,
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-          switch (index) {
-            case 1: Navigator.pushNamed(context, '/feed'); break;
-            case 2: Navigator.pushNamed(context, '/map-view'); break;
-            case 3: Navigator.pushNamed(context, '/emergency'); break;
-            case 4: Navigator.pushNamed(context, '/cart'); break;
-          }
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.dynamic_feed_outlined), selectedIcon: Icon(Icons.dynamic_feed), label: 'Feed'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
-          NavigationDestination(icon: Icon(Icons.emergency_outlined), selectedIcon: Icon(Icons.emergency), label: 'SOS'),
-          NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), selectedIcon: Icon(Icons.shopping_cart), label: 'Cart'),
+    );
+  }
+
+  Widget _buildQuickAction(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: color.withAlpha(25),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
     );

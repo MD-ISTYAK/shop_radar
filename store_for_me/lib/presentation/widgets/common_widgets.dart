@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
+/// Reusable loading indicator
 class LoadingIndicator extends StatelessWidget {
-  final String? message;
-
-  const LoadingIndicator({super.key, this.message});
+  final String message;
+  const LoadingIndicator({super.key, this.message = 'Loading...'});
 
   @override
   Widget build(BuildContext context) {
@@ -12,21 +12,26 @@ class LoadingIndicator extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: AppColors.primary),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+          SizedBox(
+            width: 40, height: 40,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(message, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
         ],
       ),
     );
   }
 }
 
+/// Reusable empty state widget
 class EmptyStateWidget extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String? subtitle;
+  final String subtitle;
   final String? buttonText;
   final VoidCallback? onButtonPressed;
 
@@ -34,7 +39,7 @@ class EmptyStateWidget extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    this.subtitle,
+    required this.subtitle,
     this.buttonText,
     this.onButtonPressed,
   });
@@ -43,41 +48,111 @@ class EmptyStateWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              width: 80, height: 80,
               decoration: BoxDecoration(
-                color: AppColors.primaryLight.withAlpha(26),
-                shape: BoxShape.circle,
+                color: AppColors.primary.withAlpha(15),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Icon(icon, size: 64, color: AppColors.primary),
+              child: Icon(icon, size: 40, color: AppColors.primary.withAlpha(150)),
             ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                subtitle!,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
+            const SizedBox(height: 20),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             if (buttonText != null && onButtonPressed != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onButtonPressed,
-                child: Text(buttonText!),
-              ),
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: onButtonPressed, child: Text(buttonText!)),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Status badge chip
+class StatusBadge extends StatelessWidget {
+  final String status;
+  final Color color;
+
+  const StatusBadge({super.key, required this.status, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withAlpha(80)),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+      ),
+    );
+  }
+}
+
+/// Crowd level indicator
+class CrowdIndicator extends StatelessWidget {
+  final String crowdLevel;
+  const CrowdIndicator({super.key, required this.crowdLevel});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = crowdLevel == 'high' ? AppColors.error
+        : crowdLevel == 'medium' ? AppColors.warning
+        : AppColors.success;
+    final label = crowdLevel == 'high' ? 'Very Crowded'
+        : crowdLevel == 'medium' ? 'Moderate'
+        : 'Not Crowded';
+    final emoji = crowdLevel == 'high' ? '🔴'
+        : crowdLevel == 'medium' ? '🟡'
+        : '🟢';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      ],
+    );
+  }
+}
+
+/// Section header
+class SectionHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String? actionText;
+  final VoidCallback? onAction;
+
+  const SectionHeader({super.key, required this.title, this.subtitle, this.actionText, this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+            ],
+          ),
+          const Spacer(),
+          if (actionText != null)
+            TextButton(onPressed: onAction, child: Text(actionText!, style: const TextStyle(fontSize: 13))),
+        ],
       ),
     );
   }

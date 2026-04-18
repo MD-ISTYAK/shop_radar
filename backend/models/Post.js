@@ -51,6 +51,14 @@ const postSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    thumbnailUrl: {
+      type: String,
+      default: '',
+    },
+    hashTags: {
+      type: [String],
+      default: [],
+    },
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -58,6 +66,14 @@ const postSchema = new mongoose.Schema(
       },
     ],
     comments: [commentSchema],
+    shares: {
+      type: Number,
+      default: 0,
+    },
+    viewCount: {
+      type: Number,
+      default: 0,
+    },
     isHidden: {
       type: Boolean,
       default: false,

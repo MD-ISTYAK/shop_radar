@@ -29,27 +29,70 @@ class ShopCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Shop Image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              child: SizedBox(
-                width: 110,
-                height: 110,
-                child: shop.logo.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: AppConstants.getImageUrl(shop.logo),
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: AppColors.shimmerBase,
-                          child: const Icon(Icons.store, size: 40, color: Colors.white),
-                        ),
-                        errorWidget: (_, __, ___) => _buildPlaceholder(),
-                      )
-                    : _buildPlaceholder(),
-              ),
+            // Shop Image with status indicator
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                  ),
+                  child: SizedBox(
+                    width: 110,
+                    height: 120,
+                    child: shop.logo.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: AppConstants.getImageUrl(shop.logo),
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(
+                              color: AppColors.shimmerBase,
+                              child: const Icon(Icons.store, size: 40, color: Colors.white),
+                            ),
+                            errorWidget: (_, __, ___) => _buildPlaceholder(),
+                          )
+                        : _buildPlaceholder(),
+                  ),
+                ),
+                // Status dot
+                Positioned(
+                  top: 8, left: 8,
+                  child: Container(
+                    width: 12, height: 12,
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [BoxShadow(color: _getStatusColor().withAlpha(80), blurRadius: 6)],
+                    ),
+                  ),
+                ),
+                // 24x7 badge
+                if (shop.is24x7)
+                  Positioned(
+                    bottom: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('24×7', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                // Trending badge
+                if (shop.isTrending)
+                  Positioned(
+                    top: 8, right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.local_fire_department, color: Colors.white, size: 12),
+                    ),
+                  ),
+              ],
             ),
 
             // Shop Info
@@ -59,65 +102,97 @@ class ShopCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name & Category
-                    Text(
-                      shop.shopName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      shop.category,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Rating & Distance
+                    // Name & Verified
                     Row(
                       children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            shop.shopName,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (shop.isVerified)
+                          const Icon(Icons.verified, color: AppColors.primary, size: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(shop.category, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 6),
+
+                    // Rating, Distance, Crowd
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 15),
+                        const SizedBox(width: 3),
                         Text(
                           shop.rating.toStringAsFixed(1),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
                         ),
-                        const SizedBox(width: 12),
+                        Text(' (${shop.totalRatings})', style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
                         if (shop.distanceFormatted != null) ...[
-                          Icon(Icons.location_on, size: 14, color: AppColors.textLight),
+                          const SizedBox(width: 8),
+                          Icon(Icons.location_on, size: 13, color: AppColors.textLight),
                           const SizedBox(width: 2),
-                          Text(
-                            shop.distanceFormatted!,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
+                          Text(shop.distanceFormatted!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
-                    // Status badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: shop.isOpen
-                            ? AppColors.success.withAlpha(26)
-                            : AppColors.error.withAlpha(26),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        shop.isOpen ? 'Open' : 'Closed',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: shop.isOpen ? AppColors.success : AppColors.error,
+                    // Status & Crowd
+                    Row(
+                      children: [
+                        // Status badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor().withAlpha(20),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            shop.statusLabel,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _getStatusColor()),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        // Crowd indicator
+                        Text(shop.crowdEmoji, style: const TextStyle(fontSize: 10)),
+                        const SizedBox(width: 3),
+                        Text(
+                          shop.crowdLabel,
+                          style: TextStyle(fontSize: 10, color: AppColors.textLight, fontWeight: FontWeight.w500),
+                        ),
+                        // Followers
+                        if (shop.followers > 0) ...[
+                          const Spacer(),
+                          Icon(Icons.people_outline, size: 12, color: AppColors.textLight),
+                          const SizedBox(width: 2),
+                          Text('${shop.followers}', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
+                        ],
+                      ],
                     ),
+
+                    // Features chips
+                    if (shop.features.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        children: shop.features.take(3).map((f) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _featureLabel(f),
+                              style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -125,13 +200,38 @@ class ShopCard extends StatelessWidget {
 
             // Arrow
             Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Icon(Icons.chevron_right, color: AppColors.textLight),
+              padding: const EdgeInsets.only(right: 8),
+              child: Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Color _getStatusColor() {
+    switch (shop.status) {
+      case 'open': return AppColors.success;
+      case 'busy': return AppColors.warning;
+      case 'closed': return AppColors.textLight;
+      case 'temporarily_closed': return AppColors.error;
+      default: return AppColors.textLight;
+    }
+  }
+
+  String _featureLabel(String feature) {
+    final labels = {
+      'wifi': '📶 WiFi',
+      'parking': '🅿️ Parking',
+      'ac': '❄️ AC',
+      'card_payment': '💳 Card',
+      'upi': '📱 UPI',
+      'home_delivery': '🚚 Delivery',
+      'dine_in': '🍽️ Dine-in',
+      'takeaway': '📦 Takeaway',
+      'wheelchair_access': '♿ Accessible',
+    };
+    return labels[feature] ?? feature;
   }
 
   Widget _buildPlaceholder() {

@@ -50,10 +50,21 @@ class PostModel {
     );
   }
 
+  int get likeCount => likes.length;
   int get likesCount => likes.length;
+  int get commentCount => comments.length;
   int get commentsCount => comments.length;
   bool isLikedBy(String userId) => likes.contains(userId);
+  bool get isLiked => likes.isNotEmpty; // simplified for UI placeholder
   bool get isReel => type == 'reel';
+
+  String get timeAgo {
+    final diff = DateTime.now().difference(createdAt);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
+  }
 }
 
 class CommentModel {

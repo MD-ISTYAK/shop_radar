@@ -37,7 +37,7 @@ class ApiService {
 
   Dio get dio => _dio;
 
-  // Auth
+  // ===================== AUTH =====================
   Future<Response> register(Map<String, dynamic> data) =>
       _dio.post('/auth/register', data: data);
 
@@ -46,7 +46,20 @@ class ApiService {
 
   Future<Response> getProfile() => _dio.get('/auth/profile');
 
-  // Shops
+  // ===================== TOKEN MANAGEMENT =====================
+  Future<void> saveToken(String token) async {
+    await _storage.write(key: AppConstants.tokenKey, value: token);
+  }
+
+  Future<String?> getToken() async {
+    return await _storage.read(key: AppConstants.tokenKey);
+  }
+
+  Future<void> deleteToken() async {
+    await _storage.delete(key: AppConstants.tokenKey);
+  }
+
+  // ===================== SHOPS =====================
   Future<Response> getNearbyShops({
     double? lat,
     double? lng,
@@ -82,7 +95,29 @@ class ApiService {
 
   Future<Response> getOwnerShop() => _dio.get('/shops/owner/my-shop');
 
-  // Products
+  Future<Response> searchShops({
+    String? query,
+    String? category,
+    double? lat,
+    double? lng,
+    double? radius,
+    bool? openNow,
+    double? minRating,
+    String? sortBy,
+  }) {
+    final params = <String, dynamic>{};
+    if (query != null && query.isNotEmpty) params['search'] = query;
+    if (category != null && category != 'All') params['category'] = category;
+    if (lat != null) params['lat'] = lat;
+    if (lng != null) params['lng'] = lng;
+    if (radius != null) params['radius'] = radius;
+    if (openNow == true) params['openNow'] = 'true';
+    if (minRating != null) params['minRating'] = minRating;
+    if (sortBy != null) params['sortBy'] = sortBy;
+    return _dio.get('/shops/nearby', queryParameters: params);
+  }
+
+  // ===================== PRODUCTS =====================
   Future<Response> getProductsByShop(String shopId) =>
       _dio.get('/products/shop/$shopId');
 
@@ -98,7 +133,7 @@ class ApiService {
 
   Future<Response> getOwnerProducts() => _dio.get('/products/owner/my-products');
 
-  // Cart
+  // ===================== CART =====================
   Future<Response> addToCart(Map<String, dynamic> data) =>
       _dio.post('/cart/add', data: data);
 
@@ -113,18 +148,28 @@ class ApiService {
   Future<Response> checkout(Map<String, dynamic> data) =>
       _dio.post('/cart/checkout', data: data);
 
-  // Token management
-  Future<void> saveToken(String token) async {
-    await _storage.write(key: AppConstants.tokenKey, value: token);
+  // ===================== ORDERS =====================
+  Future<Response> getMyOrders({String? status, int page = 1}) {
+    final params = <String, dynamic>{'page': page};
+    if (status != null) params['status'] = status;
+    return _dio.get('/orders/my-orders', queryParameters: params);
   }
 
-  Future<String?> getToken() async {
-    return await _storage.read(key: AppConstants.tokenKey);
+  Future<Response> getOrderById(String id) => _dio.get('/orders/$id');
+
+  Future<Response> getShopOrders({String? status, int page = 1}) {
+    final params = <String, dynamic>{'page': page};
+    if (status != null) params['status'] = status;
+    return _dio.get('/orders/shop-orders', queryParameters: params);
   }
 
-  Future<void> deleteToken() async {
-    await _storage.delete(key: AppConstants.tokenKey);
-  }
+  Future<Response> updateOrderStatus(String id, String status) =>
+      _dio.patch('/orders/$id/status', data: {'status': status});
+
+  Future<Response> cancelOrder(String id, {String reason = ''}) =>
+      _dio.patch('/orders/$id/cancel', data: {'reason': reason});
+
+  Future<Response> getShopOrderStats() => _dio.get('/orders/shop-stats');
 
   // ===================== SOCIAL =====================
   Future<Response> createPost(FormData data) =>
@@ -187,6 +232,85 @@ class ApiService {
   Future<Response> getFollowersCount(String shopId) =>
       _dio.get('/social/follow/$shopId/count');
 
+  Future<Response> getFollowedShops() =>
+      _dio.get('/social/follow/my-follows');
+
+  // ===================== REVIEWS =====================
+  Future<Response> createReview(Map<String, dynamic> data) =>
+      _dio.post('/reviews', data: data);
+
+  Future<Response> getShopReviews(String shopId, {int page = 1}) =>
+      _dio.get('/reviews/shop/$shopId', queryParameters: {'page': page});
+
+  Future<Response> upvoteReview(String reviewId) =>
+      _dio.post('/reviews/$reviewId/upvote');
+
+  Future<Response> addOwnerReply(String reviewId, String text) =>
+      _dio.post('/reviews/$reviewId/reply', data: {'text': text});
+
+  Future<Response> deleteReview(String reviewId) =>
+      _dio.delete('/reviews/$reviewId');
+
+  // ===================== CHECK-INS =====================
+  Future<Response> checkIn(Map<String, dynamic> data) =>
+      _dio.post('/checkins', data: data);
+
+  Future<Response> getShopCheckIns(String shopId) =>
+      _dio.get('/checkins/shop/$shopId');
+
+  Future<Response> getMyCheckIns({int page = 1}) =>
+      _dio.get('/checkins/my-checkins', queryParameters: {'page': page});
+
+  // ===================== DEALS =====================
+  Future<Response> createDeal(Map<String, dynamic> data) =>
+      _dio.post('/deals', data: data);
+
+  Future<Response> getNearbyDeals({int page = 1}) =>
+      _dio.get('/deals/nearby', queryParameters: {'page': page});
+
+  Future<Response> getTrendingDeals() => _dio.get('/deals/trending');
+
+  Future<Response> getMySavedDeals() => _dio.get('/deals/saved');
+
+  Future<Response> getShopDeals(String shopId) =>
+      _dio.get('/deals/shop/$shopId');
+
+  Future<Response> toggleSaveDeal(String dealId) =>
+      _dio.post('/deals/$dealId/save');
+
+  Future<Response> deleteDeal(String dealId) =>
+      _dio.delete('/deals/$dealId');
+
+  // ===================== COMMUNITY Q&A =====================
+  Future<Response> postQuestion(Map<String, dynamic> data) =>
+      _dio.post('/community', data: data);
+
+  Future<Response> getNearbyQuestions({int page = 1, String? tag}) {
+    final params = <String, dynamic>{'page': page};
+    if (tag != null) params['tag'] = tag;
+    return _dio.get('/community', queryParameters: params);
+  }
+
+  Future<Response> getQuestion(String id) => _dio.get('/community/$id');
+
+  Future<Response> answerQuestion(String questionId, Map<String, dynamic> data) =>
+      _dio.post('/community/$questionId/answer', data: data);
+
+  Future<Response> upvoteAnswer(String questionId, String answerId) =>
+      _dio.post('/community/$questionId/answers/$answerId/upvote');
+
+  // ===================== PRICE COMPARISON =====================
+  Future<Response> compareProductPrice(String productName, {double? lat, double? lng, double? radius}) {
+    final params = <String, dynamic>{'productName': productName};
+    if (lat != null) params['lat'] = lat;
+    if (lng != null) params['lng'] = lng;
+    if (radius != null) params['radius'] = radius;
+    return _dio.get('/prices/compare', queryParameters: params);
+  }
+
+  Future<Response> getPriceHistory(String productId, {int days = 30}) =>
+      _dio.get('/prices/history/$productId', queryParameters: {'days': days});
+
   // ===================== NOTIFICATIONS =====================
   Future<Response> getNotifications({int page = 1}) =>
       _dio.get('/notifications', queryParameters: {'page': page});
@@ -225,6 +349,70 @@ class ApiService {
   Future<Response> updateDeliveryStatus(String id, String status) =>
       _dio.patch('/delivery/$id/status', data: {'status': status});
 
+  // ===================== DELIVERY PARTNER =====================
+  Future<Response> registerAsDeliveryPartner(Map<String, dynamic> data) =>
+      _dio.post('/delivery-partner/register', data: data);
+
+  Future<Response> updatePartnerKYC(Map<String, dynamic> data) =>
+      _dio.put('/delivery-partner/kyc', data: data);
+
+  Future<Response> togglePartnerOnline({double? lat, double? lng}) =>
+      _dio.post('/delivery-partner/toggle-online', data: {'lat': lat, 'lng': lng});
+
+  Future<Response> updatePartnerLocation(double lat, double lng) =>
+      _dio.post('/delivery-partner/update-location', data: {'lat': lat, 'lng': lng});
+
+  Future<Response> getAvailableDeliveries() =>
+      _dio.get('/delivery-partner/available');
+
+  Future<Response> acceptDelivery(String deliveryId) =>
+      _dio.post('/delivery-partner/accept/$deliveryId');
+
+  Future<Response> completeDelivery(String deliveryId) =>
+      _dio.post('/delivery-partner/complete/$deliveryId');
+
+  Future<Response> getPartnerProfile() =>
+      _dio.get('/delivery-partner/profile');
+
+  Future<Response> getPartnerEarnings() =>
+      _dio.get('/delivery-partner/earnings');
+
+  // ===================== WALLET =====================
+  Future<Response> getWallet() => _dio.get('/wallet');
+
+  Future<Response> getWalletTransactions({int page = 1}) =>
+      _dio.get('/wallet/transactions', queryParameters: {'page': page});
+
+  Future<Response> addMoneyToWallet(double amount, String paymentId) =>
+      _dio.post('/wallet/add-money', data: {'amount': amount, 'paymentId': paymentId});
+
+  // ===================== REFERRALS =====================
+  Future<Response> getMyReferrals() => _dio.get('/referrals/my-referrals');
+
+  Future<Response> applyReferralCode(String code) =>
+      _dio.post('/referrals/apply', data: {'referralCode': code});
+
+  // ===================== GAMIFICATION =====================
+  Future<Response> getMyBadges() => _dio.get('/gamification/badges');
+
+  Future<Response> getLeaderboard() => _dio.get('/gamification/leaderboard');
+
+  // ===================== AI =====================
+  Future<Response> getShoppingAssistant(List<Map<String, String>> items, {double? lat, double? lng}) =>
+      _dio.post('/ai/shopping-assistant', data: {'items': items, 'lat': lat, 'lng': lng});
+
+  Future<Response> getCrowdPrediction(String shopId) =>
+      _dio.get('/ai/crowd-prediction/$shopId');
+
+  Future<Response> getBestTimeToVisit(String shopId) =>
+      _dio.get('/ai/best-time/$shopId');
+
+  Future<Response> getAlternativeShop(String shopId) =>
+      _dio.get('/ai/alternative/$shopId');
+
+  Future<Response> getBargainRange(String productName) =>
+      _dio.get('/ai/bargain', queryParameters: {'productName': productName});
+
   // ===================== RECOMMENDATIONS =====================
   Future<Response> getRecommendations({double? lat, double? lng, String type = 'all'}) {
     final params = <String, dynamic>{'type': type};
@@ -242,29 +430,6 @@ class ApiService {
     return _dio.get('/emergency', queryParameters: params);
   }
 
-  // ===================== SEARCH (Enhanced) =====================
-  Future<Response> searchShops({
-    String? query,
-    String? category,
-    double? lat,
-    double? lng,
-    double? radius,
-    bool? openNow,
-    double? minRating,
-    String? sortBy,
-  }) {
-    final params = <String, dynamic>{};
-    if (query != null && query.isNotEmpty) params['search'] = query;
-    if (category != null && category != 'All') params['category'] = category;
-    if (lat != null) params['lat'] = lat;
-    if (lng != null) params['lng'] = lng;
-    if (radius != null) params['radius'] = radius;
-    if (openNow == true) params['openNow'] = 'true';
-    if (minRating != null) params['minRating'] = minRating;
-    if (sortBy != null) params['sortBy'] = sortBy;
-    return _dio.get('/shops/nearby', queryParameters: params);
-  }
-
   // ===================== CHAT =====================
   Future<Response> sendChatMessage(String receiverId, String shopId, String text) =>
       _dio.post('/chat/send', data: {'receiverId': receiverId, 'shopId': shopId, 'text': text});
@@ -276,8 +441,4 @@ class ApiService {
 
   Future<Response> startChatConversation(String shopId) =>
       _dio.post('/chat/start', data: {'shopId': shopId});
-
-  // ===================== FOLLOWED SHOPS =====================
-  Future<Response> getFollowedShops() =>
-      _dio.get('/social/follow/my-follows');
 }

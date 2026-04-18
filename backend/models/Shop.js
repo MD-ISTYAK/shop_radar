@@ -28,6 +28,17 @@ const shopSchema = new mongoose.Schema(
         'Beauty & Personal Care',
         'Sports',
         'Home & Furniture',
+        'Salon',
+        'Clinic',
+        'Repair',
+        'Petrol Pump',
+        'Mechanic',
+        'Doctor',
+        'Government Office',
+        'Coaching Centre',
+        'Bakery',
+        'Jewellery',
+        'Pet Store',
         'Other',
       ],
     },
@@ -60,6 +71,10 @@ const shopSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    images: {
+      type: [String],
+      default: [],
+    },
     openingTime: {
       type: String,
       required: [true, 'Opening time is required'],
@@ -68,9 +83,22 @@ const shopSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Closing time is required'],
     },
+    operatingDays: {
+      type: [String],
+      default: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    },
     phone: {
       type: String,
       required: [true, 'Phone number is required'],
+    },
+    whatsappNumber: {
+      type: String,
+      default: '',
+    },
+    website: {
+      type: String,
+      default: '',
     },
     status: {
       type: String,
@@ -82,14 +110,39 @@ const shopSchema = new mongoose.Schema(
       enum: ['low', 'medium', 'high'],
       default: 'low',
     },
+    is24x7: {
+      type: Boolean,
+      default: false,
+    },
     isEmergency: {
       type: Boolean,
       default: false,
     },
     emergencyType: {
       type: String,
-      enum: ['hospital', 'medical_store', 'petrol_pump', 'mechanic', ''],
+      enum: ['hospital', 'medical_store', 'petrol_pump', 'mechanic', 'ambulance', ''],
       default: '',
+    },
+    isEmergencyVerified: {
+      type: Boolean,
+      default: false,
+    },
+    features: {
+      type: [String],
+      default: [],
+      enum: ['wifi', 'parking', 'ac', 'card_payment', 'upi', 'home_delivery', 'dine_in', 'takeaway', 'wheelchair_access'],
+    },
+    autoStatusByGPS: {
+      type: Boolean,
+      default: false,
+    },
+    queueEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    busyThreshold: {
+      type: Number,
+      default: 10,
     },
     rating: {
       type: Number,
@@ -101,11 +154,38 @@ const shopSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    followers: {
+      type: Number,
+      default: 0,
+    },
+    totalCheckIns: {
+      type: Number,
+      default: 0,
+    },
+    trendingScore: {
+      type: Number,
+      default: 0,
+    },
+    isTrending: {
+      type: Boolean,
+      default: false,
+    },
+    totalOrders: {
+      type: Number,
+      default: 0,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
 
 // Create 2dsphere index for geospatial queries
 shopSchema.index({ location: '2dsphere' });
+shopSchema.index({ category: 1, status: 1 });
+shopSchema.index({ trendingScore: -1 });
+shopSchema.index({ ownerId: 1 });
 
 module.exports = mongoose.model('Shop', shopSchema);

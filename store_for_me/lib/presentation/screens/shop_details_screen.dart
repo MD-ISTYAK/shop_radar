@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/api_service.dart';
@@ -10,6 +12,9 @@ import '../providers/cart_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/review_provider.dart';
+import '../providers/deal_provider.dart';
+import '../providers/check_in_provider.dart';
 import '../widgets/product_card.dart';
 import '../widgets/common_widgets.dart';
 
@@ -28,6 +33,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
     Future.microtask(() {
       ref.read(shopProvider.notifier).fetchShopById(widget.shopId);
       ref.read(productProvider.notifier).fetchProductsByShop(widget.shopId);
+      ref.read(reviewProvider.notifier).fetchShopReviews(widget.shopId);
     });
   }
 
@@ -35,6 +41,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
   Widget build(BuildContext context) {
     final shopState = ref.watch(shopProvider);
     final productState = ref.watch(productProvider);
+    final reviewState = ref.watch(reviewProvider);
     final shop = shopState.selectedShop;
 
     if (shopState.isLoading || shop == null) {
@@ -44,19 +51,73 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Banner
+          // === BANNER ===
           SliverAppBar(
-            expandedHeight: 220,
+            expandedHeight: 240,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: shop.banner.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: AppConstants.getImageUrl(shop.banner),
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: AppColors.primaryLight.withAlpha(51)),
-                      errorWidget: (_, __, ___) => _buildBannerPlaceholder(),
-                    )
-                  : _buildBannerPlaceholder(),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  shop.banner.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: AppConstants.getImageUrl(shop.banner),
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(color: AppColors.primaryLight.withAlpha(51)),
+                          errorWidget: (_, __, ___) => _buildBannerPlaceholder(),
+                        )
+                      : _buildBannerPlaceholder(),
+                  // Gradient overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withAlpha(160)],
+                      ),
+                    ),
+                  ),
+                  // Bottom badges
+                  Positioned(
+                    bottom: 16, left: 16, right: 16,
+                    child: Row(
+                      children: [
+                        // Status pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(shop.status),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(shop.statusLabel,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ),
+                        const SizedBox(width: 8),
+                        // Crowd
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text('${shop.crowdEmoji} ${shop.crowdLabel}',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)),
+                        ),
+                        const Spacer(),
+                        if (shop.is24x7)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text('24×7', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             leading: Padding(
               padding: const EdgeInsets.all(8),
@@ -68,49 +129,61 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                 ),
               ),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: CircleAvatar(
+                  backgroundColor: Colors.black38,
+                  child: IconButton(
+                    icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                    onPressed: () {},
+                  ),
+                ),
+              ),
+            ],
           ),
 
-          // Shop info
+          // === SHOP INFO ===
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Name & Verified
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          shop.shopName,
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
+                        child: Text(shop.shopName, style: Theme.of(context).textTheme.headlineMedium),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: shop.isOpen ? AppColors.success.withAlpha(26) : AppColors.error.withAlpha(26),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          shop.isOpen ? '● Open' : '● Closed',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: shop.isOpen ? AppColors.success : AppColors.error,
+                      if (shop.isVerified)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(20),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified, color: AppColors.primary, size: 16),
+                              SizedBox(width: 4),
+                              Text('Verified', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                            ],
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
+
+                  // Rating & Category
                   Row(
                     children: [
                       const Icon(Icons.star, color: Colors.amber, size: 18),
                       const SizedBox(width: 4),
-                      Text('${shop.rating.toStringAsFixed(1)}',
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text('${shop.rating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(width: 4),
-                      Text('(${shop.totalRatings} reviews)',
-                          style: Theme.of(context).textTheme.bodySmall),
+                      Text('(${shop.totalRatings} reviews)', style: Theme.of(context).textTheme.bodySmall),
                       const SizedBox(width: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -119,10 +192,28 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(shop.category,
-                            style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                          style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+
+                  // === ACTION BUTTONS ROW ===
+                  Row(
+                    children: [
+                      _buildActionButton(Icons.phone, 'Call', AppColors.success, () => _launchPhone(shop.phone)),
+                      const SizedBox(width: 10),
+                      if (shop.hasWhatsApp)
+                        _buildActionButton(Icons.chat, 'WhatsApp', const Color(0xFF25D366), () => _launchUrl(shop.whatsappLink)),
+                      if (shop.hasWhatsApp) const SizedBox(width: 10),
+                      _buildActionButton(Icons.location_on, 'Check-In', AppColors.primary, () => _showCheckInDialog()),
+                      const SizedBox(width: 10),
+                      if (shop.queueEnabled)
+                        _buildActionButton(Icons.confirmation_number, 'Queue', AppColors.warning, () {
+                          Navigator.pushNamed(context, '/queue', arguments: {'shopId': shop.id, 'shopName': shop.shopName});
+                        }),
+                    ],
+                  ).animate().fadeIn(duration: 500.ms),
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 12),
@@ -132,7 +223,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                   const SizedBox(height: 10),
                   _InfoRow(
                     icon: Icons.access_time,
-                    text: '${shop.openingTime} - ${shop.closingTime}',
+                    text: shop.is24x7 ? 'Open 24 hours, 7 days a week' : '${shop.openingTime} - ${shop.closingTime}',
                   ),
                   const SizedBox(height: 10),
                   _InfoRow(icon: Icons.phone_outlined, text: shop.phone),
@@ -140,6 +231,37 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                     const SizedBox(height: 10),
                     _InfoRow(icon: Icons.info_outline, text: shop.description),
                   ],
+                  if (shop.operatingDays.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _InfoRow(icon: Icons.calendar_today, text: 'Open: ${shop.operatingDays.join(', ')}'),
+                  ],
+
+                  // Features
+                  if (shop.features.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text('Amenities', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8, runSpacing: 8,
+                      children: shop.features.map((f) {
+                        final labels = {
+                          'wifi': '📶 WiFi', 'parking': '🅿️ Parking', 'ac': '❄️ AC',
+                          'card_payment': '💳 Card', 'upi': '📱 UPI', 'home_delivery': '🚚 Delivery',
+                          'dine_in': '🍽️ Dine-in', 'takeaway': '📦 Takeaway', 'wheelchair_access': '♿ Accessible',
+                        };
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withAlpha(12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary.withAlpha(40)),
+                          ),
+                          child: Text(labels[f] ?? f, style: const TextStyle(fontSize: 12)),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
                   const Divider(),
                   const SizedBox(height: 12),
@@ -150,12 +272,108 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                   const Divider(),
                   const SizedBox(height: 12),
 
+                  // === REVIEWS SECTION ===
+                  Row(
+                    children: [
+                      const Text('Reviews', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: () => _showWriteReviewDialog(),
+                        icon: const Icon(Icons.rate_review, size: 18),
+                        label: const Text('Write Review'),
+                      ),
+                    ],
+                  ),
+                  if (reviewState.reviews.isNotEmpty)
+                    ...reviewState.reviews.take(3).map((review) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AppColors.primary.withAlpha(25),
+                                  child: Text(review.userName.isNotEmpty ? review.userName[0] : '?',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(review.userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                      Row(
+                                        children: List.generate(5, (i) => Icon(
+                                          i < review.rating ? Icons.star : Icons.star_border,
+                                          color: Colors.amber, size: 14)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => ref.read(reviewProvider.notifier).toggleUpvote(review.id, widget.shopId),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.thumb_up_outlined, size: 14, color: AppColors.textLight),
+                                      const SizedBox(width: 4),
+                                      Text('${review.upvoteCount}', style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (review.text.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(review.text, style: const TextStyle(fontSize: 13)),
+                            ],
+                            if (review.ownerReply != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withAlpha(8),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.primary.withAlpha(25)),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.store, size: 14, color: AppColors.primary),
+                                    const SizedBox(width: 6),
+                                    Expanded(child: Text(review.ownerReply!.text, style: const TextStyle(fontSize: 12))),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }),
+                  if (reviewState.reviews.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('No reviews yet. Be the first to review!', style: TextStyle(color: AppColors.textLight)),
+                    ),
+
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 12),
+
                   // Products header
-                  Text('Products', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${productState.products.length} items',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Row(
+                    children: [
+                      Text('Products', style: Theme.of(context).textTheme.titleLarge),
+                      const Spacer(),
+                      Text('${productState.products.length} items', style: Theme.of(context).textTheme.bodySmall),
+                    ],
                   ),
                 ],
               ),
@@ -187,11 +405,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                             final product = productState.products[index];
                             return ProductCard(
                               product: product,
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                '/product-details',
-                                arguments: product.id,
-                              ),
+                              onTap: () => Navigator.pushNamed(context, '/product-details', arguments: product.id),
                               onAddToCart: () async {
                                 final added = await ref.read(cartProvider.notifier).addToCart(product.id);
                                 if (added && context.mounted) {
@@ -215,6 +429,138 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withAlpha(15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withAlpha(50)),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'open': return AppColors.success;
+      case 'busy': return AppColors.warning;
+      case 'closed': return AppColors.textLight;
+      case 'temporarily_closed': return AppColors.error;
+      default: return AppColors.textLight;
+    }
+  }
+
+  void _launchPhone(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  void _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _showCheckInDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Check In'),
+        content: const Text('Check in at this shop to earn 5 loyalty points! 🎉'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final result = await ref.read(checkInProvider.notifier).checkIn(widget.shopId);
+              if (mounted) Navigator.pop(ctx);
+              if (result && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('✅ Checked in! +5 points'),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              }
+            },
+            child: const Text('Check In'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWriteReviewDialog() {
+    final textCtrl = TextEditingController();
+    int selectedRating = 5;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setDialogState) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Write a Review'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) => GestureDetector(
+                  onTap: () => setDialogState(() => selectedRating = i + 1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      i < selectedRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber, size: 32,
+                    ),
+                  ),
+                )),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(hintText: 'Share your experience...'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final result = await ref.read(reviewProvider.notifier).createReview(widget.shopId, selectedRating, textCtrl.text);
+                if (mounted) Navigator.pop(ctx);
+                if (result && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('⭐ Review posted! Thanks!'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Post Review'),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -318,7 +664,6 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
       children: [
         Row(
           children: [
-            // Followers count
             Column(
               children: [
                 Text('$_followersCount', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
@@ -326,8 +671,6 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
               ],
             ),
             const SizedBox(width: 24),
-
-            // Follow button (hidden for owner viewing own shop)
             if (!isOwner)
               Expanded(
                 child: ElevatedButton.icon(
@@ -342,10 +685,7 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
                   ),
                 ),
               ),
-
             if (!isOwner) const SizedBox(width: 10),
-
-            // Chat button
             if (!isOwner)
               OutlinedButton.icon(
                 onPressed: _startChat,
@@ -361,4 +701,3 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
     );
   }
 }
-

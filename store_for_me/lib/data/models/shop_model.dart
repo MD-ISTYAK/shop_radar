@@ -8,13 +8,28 @@ class ShopModel {
   final LocationModel? location;
   final String logo;
   final String banner;
+  final List<String> images;
   final String openingTime;
   final String closingTime;
+  final List<String> operatingDays;
   final String phone;
+  final String whatsappNumber;
+  final String website;
   final String status;
   final String crowdLevel;
+  final bool is24x7;
+  final bool isEmergency;
+  final String emergencyType;
+  final List<String> features;
+  final bool queueEnabled;
   final double rating;
   final int totalRatings;
+  final int followers;
+  final int totalCheckIns;
+  final int totalOrders;
+  final double trendingScore;
+  final bool isTrending;
+  final bool isVerified;
   final double? distance;
   final String? distanceFormatted;
 
@@ -28,13 +43,28 @@ class ShopModel {
     this.location,
     this.logo = '',
     this.banner = '',
+    this.images = const [],
     required this.openingTime,
     required this.closingTime,
+    this.operatingDays = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     required this.phone,
+    this.whatsappNumber = '',
+    this.website = '',
     this.status = 'open',
     this.crowdLevel = 'low',
+    this.is24x7 = false,
+    this.isEmergency = false,
+    this.emergencyType = '',
+    this.features = const [],
+    this.queueEnabled = false,
     this.rating = 0,
     this.totalRatings = 0,
+    this.followers = 0,
+    this.totalCheckIns = 0,
+    this.totalOrders = 0,
+    this.trendingScore = 0,
+    this.isTrending = false,
+    this.isVerified = false,
     this.distance,
     this.distanceFormatted,
   });
@@ -50,13 +80,30 @@ class ShopModel {
       location: json['location'] != null ? LocationModel.fromJson(json['location']) : null,
       logo: json['logo'] ?? '',
       banner: json['banner'] ?? '',
+      images: json['images'] != null ? List<String>.from(json['images']) : [],
       openingTime: json['openingTime'] ?? '',
       closingTime: json['closingTime'] ?? '',
+      operatingDays: json['operatingDays'] != null
+          ? List<String>.from(json['operatingDays'])
+          : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       phone: json['phone'] ?? '',
+      whatsappNumber: json['whatsappNumber'] ?? '',
+      website: json['website'] ?? '',
       status: json['status'] ?? 'open',
       crowdLevel: json['crowdLevel'] ?? 'low',
+      is24x7: json['is24x7'] ?? false,
+      isEmergency: json['isEmergency'] ?? false,
+      emergencyType: json['emergencyType'] ?? '',
+      features: json['features'] != null ? List<String>.from(json['features']) : [],
+      queueEnabled: json['queueEnabled'] ?? false,
       rating: (json['rating'] ?? 0).toDouble(),
       totalRatings: json['totalRatings'] ?? 0,
+      followers: json['followers'] ?? 0,
+      totalCheckIns: json['totalCheckIns'] ?? 0,
+      totalOrders: json['totalOrders'] ?? 0,
+      trendingScore: (json['trendingScore'] ?? 0).toDouble(),
+      isTrending: json['isTrending'] ?? false,
+      isVerified: json['isVerified'] ?? false,
       distance: json['distance']?.toDouble(),
       distanceFormatted: json['distanceFormatted'],
     );
@@ -70,9 +117,15 @@ class ShopModel {
         'openingTime': openingTime,
         'closingTime': closingTime,
         'phone': phone,
+        'whatsappNumber': whatsappNumber,
+        'is24x7': is24x7,
+        'queueEnabled': queueEnabled,
+        'features': features,
+        'operatingDays': operatingDays,
       };
 
   bool get isOpen {
+    if (is24x7) return true;
     if (status == 'closed' || status == 'temporarily_closed') return false;
     if (status != 'open' && status != 'busy') return false;
 
@@ -97,6 +150,7 @@ class ShopModel {
   bool get isTemporarilyClosed => status == 'temporarily_closed';
 
   String get statusLabel {
+    if (is24x7) return 'Open 24×7';
     switch (status) {
       case 'open': return 'Open';
       case 'closed': return 'Closed';
@@ -114,6 +168,22 @@ class ShopModel {
       default: return crowdLevel;
     }
   }
+
+  String get crowdEmoji {
+    switch (crowdLevel) {
+      case 'low': return '🟢';
+      case 'medium': return '🟡';
+      case 'high': return '🔴';
+      default: return '⚪';
+    }
+  }
+
+  String get whatsappLink {
+    final number = whatsappNumber.isNotEmpty ? whatsappNumber : phone;
+    return 'https://wa.me/91$number?text=Hi, I found your shop on Shop Radar. I\'d like to enquire.';
+  }
+
+  bool get hasWhatsApp => whatsappNumber.isNotEmpty || phone.isNotEmpty;
 }
 
 class LocationModel {

@@ -6,7 +6,11 @@ import 'data/models/product_model.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/register_screen.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/screens/main_shell.dart';
+import 'presentation/screens/discover_screen.dart';
+import 'presentation/screens/orders_screen.dart';
+import 'presentation/screens/social_screen.dart';
+import 'presentation/screens/profile_screen.dart';
 import 'presentation/screens/map_view_screen.dart';
 import 'presentation/screens/shop_details_screen.dart';
 import 'presentation/screens/product_details_screen.dart';
@@ -25,6 +29,13 @@ import 'presentation/screens/chat_list_screen.dart';
 import 'presentation/screens/chat_screen.dart';
 import 'presentation/screens/followed_shops_screen.dart';
 import 'presentation/screens/shop_management_screen.dart';
+import 'presentation/screens/wallet_screen.dart';
+import 'presentation/screens/badges_screen.dart';
+import 'presentation/screens/deals_screen.dart';
+import 'presentation/screens/delivery_partner_screen.dart';
+import 'presentation/screens/ai_assistant_screen.dart';
+import 'presentation/screens/settings_screen.dart';
+import 'presentation/screens/referral_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +61,15 @@ class ShopRadarApp extends StatelessWidget {
           case '/register':
             return _buildRoute(const RegisterScreen(), settings);
           case '/home':
-            return _buildRoute(const HomeScreen(), settings);
+            return _buildRoute(const MainShell(), settings);
+          case '/discover':
+            return _buildRoute(const DiscoverScreen(), settings);
+          case '/orders':
+            return _buildRoute(const OrdersScreen(), settings);
+          case '/social':
+            return _buildRoute(const SocialScreen(), settings);
+          case '/profile':
+            return _buildRoute(const ProfileScreen(), settings);
           case '/map-view':
             return _buildRoute(const MapViewScreen(), settings);
           case '/shop-details':
@@ -98,6 +117,20 @@ class ShopRadarApp extends StatelessWidget {
             return _buildRoute(const FollowedShopsScreen(), settings);
           case '/shop-management':
             return _buildRoute(const ShopManagementScreen(), settings);
+          case '/wallet':
+            return _buildRoute(const WalletScreen(), settings);
+          case '/badges':
+            return _buildRoute(const BadgesScreen(), settings);
+          case '/deals':
+            return _buildRoute(const DealsScreen(), settings);
+          case '/delivery-partner':
+            return _buildRoute(const DeliveryPartnerScreen(), settings);
+          case '/ai-assistant':
+            return _buildRoute(const AIAssistantScreen(), settings);
+          case '/settings':
+            return _buildRoute(const SettingsScreen(), settings);
+          case '/referral':
+            return _buildRoute(const ReferralScreen(), settings);
           default:
             return _buildRoute(const SplashScreen(), settings);
         }

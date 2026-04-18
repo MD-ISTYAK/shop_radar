@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'owner'],
+      enum: ['user', 'owner', 'delivery_partner'],
       default: 'user',
     },
     avatar: {
@@ -48,6 +48,49 @@ const userSchema = new mongoose.Schema(
         type: [Number], // [longitude, latitude]
         default: [0, 0],
       },
+    },
+    interests: {
+      type: [String],
+      default: [],
+      enum: ['Food', 'Grocery', 'Electronics', 'Clothing', 'Pharmacy', 'Beauty', 'Sports', 'Books', 'Hardware', 'Home', 'Medical', 'Repair'],
+    },
+    language: {
+      type: String,
+      default: 'en',
+      enum: ['en', 'hi', 'ta', 'te', 'bn', 'mr', 'gu', 'kn', 'ml', 'pa'],
+    },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    referredBy: {
+      type: String,
+      default: '',
+    },
+    deviceTokenFCM: {
+      type: String,
+      default: '',
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    profileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    totalCheckIns: {
+      type: Number,
+      default: 0,
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
+    totalOrders: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
