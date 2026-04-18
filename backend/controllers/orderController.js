@@ -205,15 +205,17 @@ exports.completeShopPickup = async (req, res, next) => {
 
     const order = await Order.findById(id).populate('shopId');
     if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+      return res.status(403).json({ success: false, message: 'Not authorized or order not found' });
     }
 
-    if (order.deliveryType !== 'shop_pickup') {
-      return res.status(400).json({ success: false, message: 'This is not a shop pickup order' });
+    // Allow handover even if originally set to home_delivery (customer might be at the shop)
+    // But ensure the order is actually prepared
+    if (!['accepted', 'packed', 'ready', 'delivery_assigned'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: `Order must be packed before handover. Current status: ${order.status}` });
     }
 
     if (order.userOtp !== otp) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+      return res.status(400).json({ success: false, message: 'Invalid verification code' });
     }
 
     order.status = 'delivered';

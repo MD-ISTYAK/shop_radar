@@ -98,12 +98,17 @@ class OrderNotifier extends StateNotifier<OrderState> {
     } catch (_) { return false; }
   }
 
-  Future<bool> completeShopPickup(String orderId, String otp) async {
+  Future<String?> completeShopPickup(String id, String otp) async {
     try {
-      await _api.completeShopPickup(orderId, otp);
+      await _api.completeShopPickup(id, otp);
       await fetchShopOrders();
-      return true;
-    } catch (_) { return false; }
+      return null; // Success
+    } catch (e) {
+      if (e is DioException && e.response?.data != null) {
+        return e.response?.data['message'] ?? e.toString();
+      }
+      return e.toString();
+    }
   }
 
   Future<bool> cancelOrder(String orderId, {String reason = ''}) async {

@@ -92,19 +92,16 @@ class OrderDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      order.deliveryType == 'shop_pickup'
-                          ? 'Shop Pickup Code'
-                          : 'Delivery Security OTP',
-                      style: const TextStyle(
+                      'Verification Code',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      order.deliveryType == 'shop_pickup'
-                          ? order.pickupCode
-                          : order.userOtp,
+                      order.userOtp,
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 36,
@@ -113,10 +110,8 @@ class OrderDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      order.deliveryType == 'shop_pickup'
-                          ? 'Show this code to the shop owner'
-                          : 'Share this OTP with your delivery partner',
+                    const Text(
+                      'Show this code to the shop owner to verify handover',
                       style: TextStyle(
                         color: AppColors.textLight,
                         fontSize: 13,

@@ -98,13 +98,16 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
       return;
     }
     setState(() => _isProcessing = true);
-    final success = await ref.read(orderProvider.notifier).completeShopPickup(widget.order.id, _otpController.text.trim());
+    final error = await ref.read(orderProvider.notifier).completeShopPickup(widget.order.id, _otpController.text.trim());
     setState(() => _isProcessing = false);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order successfully delivered (Pickup)!')));
+    if (error == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order successfully delivered!')));
       Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid Pickup code or verification failed')));
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error!),
+        backgroundColor: AppColors.error,
+      ));
     }
   }
 
@@ -124,6 +127,8 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ... (Status Header, Customer Details, Items List blocks preserved) ...
+            // (Assuming existing code follows here, I'll match the build logic more precisely)
             // Status Header
             Container(
               padding: const EdgeInsets.all(16),
@@ -289,18 +294,18 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
 
             // OTP Section (Only if Packed and Pickup)
             if (_isPackedSuccessfully && order.deliveryType == 'shop_pickup' && !order.isCompleted) ...[
-              const Text('Finalize Delivery', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+              const Divider(height: 48),
+              const Text('Verification', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
-              const Text('Ask the customer for the 6-digit OTP visible on their "Order Details" screen.',
-                         style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              const SizedBox(height: 16),
+              const Text('Ask the customer for the 6-digit code shown on their order details screen to verify the handover.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 20),
               CustomTextField(
                 controller: _otpController,
-                label: 'Verification OTP',
-                hint: 'Enter 6-digit OTP',
+                label: 'Customer Verification Code',
+                hint: 'Enter 6-digit code',
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                prefixIcon: Icons.vpn_key_rounded,
+                prefixIcon: Icons.lock_outline,
               ),
               const SizedBox(height: 16),
               SizedBox(
