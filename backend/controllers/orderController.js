@@ -214,6 +214,15 @@ exports.completeShopPickup = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `Order must be packed before handover. Current status: ${order.status}` });
     }
 
+    console.log('--- OTP Verification DEBUG ---');
+    console.log('Order ID (Internal):', id);
+    console.log('Order Reference:', order.orderId);
+    console.log('Expected OTP (DB):', order.userOtp);
+    console.log('Received OTP (Req):', otp);
+    console.log('Comparison Result:', order.userOtp === otp);
+    console.log('Order Status:', order.status);
+    console.log('------------------------------');
+
     if (order.userOtp !== otp) {
       return res.status(400).json({ success: false, message: 'Invalid verification code' });
     }

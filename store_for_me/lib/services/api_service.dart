@@ -176,8 +176,11 @@ class ApiService {
   Future<Response> verifyPickupCode(String id, String code) =>
       _dio.post('/orders/$id/verify-pickup', data: {'code': code});
 
-  Future<Response> completeShopPickup(String id, String otp) =>
-      _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
+  Future<Response> completeShopPickup(String id, String otp) {
+    debugPrint('DIO POST: /orders/$id/complete-pickup');
+    debugPrint('PAYLOAD: {"otp": "$otp"}');
+    return _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
+  }
 
   Future<Response> cancelOrder(String id, {String reason = ''}) =>
       _dio.patch('/orders/$id/cancel', data: {'reason': reason});

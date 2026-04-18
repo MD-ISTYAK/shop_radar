@@ -99,6 +99,10 @@ class OrderNotifier extends StateNotifier<OrderState> {
   }
 
   Future<String?> completeShopPickup(String id, String otp) async {
+    debugPrint('--- OTP Verification DEBUG (Provider) ---');
+    debugPrint('Order ID: $id');
+    debugPrint('Entered OTP: $otp');
+    debugPrint('----------------------------------------');
     try {
       await _api.completeShopPickup(id, otp);
       await fetchShopOrders();
