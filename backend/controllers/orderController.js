@@ -53,7 +53,7 @@ exports.getOrderById = async (req, res, next) => {
 exports.getShopOrders = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { status } = req.query;
+    const { status, search } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -63,6 +63,9 @@ exports.getShopOrders = async (req, res, next) => {
 
     const filter = { shopId: shop._id };
     if (status) filter.status = status;
+    if (search) {
+      filter.orderId = { $regex: search, $options: 'i' };
+    }
 
     const orders = await Order.find(filter)
       .populate('userId', 'name phone avatar')

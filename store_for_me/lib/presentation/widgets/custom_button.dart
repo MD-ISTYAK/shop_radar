@@ -8,7 +8,7 @@ class CustomButton extends StatelessWidget {
   final bool isOutlined;
   final IconData? icon;
   final double? width;
-  final Color? color;
+  final Color? backgroundColor;
 
   const CustomButton({
     super.key,
@@ -18,7 +18,7 @@ class CustomButton extends StatelessWidget {
     this.isOutlined = false,
     this.icon,
     this.width,
-    this.color,
+    this.backgroundColor,
   });
 
   @override
@@ -50,8 +50,8 @@ class CustomButton extends StatelessWidget {
         child: OutlinedButton(
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
-            side: BorderSide(color: color ?? AppColors.primary),
-            foregroundColor: color ?? AppColors.primary,
+            side: BorderSide(color: backgroundColor ?? AppColors.primary),
+            foregroundColor: backgroundColor ?? AppColors.primary,
           ),
           child: buttonChild,
         ),
@@ -63,8 +63,8 @@ class CustomButton extends StatelessWidget {
       height: 52,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
-        style: color != null
-            ? ElevatedButton.styleFrom(backgroundColor: color)
+        style: backgroundColor != null
+            ? ElevatedButton.styleFrom(backgroundColor: backgroundColor)
             : null,
         child: buttonChild,
       ),

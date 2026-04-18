@@ -12,6 +12,7 @@ class CustomTextField extends StatefulWidget {
   final int maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
+  final int? maxLength;
   final ValueChanged<String>? onChanged;
 
   const CustomTextField({
@@ -27,6 +28,7 @@ class CustomTextField extends StatefulWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.maxLength,
     this.onChanged,
   });
 
@@ -59,6 +61,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           readOnly: widget.readOnly,
           onTap: widget.onTap,
           onChanged: widget.onChanged,
+          maxLength: widget.maxLength,
           decoration: InputDecoration(
             hintText: widget.hint ?? 'Enter ${widget.label.toLowerCase()}',
             prefixIcon: widget.prefixIcon != null

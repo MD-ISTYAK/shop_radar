@@ -14,17 +14,25 @@ class OwnerOrdersScreen extends ConsumerStatefulWidget {
 
 class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _searchController = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _searchController.addListener(_onSearchChanged);
     Future.microtask(() => ref.read(orderProvider.notifier).fetchShopOrders());
+  }
+
+  void _onSearchChanged() {
+    ref.read(orderProvider.notifier).fetchShopOrders(search: _searchController.text);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -32,19 +40,48 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderProvider);
 
-    if (orderState.isLoading && orderState.activeOrders.isEmpty) {
+    if (orderState.isLoading && orderState.activeOrders.isEmpty && _searchController.text.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final newOrders = orderState.activeOrders.where((o) => o.status == 'pending').toList();
-    final preparingOrders = orderState.activeOrders.where((o) => o.status == 'accepted').toList();
-    final packedOrders = orderState.activeOrders.where((o) => o.status == 'packed' || o.status == 'ready' || o.status == 'delivery_assigned').toList();
-    final completedOrders = orderState.activeOrders.where((o) => o.status == 'out_for_delivery' || o.isCompleted).toList();
+    final activeOrders = orderState.activeOrders;
+    final newOrders = activeOrders.where((o) => o.status == 'pending').toList();
+    final preparingOrders = activeOrders.where((o) => o.status == 'accepted').toList();
+    final packedOrders = activeOrders.where((o) => o.status == 'packed' || o.status == 'ready' || o.status == 'delivery_assigned').toList();
+    final completedOrders = activeOrders.where((o) => o.status == 'out_for_delivery' || o.isCompleted).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Manage Orders'),
+        title: _isSearching 
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Search last 8 chars...',
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 16),
+              ),
+              style: const TextStyle(color: AppColors.primary),
+            )
+          : const Text('Manage Orders'),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                }
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () => Navigator.pushNamed(context, '/order-scanner'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,

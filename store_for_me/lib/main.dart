@@ -40,6 +40,7 @@ import 'presentation/screens/delivery_partner_screen.dart';
 import 'presentation/screens/ai_assistant_screen.dart';
 import 'presentation/screens/settings_screen.dart';
 import 'presentation/screens/referral_screen.dart';
+import 'presentation/screens/order_scanner_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -143,6 +144,8 @@ class ShopRadarApp extends StatelessWidget {
             return _buildRoute(const SettingsScreen(), settings);
           case '/referral':
             return _buildRoute(const ReferralScreen(), settings);
+          case '/order-scanner':
+            return _buildRoute(const OrderScannerScreen(), settings);
           default:
             return _buildRoute(const SplashScreen(), settings);
         }

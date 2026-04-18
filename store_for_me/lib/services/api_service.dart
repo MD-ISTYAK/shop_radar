@@ -157,9 +157,10 @@ class ApiService {
 
   Future<Response> getOrderById(String id) => _dio.get('/orders/$id');
 
-  Future<Response> getShopOrders({String? status, int page = 1}) {
+  Future<Response> getShopOrders({String? status, String? search, int page = 1}) {
     final params = <String, dynamic>{'page': page};
     if (status != null) params['status'] = status;
+    if (search != null && search.isNotEmpty) params['search'] = search;
     return _dio.get('/orders/shop-orders', queryParameters: params);
   }
 

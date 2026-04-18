@@ -46,10 +46,10 @@ class OrderNotifier extends StateNotifier<OrderState> {
     }
   }
 
-  Future<void> fetchShopOrders() async {
+  Future<void> fetchShopOrders({String? search}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final res = await _api.getShopOrders();
+      final res = await _api.getShopOrders(search: search);
       final list = (res.data['data'] as List).map((o) => OrderModel.fromJson(o)).toList();
       state = state.copyWith(activeOrders: list, isLoading: false);
     } catch (e) {

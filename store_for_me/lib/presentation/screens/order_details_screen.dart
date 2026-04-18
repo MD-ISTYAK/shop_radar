@@ -122,29 +122,27 @@ class OrderDetailsScreen extends ConsumerWidget {
                         fontSize: 13,
                       ),
                     ),
-                    if (order.qrCodeData.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: QrImageView(
-                          data: order.qrCodeData,
-                          version: QrVersions.auto,
-                          size: 160.0,
-                        ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Scan QR for faster verification',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textLight,
-                        ),
+                      child: QrImageView(
+                        data: order.qrCodeData.isNotEmpty ? order.qrCodeData : order.id,
+                        version: QrVersions.auto,
+                        size: 160.0,
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Scan QR for faster verification',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textLight,
+                      ),
+                    ),
                   ],
                 ),
               ),
