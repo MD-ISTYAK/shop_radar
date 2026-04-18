@@ -7,7 +7,10 @@ class DeliveryPartnerModel {
   final String kycStatus;
   final bool isOnline;
   final List<double> coordinates;
-  final String? activeDeliveryId;
+  final List<String> activeDeliveries;
+  final int completedDeliveries;
+  final int rejectedDeliveries;
+  final double averageDeliveryTime;
   final int totalDeliveries;
   final double rating;
   final double earningsBalance;
@@ -22,7 +25,10 @@ class DeliveryPartnerModel {
     this.kycStatus = 'pending',
     this.isOnline = false,
     this.coordinates = const [0, 0],
-    this.activeDeliveryId,
+    this.activeDeliveries = const [],
+    this.completedDeliveries = 0,
+    this.rejectedDeliveries = 0,
+    this.averageDeliveryTime = 0,
     this.totalDeliveries = 0,
     this.rating = 5.0,
     this.earningsBalance = 0,
@@ -42,9 +48,10 @@ class DeliveryPartnerModel {
       coordinates: loc != null && loc['coordinates'] != null
           ? List<double>.from(loc['coordinates'].map((e) => (e as num).toDouble()))
           : [0, 0],
-      activeDeliveryId: json['activeDeliveryId'] is Map
-          ? json['activeDeliveryId']['_id']
-          : json['activeDeliveryId'],
+      activeDeliveries: (json['activeDeliveries'] as List?)?.map((e) => e is Map ? e['_id'].toString() : e.toString()).toList() ?? [],
+      completedDeliveries: json['completedDeliveries'] ?? 0,
+      rejectedDeliveries: json['rejectedDeliveries'] ?? 0,
+      averageDeliveryTime: (json['averageDeliveryTime'] ?? 0).toDouble(),
       totalDeliveries: json['totalDeliveries'] ?? 0,
       rating: (json['rating'] ?? 5.0).toDouble(),
       earningsBalance: (json['earningsBalance'] ?? 0).toDouble(),
@@ -53,5 +60,5 @@ class DeliveryPartnerModel {
   }
 
   bool get isKYCVerified => kycStatus == 'verified';
-  bool get hasActiveDelivery => activeDeliveryId != null;
+  bool get hasActiveDelivery => activeDeliveries.isNotEmpty;
 }

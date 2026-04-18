@@ -75,92 +75,97 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   }
 
   Widget _buildMapPlaceholder(dynamic shopState) {
-    return Column(
-      children: [
-        // Radius selector
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            children: [
-              const Text('Radius:', style: TextStyle(fontWeight: FontWeight.w600)),
-              Expanded(
-                child: Slider(
-                  value: _selectedRadius,
-                  min: 0.5,
-                  max: 10,
-                  divisions: 19,
-                  label: '${_selectedRadius.toStringAsFixed(1)} km',
-                  onChanged: (v) => setState(() => _selectedRadius = v),
-                  onChangeEnd: (v) {
-                    ref.read(shopProvider.notifier).fetchNearbyShops();
-                  },
-                ),
-              ),
-              Text('${_selectedRadius.toStringAsFixed(1)} km',
-                style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-            ],
-          ),
-        ),
-        // Legend
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              _buildLegendDot(Colors.green, 'Open'),
-              const SizedBox(width: 16),
-              _buildLegendDot(Colors.orange, 'Busy'),
-              const SizedBox(width: 16),
-              _buildLegendDot(Colors.grey, 'Closed'),
-              const SizedBox(width: 16),
-              _buildLegendDot(Colors.red, 'Temp Closed'),
-              const SizedBox(width: 16),
-              _buildLegendDot(Colors.blue, '24×7'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Map placeholder
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return RefreshIndicator(
+      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            // Radius selector
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
                 children: [
-                  Icon(Icons.map, size: 64, color: AppColors.textLight),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Google Maps View',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  const Text('Radius:', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Expanded(
+                    child: Slider(
+                      value: _selectedRadius,
+                      min: 0.5,
+                      max: 10,
+                      divisions: 19,
+                      label: '${_selectedRadius.toStringAsFixed(1)} km',
+                      onChanged: (v) => setState(() => _selectedRadius = v),
+                      onChangeEnd: (v) {
+                        ref.read(shopProvider.notifier).fetchNearbyShops();
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${shopState.shops.length} shops found nearby',
-                    style: TextStyle(color: AppColors.textLight),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    children: shopState.shops.take(5).map<Widget>((shop) {
-                      final color = _getStatusColor(shop.status);
-                      return Chip(
-                        avatar: CircleAvatar(backgroundColor: color, radius: 6),
-                        label: Text(shop.shopName, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: AppColors.background,
-                      );
-                    }).toList(),
-                  ),
+                  Text('${_selectedRadius.toStringAsFixed(1)} km',
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
                 ],
               ),
             ),
-          ),
+            // Legend
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  _buildLegendDot(Colors.green, 'Open'),
+                  const SizedBox(width: 16),
+                  _buildLegendDot(Colors.orange, 'Busy'),
+                  const SizedBox(width: 16),
+                  _buildLegendDot(Colors.grey, 'Closed'),
+                  const SizedBox(width: 16),
+                  _buildLegendDot(Colors.red, 'Temp Closed'),
+                  const SizedBox(width: 16),
+                  _buildLegendDot(Colors.blue, '24×7'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Map placeholder
+            Container(
+              height: 400, // Fixed height for map placeholder in scrollable view
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map, size: 64, color: AppColors.textLight),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Google Maps View',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${shopState.shops.length} shops found nearby',
+                      style: TextStyle(color: AppColors.textLight),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      children: shopState.shops.take(5).map<Widget>((shop) {
+                        final color = _getStatusColor(shop.status);
+                        return Chip(
+                          avatar: CircleAvatar(backgroundColor: color, radius: 6),
+                          label: Text(shop.shopName, style: const TextStyle(fontSize: 12)),
+                          backgroundColor: AppColors.background,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -216,38 +221,51 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
           child: shopState.isLoading
               ? const LoadingIndicator(message: 'Searching...')
               : shopState.shops.isEmpty
-                  ? const EmptyStateWidget(icon: Icons.store_outlined, title: 'No shops found', subtitle: 'Try another category')
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: shopState.shops.length,
-                      itemBuilder: (context, index) {
-                        final shop = shopState.shops[index];
-                        return ListTile(
-                          leading: Container(
-                            width: 12, height: 12,
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(shop.status),
-                              shape: BoxShape.circle,
-                            ),
+                  ? RefreshIndicator(
+                      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
+                      child: ListView(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: const EmptyStateWidget(icon: Icons.store_outlined, title: 'No shops found', subtitle: 'Try another category'),
                           ),
-                          title: Text(shop.shopName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${shop.category} • ${shop.crowdLabel}'),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star, color: AppColors.warning, size: 16),
-                                  Text(' ${shop.rating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                ],
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: shopState.shops.length,
+                        itemBuilder: (context, index) {
+                          final shop = shopState.shops[index];
+                          return ListTile(
+                            leading: Container(
+                              width: 12, height: 12,
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(shop.status),
+                                shape: BoxShape.circle,
                               ),
-                              Text(shop.statusLabel, style: TextStyle(fontSize: 11, color: _getStatusColor(shop.status), fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
-                        );
-                      },
+                            ),
+                            title: Text(shop.shopName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text('${shop.category} • ${shop.crowdLabel}'),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, color: AppColors.warning, size: 16),
+                                    Text(' ${shop.rating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  ],
+                                ),
+                                Text(shop.statusLabel, style: TextStyle(fontSize: 11, color: _getStatusColor(shop.status), fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
+                          );
+                        },
+                      ),
                     ),
         ),
       ],

@@ -83,11 +83,19 @@ class CartNotifier extends StateNotifier<CartState> {
     }
   }
 
-  Future<bool> checkout({String? deliveryAddress}) async {
+  Future<bool> checkout({
+    String? deliveryAddress,
+    String deliveryType = 'home_delivery',
+    double? lat,
+    double? lng,
+  }) async {
     state = state.copyWith(isLoading: true);
     try {
       final response = await _api.checkout({
         'deliveryAddress': deliveryAddress ?? '',
+        'deliveryType': deliveryType,
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
       });
       if (response.data['success'] == true) {
         await fetchCart();

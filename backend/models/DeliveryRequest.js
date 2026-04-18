@@ -16,6 +16,11 @@ const deliveryItemSchema = new mongoose.Schema({
 
 const deliveryRequestSchema = new mongoose.Schema(
   {
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+      required: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -31,6 +36,23 @@ const deliveryRequestSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    userLocation: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], required: true },
+    },
+    shopLocation: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], required: true },
+    },
+    pickupCode: {
+      type: String,
+      default: '',
+    },
+    deliveryPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     note: {
       type: String,
       default: '',
@@ -38,8 +60,12 @@ const deliveryRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'rejected', 'delivered'],
+      enum: ['pending', 'accepted', 'partner_assigned', 'picked_up', 'delivered', 'rejected'],
       default: 'pending',
+    },
+    deliveryFee: {
+      type: Number,
+      default: 0,
     },
     totalAmount: {
       type: Number,

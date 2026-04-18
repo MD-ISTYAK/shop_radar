@@ -1,16 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
+import '../../data/models/order_model.dart';
 
 class OrderState {
-  final List<dynamic> activeOrders;
-  final List<dynamic> orderHistory;
+  final List<OrderModel> activeOrders;
+  final List<OrderModel> orderHistory;
   final Map<String, dynamic>? shopStats;
   final bool isLoading;
   final String? error;
 
   OrderState({this.activeOrders = const [], this.orderHistory = const [], this.shopStats, this.isLoading = false, this.error});
 
-  OrderState copyWith({List<dynamic>? activeOrders, List<dynamic>? orderHistory, Map<String, dynamic>? shopStats, bool? isLoading, String? error}) {
+  OrderState copyWith({List<OrderModel>? activeOrders, List<OrderModel>? orderHistory, Map<String, dynamic>? shopStats, bool? isLoading, String? error}) {
     return OrderState(
       activeOrders: activeOrders ?? this.activeOrders,
       orderHistory: orderHistory ?? this.orderHistory,
@@ -30,9 +32,13 @@ class OrderNotifier extends StateNotifier<OrderState> {
     try {
       final activeRes = await _api.getMyOrders(status: 'pending');
       final historyRes = await _api.getMyOrders();
+
+      final activeList = (activeRes.data['data'] as List).map((o) => OrderModel.fromJson(o)).toList();
+      final historyList = (historyRes.data['data'] as List).map((o) => OrderModel.fromJson(o)).toList();
+
       state = state.copyWith(
-        activeOrders: activeRes.data['data'] ?? [],
-        orderHistory: historyRes.data['data'] ?? [],
+        activeOrders: activeList,
+        orderHistory: historyList,
         isLoading: false,
       );
     } catch (e) {
@@ -44,7 +50,8 @@ class OrderNotifier extends StateNotifier<OrderState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final res = await _api.getShopOrders();
-      state = state.copyWith(activeOrders: res.data['data'] ?? [], isLoading: false);
+      final list = (res.data['data'] as List).map((o) => OrderModel.fromJson(o)).toList();
+      state = state.copyWith(activeOrders: list, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -65,6 +72,38 @@ class OrderNotifier extends StateNotifier<OrderState> {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> acceptOrder(String orderId) async {
+    try {
+      await _api.acceptOrder(orderId);
+      await fetchShopOrders();
+      return true;
+    } catch (_) { return false; }
+  }
+
+  Future<bool> packOrder(String orderId, FormData data) async {
+    try {
+      await _api.packOrder(orderId, data);
+      await fetchShopOrders();
+      return true;
+    } catch (_) { return false; }
+  }
+
+  Future<bool> verifyPickupCode(String orderId, String code) async {
+    try {
+      await _api.verifyPickupCode(orderId, code);
+      await fetchShopOrders();
+      return true;
+    } catch (_) { return false; }
+  }
+
+  Future<bool> completeShopPickup(String orderId, String otp) async {
+    try {
+      await _api.completeShopPickup(orderId, otp);
+      await fetchShopOrders();
+      return true;
+    } catch (_) { return false; }
   }
 
   Future<bool> cancelOrder(String orderId, {String reason = ''}) async {

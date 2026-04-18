@@ -50,10 +50,23 @@ const deliveryPartnerSchema = new mongoose.Schema(
         default: [0, 0],
       },
     },
-    activeDeliveryId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'DeliveryRequest',
-      default: null,
+    activeDeliveries: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'DeliveryRequest',
+      }
+    ],
+    completedDeliveries: {
+      type: Number,
+      default: 0,
+    },
+    rejectedDeliveries: {
+      type: Number,
+      default: 0,
+    },
+    averageDeliveryTime: {
+      type: Number, // in minutes
+      default: 0,
     },
     totalDeliveries: {
       type: Number,

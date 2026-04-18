@@ -107,6 +107,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                             ],
                           ),
+                          // Cart icon
+                          IconButton(
+                            onPressed: () => Navigator.pushNamed(context, '/cart'),
+                            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 26),
+                            tooltip: 'Cart',
+                          ),
                           // Emergency SOS
                           IconButton(
                             onPressed: () => Navigator.pushNamed(context, '/emergency'),

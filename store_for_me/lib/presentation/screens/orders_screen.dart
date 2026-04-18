@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/order_provider.dart';
 import '../providers/token_provider.dart';
+import '../../data/models/order_model.dart';
 import '../widgets/common_widgets.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -64,7 +65,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildOrderList(List<dynamic> orders, bool isLoading, String emptyMessage) {
+  Widget _buildOrderList(List<OrderModel> orders, bool isLoading, String emptyMessage) {
     if (isLoading) return const LoadingIndicator(message: 'Loading orders...');
     if (orders.isEmpty) {
       return EmptyStateWidget(
@@ -80,62 +81,60 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
         itemCount: orders.length,
         itemBuilder: (context, index) {
           final order = orders[index];
-          final status = order['status'] ?? 'pending';
-          final shop = order['shopId'];
-          final shopName = shop is Map ? shop['shopName'] ?? '' : '';
-          final total = order['totalAmount'] ?? 0;
-          final items = order['items'] as List? ?? [];
-          final createdAt = DateTime.tryParse(order['createdAt'] ?? '') ?? DateTime.now();
+          final status = order.status;
+          final shopName = order.shopName;
+          final total = order.totalAmount;
+          final items = order.items;
+          final createdAt = order.createdAt;
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(shopName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(status).withAlpha(25),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status.toString().replaceAll('_', ' ').toUpperCase(),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _getStatusColor(status)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text('${items.length} items • ₹$total', style: TextStyle(color: AppColors.textSecondary)),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${createdAt.day}/${createdAt.month}/${createdAt.year} at ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
-                    style: TextStyle(fontSize: 12, color: AppColors.textLight),
-                  ),
-                  if (status == 'pending' || status == 'confirmed') ...[
-                    const SizedBox(height: 8),
-                    // Status timeline dots
+          return GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/order-details', arguments: order),
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
                       children: [
-                        _buildTimelineDot('Placed', true),
-                        _buildTimelineLine(status == 'confirmed' || status == 'preparing'),
-                        _buildTimelineDot('Confirmed', status == 'confirmed' || status == 'preparing'),
-                        _buildTimelineLine(status == 'preparing'),
-                        _buildTimelineDot('Preparing', status == 'preparing'),
-                        _buildTimelineLine(false),
-                        _buildTimelineDot('Delivered', false),
+                        Expanded(
+                          child: Text(shopName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(status).withAlpha(25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            order.statusLabel.toUpperCase(),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _getStatusColor(status)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('${items.length} items • ₹${total.toStringAsFixed(0)}', style: TextStyle(color: AppColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${createdAt.day}/${createdAt.month}/${createdAt.year} at ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(fontSize: 12, color: AppColors.textLight),
+                    ),
+                    const SizedBox(height: 12),
+                    Divider(color: AppColors.divider),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Tap to view details & tracking', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.primary),
                       ],
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           );

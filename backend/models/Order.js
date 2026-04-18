@@ -24,6 +24,11 @@ const orderItemSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
+    orderId: {
+      type: String,
+      unique: true,
+      required: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -49,9 +54,41 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'],
+      enum: ['pending', 'accepted', 'packed', 'ready', 'delivery_assigned', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'],
       default: 'pending',
     },
+    deliveryType: {
+      type: String,
+      enum: ['home_delivery', 'shop_pickup'],
+      default: 'home_delivery',
+    },
+    userOtp: {
+      type: String, // 6-digit code for delivery verification/shop pickup
+      default: '',
+    },
+    pickupCode: {
+      type: String, // 6-digit code for driver to show shop
+      default: '',
+    },
+    qrCodeData: {
+      type: String,
+      default: '',
+    },
+    packedImages: {
+      type: [String],
+      default: [],
+    },
+    deliveredImages: {
+      type: [String],
+      default: [],
+    },
+    timeline: [
+      {
+        status: String,
+        timestamp: { type: Date, default: Date.now },
+        note: String,
+      }
+    ],
     deliveryAddress: {
       type: String,
       default: '',

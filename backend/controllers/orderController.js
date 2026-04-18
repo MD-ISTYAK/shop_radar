@@ -83,7 +83,7 @@ exports.getShopOrders = async (req, res, next) => {
   }
 };
 
-// Update order status (by shop owner)
+// Update order status (Generic)
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -98,11 +98,127 @@ exports.updateOrderStatus = async (req, res, next) => {
     }
 
     order.status = status;
+    order.timeline.push({ status, note: `Status updated to ${status}` });
+    
     if (status === 'delivered') {
       order.actualDeliveryTime = new Date();
       await User.findByIdAndUpdate(order.userId, { $inc: { totalOrders: 1 } });
       await Shop.findByIdAndUpdate(order.shopId._id, { $inc: { totalOrders: 1 } });
     }
+    await order.save();
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Accept order (Shop Owner)
+exports.acceptOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id).populate('shopId');
+    if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+    }
+
+    order.status = 'accepted';
+    order.timeline.push({ status: 'accepted', note: 'Shop accepted the order' });
+    await order.save();
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Pack order (Shop Owner) - uploads images
+exports.packOrder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id).populate('shopId');
+    if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'Minimum 1 image is required to mark as packed' });
+    }
+
+    const images = req.files.map((file) => file.path);
+    order.packedImages = images;
+    order.status = order.deliveryType === 'home_delivery' ? 'ready' : 'packed';
+    order.timeline.push({ status: order.status, note: 'Order packed and ready' });
+    await order.save();
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Verify pickup code (Shop Owner verifying Delivery Partner)
+exports.verifyPickupCode = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { code } = req.body;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id).populate('shopId');
+    if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+    }
+
+    if (order.pickupCode !== code) {
+      return res.status(400).json({ success: false, message: 'Invalid pickup code' });
+    }
+
+    order.status = 'picked_up';
+    order.timeline.push({ status: 'picked_up', note: 'Order picked up by delivery partner' });
+    await order.save();
+
+    const request = await require('../models/DeliveryRequest').findOne({ orderId: order._id });
+    if(request) {
+       request.status = 'picked_up';
+       await request.save();
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Complete shop pickup (Shop Owner verifying User OTP for shop pickup)
+exports.completeShopPickup = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { otp } = req.body;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id).populate('shopId');
+    if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+    }
+
+    if (order.deliveryType !== 'shop_pickup') {
+      return res.status(400).json({ success: false, message: 'This is not a shop pickup order' });
+    }
+
+    if (order.userOtp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    order.status = 'delivered';
+    order.actualDeliveryTime = new Date();
+    order.timeline.push({ status: 'delivered', note: 'Order picked up by customer' });
+    
+    await User.findByIdAndUpdate(order.userId, { $inc: { totalOrders: 1 } });
+    await Shop.findByIdAndUpdate(order.shopId._id, { $inc: { totalOrders: 1 } });
     await order.save();
 
     res.json({ success: true, data: order });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'data/models/shop_model.dart';
 import 'data/models/product_model.dart';
+import 'data/models/order_model.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/register_screen.dart';
@@ -14,8 +15,11 @@ import 'presentation/screens/profile_screen.dart';
 import 'presentation/screens/map_view_screen.dart';
 import 'presentation/screens/shop_details_screen.dart';
 import 'presentation/screens/product_details_screen.dart';
+import 'presentation/screens/order_details_screen.dart';
 import 'presentation/screens/cart_screen.dart';
 import 'presentation/screens/owner_dashboard_screen.dart';
+import 'presentation/screens/owner_orders_screen.dart';
+import 'presentation/screens/owner_order_details_screen.dart';
 import 'presentation/screens/add_shop_screen.dart';
 import 'presentation/screens/add_product_screen.dart';
 import 'presentation/screens/manage_products_screen.dart';
@@ -78,10 +82,18 @@ class ShopRadarApp extends StatelessWidget {
           case '/product-details':
             final productId = settings.arguments as String;
             return _buildRoute(ProductDetailsScreen(productId: productId), settings);
+          case '/order-details':
+            final order = settings.arguments as OrderModel;
+            return _buildRoute(OrderDetailsScreen(order: order), settings);
           case '/cart':
             return _buildRoute(const CartScreen(), settings);
           case '/owner-dashboard':
             return _buildRoute(const OwnerDashboardScreen(), settings);
+          case '/owner-orders':
+            return _buildRoute(const OwnerOrdersScreen(), settings);
+          case '/owner-order-details':
+            final order = settings.arguments as OrderModel;
+            return _buildRoute(OwnerOrderDetailsScreen(order: order), settings);
           case '/add-shop':
             final shopArg = settings.arguments as ShopModel?;
             return _buildRoute(AddShopScreen(existingShop: shopArg), settings);

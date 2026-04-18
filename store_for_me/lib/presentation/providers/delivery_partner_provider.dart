@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import '../../data/models/delivery_partner_model.dart';
 import '../../services/api_service.dart';
 
@@ -79,9 +80,9 @@ class DeliveryPartnerNotifier extends StateNotifier<DeliveryPartnerState> {
     }
   }
 
-  Future<bool> completeDelivery(String deliveryId) async {
+  Future<bool> completeDelivery(String deliveryId, FormData data) async {
     try {
-      await _api.completeDelivery(deliveryId);
+      await _api.completeDelivery(deliveryId, data);
       await fetchProfile();
       await fetchEarnings();
       return true;

@@ -15,6 +15,8 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
+  String _deliveryType = 'home_delivery';
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +177,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       child: Column(
                         children: [
                           Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('Home Delivery', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                  value: 'home_delivery',
+                                  groupValue: _deliveryType,
+                                  onChanged: (val) => setState(() => _deliveryType = val!),
+                                  contentPadding: EdgeInsets.zero,
+                                  activeColor: AppColors.primary,
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('Shop Pickup', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                  value: 'shop_pickup',
+                                  groupValue: _deliveryType,
+                                  onChanged: (val) => setState(() => _deliveryType = val!),
+                                  contentPadding: EdgeInsets.zero,
+                                  activeColor: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('Subtotal', style: Theme.of(context).textTheme.bodyMedium),
@@ -189,9 +216,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text('Delivery', style: Theme.of(context).textTheme.bodyMedium),
-                              const Text(
-                                'Free',
-                                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.success),
+                              Text(
+                                _deliveryType == 'shop_pickup' ? 'Free' : 'Calculated at checkout',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600, 
+                                  color: _deliveryType == 'shop_pickup' ? AppColors.success : AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
                               ),
                             ],
                           ),
@@ -216,7 +247,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             icon: Icons.payment,
                             isLoading: cartState.isLoading,
                             onPressed: () async {
-                              final success = await ref.read(cartProvider.notifier).checkout();
+                              final success = await ref.read(cartProvider.notifier).checkout(
+                                deliveryType: _deliveryType,
+                                // TODO: Get actual location and address from user profile or map selection
+                                lat: 28.7041, 
+                                lng: 77.1025,
+                                deliveryAddress: 'Current Location',
+                              );
                               if (success && context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

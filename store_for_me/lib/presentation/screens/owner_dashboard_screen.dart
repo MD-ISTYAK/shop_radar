@@ -289,6 +289,13 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                         Text('Quick Actions', style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 12),
                         _ActionTile(
+                          icon: Icons.assignment_rounded,
+                          title: 'Manage Orders',
+                          subtitle: 'View, accept, and fulfill customer orders',
+                          color: AppColors.primary,
+                          onTap: () => Navigator.pushNamed(context, '/owner-orders'),
+                        ),
+                        _ActionTile(
                           icon: Icons.add_box_rounded,
                           title: 'Add Product',
                           subtitle: 'Add a new product to your shop',

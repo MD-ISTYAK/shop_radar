@@ -1,6 +1,9 @@
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Shop = require('../models/Shop');
+const DeliveryRequest = require('../models/DeliveryRequest');
+const { calculateDistance } = require('../utils/geoDistance');
 
 // @desc    Add item to cart
 // @route   POST /api/cart/add
@@ -142,10 +145,17 @@ const removeFromCart = async (req, res, next) => {
 // @route   POST /api/cart/checkout
 const checkout = async (req, res, next) => {
   try {
+    const { deliveryType = 'home_delivery', deliveryAddress, lat, lng } = req.body;
     const cart = await Cart.findOne({ userId: req.user._id }).populate('items.productId');
 
     if (!cart || cart.items.length === 0) {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
+    }
+
+    // Determine user location for delivery
+    let userLoc = req.user.location?.coordinates || [0, 0];
+    if (lat !== undefined && lng !== undefined) {
+      userLoc = [Number(lng), Number(lat)];
     }
 
     // Group items by shop
@@ -165,6 +175,7 @@ const checkout = async (req, res, next) => {
         name: product.name,
         quantity: item.quantity,
         price,
+        image: product.images && product.images.length > 0 ? product.images[0] : '',
       });
       shopOrders[shopId].totalAmount += price * item.quantity;
 
@@ -176,14 +187,55 @@ const checkout = async (req, res, next) => {
     // Create orders
     const orders = [];
     for (const [shopId, orderData] of Object.entries(shopOrders)) {
+      const shop = await Shop.findById(shopId);
+      let deliveryFee = 0;
+      let shopLoc = shop.location?.coordinates || [0, 0];
+
+      if (deliveryType === 'home_delivery') {
+        const distanceKm = calculateDistance(userLoc[1], userLoc[0], shopLoc[1], shopLoc[0]);
+        // 10 INR per 500 meters (0.5 km)
+        deliveryFee = Math.max(10, Math.ceil(distanceKm / 0.5) * 10);
+      }
+
+      const orderId = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const userOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
       const order = await Order.create({
+        orderId,
         userId: req.user._id,
         shopId,
         items: orderData.items,
         totalAmount: orderData.totalAmount,
-        deliveryAddress: req.body.deliveryAddress || '',
+        deliveryFee,
+        deliveryType,
+        deliveryAddress: deliveryAddress || '',
+        deliveryLocation: { type: 'Point', coordinates: userLoc },
+        userOtp,
+        pickupCode,
+        status: 'pending',
+        timeline: [{ status: 'pending', note: 'Order placed' }],
       });
+      
       orders.push(order);
+
+      // Create Delivery Request if Home Delivery
+      if (deliveryType === 'home_delivery') {
+        await DeliveryRequest.create({
+          orderId: order._id,
+          userId: req.user._id,
+          shopId,
+          items: orderData.items,
+          deliveryAddress: deliveryAddress || '',
+          userLocation: { type: 'Point', coordinates: userLoc },
+          shopLocation: { type: 'Point', coordinates: shopLoc },
+          pickupCode,
+          status: 'pending',
+          deliveryFee,
+          totalAmount: orderData.totalAmount,
+        });
+        // TODO: Emit socket event to nearby delivery partners
+      }
     }
 
     // Clear cart

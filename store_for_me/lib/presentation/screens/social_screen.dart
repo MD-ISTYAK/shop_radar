@@ -158,22 +158,31 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   }
 
   Widget _buildReelsTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.video_library_outlined, size: 64, color: AppColors.textLight),
-          const SizedBox(height: 12),
-          const Text('Shop Reels', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text('Short videos from nearby shops', style: TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/create-story'),
-            icon: const Icon(Icons.add),
-            label: const Text('Create Reel'),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(socialProvider.notifier).fetchFeed();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.video_library_outlined, size: 64, color: AppColors.textLight),
+              const SizedBox(height: 12),
+              const Text('Shop Reels', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('Short videos from nearby shops', style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/create-story'),
+                icon: const Icon(Icons.add),
+                label: const Text('Create Reel'),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -272,16 +281,25 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   }
 
   Widget _buildCheckInsTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.location_on_outlined, size: 64, color: AppColors.textLight),
-          const SizedBox(height: 12),
-          const Text('Check-Ins', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text('Visit a shop and check in to earn points!', style: TextStyle(color: AppColors.textSecondary)),
-        ],
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(socialProvider.notifier).fetchFeed();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.location_on_outlined, size: 64, color: AppColors.textLight),
+              const SizedBox(height: 12),
+              const Text('Check-Ins', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text('Visit a shop and check in to earn points!', style: TextStyle(color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
       ),
     );
   }

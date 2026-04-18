@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:dio/dio.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/delivery_partner_provider.dart';
 import '../widgets/common_widgets.dart';
@@ -119,7 +120,11 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
 
   Widget _buildDashboard(DeliveryPartnerState state) {
     final partner = state.partner!;
-    return SingleChildScrollView(
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(deliveryPartnerProvider.notifier).fetchProfile();
+      },
+      child: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,26 +205,30 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Active delivery or available deliveries
           if (partner.hasActiveDelivery) ...[
-            const Text('Active Delivery', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const Text('Active Deliveries', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             const SizedBox(height: 8),
-            Card(
+            ...partner.activeDeliveries.map((deliveryId) => Card(
+              margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Text('You have an active delivery', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('Delivery ID: $deliveryId', style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () => ref.read(deliveryPartnerProvider.notifier).completeDelivery(partner.activeDeliveryId!),
+                      onPressed: () {
+                        // TODO: Implement image capture & OTP verification steps for delivery
+                        final dummyData = FormData.fromMap({});
+                        ref.read(deliveryPartnerProvider.notifier).completeDelivery(deliveryId, dummyData);
+                      },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
                       child: const Text('Mark as Delivered'),
                     ),
                   ],
                 ),
               ),
-            ),
+            )),
           ] else ...[
             Row(
               children: [
@@ -239,8 +248,9 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStatCard(String emoji, String value, String label) {
     return Expanded(

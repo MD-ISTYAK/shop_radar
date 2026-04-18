@@ -28,6 +28,7 @@ const dealRoutes = require('./routes/dealRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const deliveryPartnerRoutes = require('./routes/deliveryPartnerRoutes');
 const walletRoutes = require('./routes/walletRoutes');
+const financialRoutes = require('./routes/financialRoutes');
 const referralRoutes = require('./routes/referralRoutes');
 const gamificationRoutes = require('./routes/gamificationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
@@ -79,6 +80,7 @@ app.use('/api/tokens', tokenRoutes);
 
 // API Routes — Finance
 app.use('/api/wallet', walletRoutes);
+app.use('/api/finance', financialRoutes);
 app.use('/api/referrals', referralRoutes);
 
 // API Routes — AI & Features

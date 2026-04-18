@@ -49,7 +49,13 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
     }
 
     return Scaffold(
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(shopProvider.notifier).fetchShopById(widget.shopId);
+          await ref.read(productProvider.notifier).fetchProductsByShop(widget.shopId);
+          await ref.read(reviewProvider.notifier).fetchShopReviews(widget.shopId);
+        },
+        child: CustomScrollView(
         slivers: [
           // === BANNER ===
           SliverAppBar(
@@ -131,7 +137,17 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: CircleAvatar(
+                  backgroundColor: Colors.black38,
+                  child: IconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 20),
+                    onPressed: () => Navigator.pushNamed(context, '/cart'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
                 child: CircleAvatar(
                   backgroundColor: Colors.black38,
                   child: IconButton(
@@ -429,8 +445,9 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onTap) {
     return Expanded(

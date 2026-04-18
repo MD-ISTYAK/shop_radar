@@ -1,5 +1,6 @@
 class DeliveryRequestModel {
   final String id;
+  final String orderId;
   final String userId;
   final String shopId;
   final String shopName;
@@ -9,10 +10,13 @@ class DeliveryRequestModel {
   final String note;
   final String status;
   final double totalAmount;
+  final double deliveryFee;
+  final String pickupCode;
   final DateTime createdAt;
 
   DeliveryRequestModel({
     required this.id,
+    required this.orderId,
     required this.userId,
     required this.shopId,
     this.shopName = '',
@@ -22,12 +26,15 @@ class DeliveryRequestModel {
     this.note = '',
     this.status = 'pending',
     this.totalAmount = 0,
+    this.deliveryFee = 0,
+    this.pickupCode = '',
     required this.createdAt,
   });
 
   factory DeliveryRequestModel.fromJson(Map<String, dynamic> json) {
     return DeliveryRequestModel(
       id: json['_id'] ?? json['id'] ?? '',
+      orderId: json['orderId'] is Map ? json['orderId']['_id'] ?? '' : json['orderId'] ?? '',
       userId: json['userId'] is Map ? json['userId']['_id'] ?? '' : json['userId'] ?? '',
       shopId: json['shopId'] is Map ? json['shopId']['_id'] ?? '' : json['shopId'] ?? '',
       shopName: json['shopId'] is Map ? json['shopId']['shopName'] ?? '' : '',
@@ -37,6 +44,8 @@ class DeliveryRequestModel {
       note: json['note'] ?? '',
       status: json['status'] ?? 'pending',
       totalAmount: (json['totalAmount'] ?? 0).toDouble(),
+      deliveryFee: (json['deliveryFee'] ?? 0).toDouble(),
+      pickupCode: json['pickupCode'] ?? '',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
     );
   }

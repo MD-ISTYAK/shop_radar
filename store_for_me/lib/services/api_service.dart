@@ -166,6 +166,18 @@ class ApiService {
   Future<Response> updateOrderStatus(String id, String status) =>
       _dio.patch('/orders/$id/status', data: {'status': status});
 
+  Future<Response> acceptOrder(String id) =>
+      _dio.patch('/orders/$id/accept');
+
+  Future<Response> packOrder(String id, FormData data) =>
+      _dio.patch('/orders/$id/pack', data: data);
+
+  Future<Response> verifyPickupCode(String id, String code) =>
+      _dio.post('/orders/$id/verify-pickup', data: {'code': code});
+
+  Future<Response> completeShopPickup(String id, String otp) =>
+      _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
+
   Future<Response> cancelOrder(String id, {String reason = ''}) =>
       _dio.patch('/orders/$id/cancel', data: {'reason': reason});
 
@@ -368,8 +380,8 @@ class ApiService {
   Future<Response> acceptDelivery(String deliveryId) =>
       _dio.post('/delivery-partner/accept/$deliveryId');
 
-  Future<Response> completeDelivery(String deliveryId) =>
-      _dio.post('/delivery-partner/complete/$deliveryId');
+  Future<Response> completeDelivery(String deliveryId, FormData data) =>
+      _dio.post('/delivery-partner/complete/$deliveryId', data: data);
 
   Future<Response> getPartnerProfile() =>
       _dio.get('/delivery-partner/profile');
@@ -385,6 +397,9 @@ class ApiService {
 
   Future<Response> addMoneyToWallet(double amount, String paymentId) =>
       _dio.post('/wallet/add-money', data: {'amount': amount, 'paymentId': paymentId});
+
+  // ===================== FINANCE / DASHBOARD =====================
+  Future<Response> getFinancialDashboard() => _dio.get('/finance/dashboard');
 
   // ===================== REFERRALS =====================
   Future<Response> getMyReferrals() => _dio.get('/referrals/my-referrals');

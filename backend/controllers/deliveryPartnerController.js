@@ -1,6 +1,8 @@
 const DeliveryPartner = require('../models/DeliveryPartner');
 const DeliveryRequest = require('../models/DeliveryRequest');
+const Order = require('../models/Order');
 const User = require('../models/User');
+const { calculateDistance } = require('../utils/geoDistance');
 
 // Register as delivery partner
 exports.registerAsPartner = async (req, res, next) => {
@@ -126,23 +128,51 @@ exports.acceptDelivery = async (req, res, next) => {
     const userId = req.user._id;
     const { deliveryId } = req.params;
 
-    const partner = await DeliveryPartner.findOne({ userId });
+    const partner = await DeliveryPartner.findOne({ userId }).populate('activeDeliveries');
     if (!partner) return res.status(404).json({ success: false, message: 'Not a partner' });
 
-    if (partner.activeDeliveryId) {
-      return res.status(400).json({ success: false, message: 'Complete current delivery first' });
-    }
-
-    const delivery = await DeliveryRequest.findById(deliveryId);
-    if (!delivery || delivery.deliveryPartnerId) {
+    const newDelivery = await DeliveryRequest.findById(deliveryId);
+    if (!newDelivery || newDelivery.deliveryPartnerId) {
       return res.status(400).json({ success: false, message: 'Delivery already taken or not found' });
     }
 
-    delivery.deliveryPartnerId = userId;
-    delivery.status = 'partner_assigned';
-    await delivery.save();
+    if (partner.activeDeliveries && partner.activeDeliveries.length > 0) {
+      // Rule: Can accept multiple IF distance between ALL active requests and this request is <= 100m (0.1km)
+      let allowed = true;
+      for (const active of partner.activeDeliveries) {
+        const distShop = calculateDistance(
+          newDelivery.shopLocation.coordinates[1], newDelivery.shopLocation.coordinates[0],
+          active.shopLocation.coordinates[1], active.shopLocation.coordinates[0]
+        );
+        const distUser = calculateDistance(
+          newDelivery.userLocation.coordinates[1], newDelivery.userLocation.coordinates[0],
+          active.userLocation.coordinates[1], active.userLocation.coordinates[0]
+        );
 
-    partner.activeDeliveryId = delivery._id;
+        if (distShop > 0.1 || distUser > 0.1) {
+          allowed = false;
+          break;
+        }
+      }
+
+      if (!allowed) {
+        return res.status(400).json({ success: false, message: 'Cannot accept: Locations are more than 100 meters away from your current active deliveries.' });
+      }
+    }
+
+    newDelivery.deliveryPartnerId = userId;
+    newDelivery.status = 'partner_assigned';
+    await newDelivery.save();
+
+    const order = await Order.findById(newDelivery.orderId);
+    if(order) {
+      order.deliveryPartnerId = userId;
+      order.status = 'delivery_assigned';
+      order.timeline.push({ status: 'delivery_assigned', note: 'Delivery partner assigned' });
+      await order.save();
+    }
+
+    partner.activeDeliveries.push(newDelivery._id);
     await partner.save();
 
     const populated = await DeliveryRequest.findById(deliveryId)
@@ -155,11 +185,12 @@ exports.acceptDelivery = async (req, res, next) => {
   }
 };
 
-// Complete a delivery
+// Complete a delivery (with OTP and Images)
 exports.completeDelivery = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { deliveryId } = req.params;
+    const { otp } = req.body;
 
     const partner = await DeliveryPartner.findOne({ userId });
     if (!partner) return res.status(404).json({ success: false, message: 'Not a partner' });
@@ -169,15 +200,49 @@ exports.completeDelivery = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not your delivery' });
     }
 
+    const order = await Order.findById(delivery.orderId);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    if (order.userOtp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'Minimum 1 image required to mark as delivered' });
+    }
+
+    const images = req.files.map((file) => file.path);
+    order.deliveredImages = images;
+    order.status = 'delivered';
+    order.actualDeliveryTime = new Date();
+    order.timeline.push({ status: 'delivered', note: 'Order delivered to customer' });
+    
+    await User.findByIdAndUpdate(order.userId, { $inc: { totalOrders: 1 } });
+    await require('../models/Shop').findByIdAndUpdate(order.shopId, { $inc: { totalOrders: 1 } });
+    await order.save();
+
     delivery.status = 'delivered';
     await delivery.save();
 
+    // Calculate delivery time
+    const assignedEvent = order.timeline.find(t => t.status === 'delivery_assigned');
+    const deliveryTimeMins = assignedEvent ? (order.actualDeliveryTime - assignedEvent.timestamp) / 60000 : 0;
+
     // Calculate and credit earnings
     const earnings = delivery.deliveryFee * 0.85; // 85% to partner, 15% platform
-    partner.activeDeliveryId = null;
+    partner.activeDeliveries = partner.activeDeliveries.filter(id => id.toString() !== delivery._id.toString());
+    
+    partner.completedDeliveries += 1;
     partner.totalDeliveries += 1;
     partner.earningsBalance += earnings;
     partner.totalEarnings += earnings;
+
+    // Update moving average for delivery time
+    if(deliveryTimeMins > 0) {
+      const prevTotal = (partner.averageDeliveryTime || 0) * (partner.completedDeliveries - 1);
+      partner.averageDeliveryTime = (prevTotal + deliveryTimeMins) / partner.completedDeliveries;
+    }
+
     await partner.save();
 
     res.json({ success: true, data: delivery, earnings });
