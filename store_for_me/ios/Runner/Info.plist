@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Shop Radar uses the local network to discover and connect with nearby devices for offline file sharing.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_shopradar._tcp</string>
+	</array>
 </dict>
 </plist>

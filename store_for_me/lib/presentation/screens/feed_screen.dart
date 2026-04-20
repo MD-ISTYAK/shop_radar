@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
-import '../../core/constants/app_constants.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/models/social_models.dart';
 import '../providers/social_provider.dart';
 import '../providers/auth_provider.dart';
-import '../widgets/common_widgets.dart';
+import '../widgets/post_card.dart';
+import '../widgets/story_bubble.dart';
+import '../widgets/comment_sheet.dart';
+import 'story_viewer_screen.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -15,23 +17,30 @@ class FeedScreen extends ConsumerStatefulWidget {
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _FeedScreenState extends ConsumerState<FeedScreen> {
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     Future.microtask(() {
       ref.read(socialProvider.notifier).fetchFeed();
       ref.read(socialProvider.notifier).fetchStories();
-      ref.read(socialProvider.notifier).fetchExplore();
     });
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(socialProvider.notifier).loadMoreFeed();
+    }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -39,251 +48,155 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final social = ref.watch(socialProvider);
     final auth = ref.watch(authProvider);
+    final currentUserId = auth.user?.id ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Social Feed'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Following'),
-            Tab(text: 'Explore'),
-          ],
-        ),
+        title: const Text('Feed'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_box_outlined),
+            onPressed: () => Navigator.pushNamed(context, '/create-post'),
+          ),
+        ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Following Feed
-          RefreshIndicator(
-            onRefresh: () async {
-              await ref.read(socialProvider.notifier).fetchFeed();
-              await ref.read(socialProvider.notifier).fetchStories();
-            },
-            child: social.isLoading
-                ? const LoadingIndicator()
-                : social.feed.isEmpty
-                    ? const EmptyStateWidget(
-                        icon: Icons.dynamic_feed_outlined,
-                        title: 'No posts yet',
-                        subtitle: 'Follow shops to see their posts here',
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(top: 8),
-                        itemCount: social.feed.length,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(socialProvider.notifier).fetchFeed(),
+            ref.read(socialProvider.notifier).fetchStories(),
+          ]);
+        },
+        child: social.isLoading
+            ? _buildShimmer()
+            : CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  // Stories
+                  SliverToBoxAdapter(
+                    child: Container(
+                      height: 100,
+                      color: AppColors.card,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        itemCount: social.stories.length + 1,
                         itemBuilder: (context, index) {
-                          final post = social.feed[index];
-                          return _PostCard(
-                            post: post,
-                            currentUserId: auth.user?.id ?? '',
-                            onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
-                            onComment: (text) => ref.read(socialProvider.notifier).addComment(post.id, text),
+                          if (index == 0) {
+                            return StoryBubble(
+                              group: StoryGroupModel(stories: const [], username: 'Your story'),
+                              isAddStory: true,
+                              onTap: () => Navigator.pushNamed(context, '/create-story'),
+                            );
+                          }
+                          return StoryBubble(
+                            group: social.stories[index - 1],
+                            onTap: () => _openStoryViewer(social.stories, index - 1),
                           );
                         },
                       ),
-          ),
-          // Explore
-          RefreshIndicator(
-            onRefresh: () => ref.read(socialProvider.notifier).fetchExplore(),
-            child: social.explore.isEmpty
-                ? const EmptyStateWidget(
-                    icon: Icons.explore_outlined,
-                    title: 'Nothing to explore',
-                    subtitle: 'Posts from all shops will appear here',
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(top: 8),
-                    itemCount: social.explore.length,
-                    itemBuilder: (context, index) {
-                      final post = social.explore[index];
-                      return _PostCard(
-                        post: post,
-                        currentUserId: auth.user?.id ?? '',
-                        onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
-                        onComment: (text) => ref.read(socialProvider.notifier).addComment(post.id, text),
-                      );
-                    },
+                    ),
                   ),
-          ),
-        ],
+                  const SliverToBoxAdapter(child: Divider(height: 1)),
+                  // Posts
+                  if (social.feed.isEmpty)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.dynamic_feed_outlined, size: 64, color: AppColors.textLight),
+                            const SizedBox(height: 12),
+                            const Text('No posts yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Text('Follow people to see their posts', style: TextStyle(color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index == social.feed.length) {
+                            return social.isLoadingMore
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  )
+                                : const SizedBox(height: 80);
+                          }
+                          final post = social.feed[index];
+                          return PostCard(
+                            post: post,
+                            currentUserId: currentUserId,
+                            onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
+                            onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
+                            onComment: () => _showComments(post),
+                          );
+                        },
+                        childCount: social.feed.length + 1,
+                      ),
+                    ),
+                ],
+              ),
       ),
     );
   }
-}
 
-class _PostCard extends StatelessWidget {
-  final dynamic post;
-  final String currentUserId;
-  final VoidCallback onLike;
-  final Function(String) onComment;
-
-  const _PostCard({
-    required this.post,
-    required this.currentUserId,
-    required this.onLike,
-    required this.onComment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final commentController = TextEditingController();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 2))],
+  void _openStoryViewer(List<StoryGroupModel> stories, int index) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (_, __, ___) => StoryViewerScreen(
+          storyGroups: stories,
+          initialGroupIndex: index,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primaryLight.withAlpha(50),
-                  child: post.shopLogo.isNotEmpty
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: AppConstants.getImageUrl(post.shopLogo),
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => const Icon(Icons.store, color: AppColors.primary),
-                          ),
-                        )
-                      : const Icon(Icons.store, color: AppColors.primary),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(post.shopName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      Text(
-                        DateFormat.yMMMd().add_jm().format(post.createdAt),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content
-          if (post.content.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(post.content, style: Theme.of(context).textTheme.bodyLarge),
-            ),
-          // Images
-          if (post.images.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: SizedBox(
-                height: 250,
-                child: PageView.builder(
-                  itemCount: post.images.length,
-                  itemBuilder: (context, i) {
-                    return CachedNetworkImage(
-                      imageUrl: AppConstants.getImageUrl(post.images[i]),
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: AppColors.shimmerBase),
-                      errorWidget: (_, __, ___) => Container(
-                        color: AppColors.shimmerBase,
-                        child: const Icon(Icons.broken_image, size: 48),
-                      ),
-                    );
-                  },
+    );
+  }
+
+  void _showComments(PostModel post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CommentSheet(
+        postId: post.id,
+        initialComments: post.comments,
+      ),
+    );
+  }
+
+  Widget _buildShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.shimmerBase,
+      highlightColor: AppColors.shimmerHighlight,
+      child: ListView.builder(
+        itemCount: 3,
+        itemBuilder: (_, __) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(width: 36, height: 36, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+                    const SizedBox(width: 10),
+                    Container(width: 120, height: 14, color: Colors.white),
+                  ],
                 ),
               ),
-            ),
-          // Actions
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: onLike,
-                  child: Row(
-                    children: [
-                      Icon(
-                        post.isLikedBy(currentUserId) ? Icons.favorite : Icons.favorite_border,
-                        color: post.isLikedBy(currentUserId) ? AppColors.error : AppColors.textSecondary,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 4),
-                      Text('${post.likesCount}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Icon(Icons.chat_bubble_outline, color: AppColors.textSecondary, size: 20),
-                const SizedBox(width: 4),
-                Text('${post.commentsCount}', style: const TextStyle(fontWeight: FontWeight.w500)),
-              ],
-            ),
+              Container(width: double.infinity, height: 300, color: Colors.white),
+            ],
           ),
-          // Comments
-          if (post.comments.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Column(
-                children: post.comments.take(2).map<Widget>((c) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: RichText(
-                      text: TextSpan(
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        children: [
-                          TextSpan(text: c.userName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          TextSpan(text: ' ${c.text}'),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          // Add comment
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: commentController,
-                    decoration: InputDecoration(
-                      hintText: 'Add a comment...',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: AppColors.divider),
-                      ),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    if (commentController.text.trim().isNotEmpty) {
-                      onComment(commentController.text.trim());
-                      commentController.clear();
-                    }
-                  },
-                  child: const Icon(Icons.send, color: AppColors.primary, size: 22),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

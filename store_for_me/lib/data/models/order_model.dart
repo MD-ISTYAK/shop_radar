@@ -95,6 +95,8 @@ class OrderModel {
   }
 
   bool get isCompleted => status == 'delivered' || status == 'cancelled';
+
+  String get shortId => id.length > 8 ? id.substring(id.length - 8).toUpperCase() : id.toUpperCase();
 }
 
 class TimelineEvent {

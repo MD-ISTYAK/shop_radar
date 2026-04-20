@@ -86,6 +86,22 @@ const deliveryPartnerSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    todayEarnings: {
+      type: Number,
+      default: 0,
+    },
+    totalAcceptedRequests: {
+      type: Number,
+      default: 0,
+    },
+    missedRequests: {
+      type: Number,
+      default: 0,
+    },
+    failedOrders: {
+      type: Number,
+      default: 0,
+    },
     totalEarnings: {
       type: Number,
       default: 0,

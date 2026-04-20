@@ -59,6 +59,12 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Manage location permissions',
             onTap: () {},
           ),
+          _SettingsTile(
+            icon: Icons.share_outlined,
+            title: 'File Sharing',
+            subtitle: 'P2P offline file sharing',
+            onTap: () => Navigator.pushNamed(context, '/sharing'),
+          ),
           const SizedBox(height: 16),
 
           // Support
@@ -80,6 +86,15 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Danger zone
+          _SettingsTile(
+            icon: Icons.logout_rounded,
+            title: 'Logout',
+            subtitle: 'Sign out from your account',
+            onTap: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
           _SettingsTile(icon: Icons.delete_outline, title: 'Delete Account', subtitle: 'Permanently delete your account and data', isDestructive: true, onTap: () {}),
           const SizedBox(height: 16),
           Center(

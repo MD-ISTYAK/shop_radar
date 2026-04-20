@@ -3,7 +3,7 @@ class AppConstants {
 
   // API — Change this IP when switching devices
   static const String _ip = '192.168.1.19';
-  static const bool useLocal = false; // Toggle this for local testing
+  static const bool useLocal = true; // Toggle this for local testing
 
   static const String baseUrl = useLocal 
       ? 'http://$_ip:5000/api' 
@@ -13,9 +13,7 @@ class AppConstants {
       ? 'http://$_ip:5000'
       : 'https://shop-radar-z0xe.onrender.com';
 
-  static const String uploadsUrl = useLocal 
-      ? 'http://$_ip:5000' 
-      : ''; // Cloudinary URLs are absolute
+  static const String uploadsUrl = ''; // Cloudinary URLs are absolute
 
   /// Helper to get full image URL, handles both local and Cloudinary paths
   static String getImageUrl(String? path) {

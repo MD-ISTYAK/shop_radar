@@ -4,9 +4,12 @@ import '../../core/theme/app_theme.dart';
 import '../providers/order_provider.dart';
 import '../../data/models/order_model.dart';
 import '../widgets/common_widgets.dart';
+import 'package:intl/intl.dart';
 
 class OwnerOrdersScreen extends ConsumerStatefulWidget {
-  const OwnerOrdersScreen({super.key});
+  final ScrollController? scrollController;
+  final bool isTab;
+  const OwnerOrdersScreen({super.key, this.scrollController, this.isTab = false});
 
   @override
   ConsumerState<OwnerOrdersScreen> createState() => _OwnerOrdersScreenState();
@@ -50,6 +53,85 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
     final packedOrders = activeOrders.where((o) => o.status == 'packed' || o.status == 'ready' || o.status == 'delivery_assigned').toList();
     final completedOrders = activeOrders.where((o) => o.status == 'out_for_delivery' || o.isCompleted).toList();
 
+    final content = TabBarView(
+      controller: _tabController,
+      children: [
+        _buildOrderList(newOrders, emptyMessage: 'No new incoming orders'),
+        _buildOrderList(preparingOrders, emptyMessage: 'No orders are being prepared'),
+        _buildOrderList(packedOrders, emptyMessage: 'No packed or ready orders'),
+        _buildOrderList(completedOrders, emptyMessage: 'No recent history'),
+      ],
+    );
+
+    if (widget.isTab) {
+      return Column(
+        children: [
+          // New Search & Scanner Bar for Shell Mode
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.divider),
+                      boxShadow: [
+                        BoxShadow(color: AppColors.shadow.withAlpha(10), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Search order ID (8 chars)...',
+                        prefixIcon: Icon(Icons.search, color: AppColors.textLight, size: 20),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 11),
+                        hintStyle: TextStyle(color: AppColors.textLight, fontSize: 13),
+                      ),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/order-scanner'),
+                  child: Container(
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(color: AppColors.primary.withAlpha(50), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textLight,
+            indicatorColor: AppColors.primary,
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'New (${newOrders.length})'),
+              Tab(text: 'Preparing (${preparingOrders.length})'),
+              Tab(text: 'Packed (${packedOrders.length})'),
+              Tab(text: 'History (${completedOrders.length})'),
+            ],
+          ),
+          Expanded(child: content),
+        ],
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -58,7 +140,7 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
               controller: _searchController,
               autofocus: true,
               decoration: const InputDecoration(
-                hintText: 'Search last 8 chars...',
+                hintText: 'Search order ID (8 chars)...',
                 border: InputBorder.none,
                 hintStyle: TextStyle(color: AppColors.textLight, fontSize: 16),
               ),
@@ -96,15 +178,7 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOrderList(newOrders, emptyMessage: 'No new incoming orders'),
-          _buildOrderList(preparingOrders, emptyMessage: 'No orders are being prepared'),
-          _buildOrderList(packedOrders, emptyMessage: 'No packed or ready orders'),
-          _buildOrderList(completedOrders, emptyMessage: 'No recent history'),
-        ],
-      ),
+      body: content,
     );
   }
 
@@ -144,8 +218,8 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Order ID: ${order.id.substring(order.id.length - 8).toUpperCase()}', 
-                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                        Text('Order ID: ${order.shortId}', 
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -163,10 +237,20 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                     Text('${order.items.length} items • ₹${order.totalAmount.toStringAsFixed(0)}', 
                          style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text(
-                      order.deliveryType == 'shop_pickup' ? 'Shop Pickup' : 'Home Delivery',
-                      style: TextStyle(color: order.deliveryType == 'shop_pickup' ? AppColors.accent : AppColors.primary, 
-                                     fontWeight: FontWeight.w600, fontSize: 13),
+                    Row(
+                      children: [
+                        Text(
+                          order.deliveryType == 'shop_pickup' ? 'Shop Pickup' : 'Home Delivery',
+                          style: TextStyle(color: order.deliveryType == 'shop_pickup' ? AppColors.accent : AppColors.primary, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.access_time, size: 14, color: AppColors.textLight),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('hh:mm a  dd-MM-yyyy').format(order.createdAt.toLocal()), 
+                          style: const TextStyle(color: AppColors.textLight, fontSize: 12, fontWeight: FontWeight.w500)
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     const Divider(),

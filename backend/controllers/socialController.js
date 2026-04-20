@@ -1,99 +1,145 @@
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const Story = require('../models/Story');
 const Follow = require('../models/Follow');
+const User = require('../models/User');
 const Shop = require('../models/Shop');
 const Notification = require('../models/Notification');
 
 // ===================== POSTS =====================
 
-// @desc    Create a post
+// @desc    Create a post (any user or shop owner)
 // @route   POST /api/social/posts
 const createPost = async (req, res, next) => {
   try {
     const { content, type } = req.body;
-    const shop = await Shop.findOne({ ownerId: req.user._id });
-    if (!shop) {
-      return res.status(404).json({ success: false, message: 'You must register a shop first' });
-    }
+    const userId = req.user._id;
 
     const postData = {
-      shopId: shop._id,
-      ownerId: req.user._id,
+      userId,
+      ownerId: userId,
       content: content || '',
       type: type || 'post',
     };
 
-    // Handle image uploads (Cloudinary gives full URL in path)
+    // If user is a shop owner, also link the shop
+    const shop = await Shop.findOne({ ownerId: userId });
+    if (shop) {
+      postData.shopId = shop._id;
+    }
+
+    // Handle image uploads
     if (req.files && req.files.images) {
       postData.images = req.files.images.map((f) => f.path);
+      postData.mediaUrl = req.files.images[0].path;
+      postData.mediaType = 'image';
     }
     // Handle video upload for reels
     if (req.files && req.files.video && req.files.video[0]) {
       postData.videoUrl = req.files.video[0].path;
+      postData.mediaUrl = req.files.video[0].path;
+      postData.mediaType = 'video';
       postData.type = 'reel';
     }
 
     const post = await Post.create(postData);
 
     // Notify followers
-    const followers = await Follow.find({ shopId: shop._id });
-    const notifications = followers.map((f) => ({
-      userId: f.userId,
-      type: 'new_post',
-      title: `${shop.shopName} shared a new ${postData.type}`,
-      body: content ? content.substring(0, 100) : '',
-      data: { postId: post._id, shopId: shop._id },
-    }));
-    if (notifications.length > 0) {
+    const followers = await Follow.find({ followingId: userId });
+    if (followers.length > 0) {
+      const user = await User.findById(userId);
+      const displayName = user.username || user.name;
+      const notifications = followers.map((f) => ({
+        userId: f.followerId,
+        type: 'new_post',
+        title: `${displayName} shared a new ${postData.type}`,
+        body: content ? content.substring(0, 100) : '',
+        data: { postId: post._id, userId },
+      }));
       await Notification.insertMany(notifications);
     }
 
-    res.status(201).json({ success: true, message: 'Post created', data: post });
+    // Populate and return
+    const populated = await Post.findById(post._id)
+      .populate('userId', 'name username profilePic avatar accountType')
+      .populate('shopId', 'shopName logo');
+
+    res.status(201).json({ success: true, message: 'Post created', data: populated });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get personalized feed (posts from followed shops)
-// @route   GET /api/social/feed?page=&limit=
+// @desc    Cursor-based feed from followed users
+// @route   GET /api/social/feed?limit=&cursor=
 const getFeed = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { limit = 10, cursor, page = 1 } = req.query;
+    const limitNum = parseInt(limit);
+    const userId = req.user._id;
 
-    // Get followed shop IDs
-    const follows = await Follow.find({ userId: req.user._id });
-    const shopIds = follows.map((f) => f.shopId);
+    // Get followed user IDs
+    const follows = await Follow.find({ followerId: userId }).lean();
+    const followingIds = follows.map((f) => f.followingId);
 
-    const posts = await Post.find({
-      shopId: { $in: shopIds },
+    // Also include backward compat: shop-based follows
+    const shopFollows = follows.filter((f) => f.shopId).map((f) => f.shopId);
+
+    // Build query
+    const query = {
       isHidden: { $ne: true },
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
+      $or: [
+        { userId: { $in: followingIds } },
+        { ownerId: { $in: followingIds } },
+        { shopId: { $in: shopFollows } },
+      ],
+    };
+
+    // Cursor-based: filter by _id < cursor
+    if (cursor) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    } else if (page && parseInt(page) > 1) {
+      // Fallback offset pagination
+      const skip = (parseInt(page) - 1) * limitNum;
+      const posts = await Post.find(query)
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .populate('userId', 'name username profilePic avatar accountType')
+        .populate('shopId', 'shopName logo')
+        .populate('ownerId', 'name avatar')
+        .populate({ path: 'comments.userId', select: 'name username profilePic avatar' })
+        .lean();
+
+      _addLikeStatus(posts, userId);
+      return res.status(200).json({ success: true, data: posts });
+    }
+
+    const posts = await Post.find(query)
+      .sort({ _id: -1 })
+      .limit(limitNum)
+      .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
       .populate('ownerId', 'name avatar')
-      .populate({
-        path: 'comments.userId',
-        select: 'name avatar',
-      });
+      .populate({ path: 'comments.userId', select: 'name username profilePic avatar' })
+      .lean();
+
+    // Add isLiked status for current user
+    _addLikeStatus(posts, userId);
 
     // Filter hidden comments
     posts.forEach((post) => {
-      post.comments = post.comments.filter((c) => !c.isHidden);
+      if (post.comments) {
+        post.comments = post.comments.filter((c) => !c.isHidden);
+      }
     });
 
-    const total = await Post.countDocuments({
-      shopId: { $in: shopIds },
-      isHidden: { $ne: true },
-    });
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
     res.status(200).json({
       success: true,
       count: posts.length,
-      total,
-      page: parseInt(page),
+      nextCursor,
       data: posts,
     });
   } catch (error) {
@@ -101,28 +147,24 @@ const getFeed = async (req, res, next) => {
   }
 };
 
-// @desc    Get all posts (explore)
+// @desc    Explore / discovery feed (public posts sorted by popularity)
 // @route   GET /api/social/explore?page=&limit=
 const explorePosts = async (req, res, next) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user._id;
 
     const posts = await Post.find({ type: 'post', isHidden: { $ne: true } })
-      .sort({ createdAt: -1 })
+      .sort({ likesCount: -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
       .populate('ownerId', 'name avatar')
-      .populate({
-        path: 'comments.userId',
-        select: 'name avatar',
-      });
+      .lean();
 
-    // Filter hidden comments
-    posts.forEach((post) => {
-      post.comments = post.comments.filter((c) => !c.isHidden);
-    });
+    _addLikeStatus(posts, userId);
 
     res.status(200).json({ success: true, count: posts.length, data: posts });
   } catch (error) {
@@ -138,19 +180,33 @@ const toggleLike = async (req, res, next) => {
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
     const userId = req.user._id;
-    const likeIndex = post.likes.indexOf(userId);
+    const likeIndex = post.likes.findIndex((id) => id.toString() === userId.toString());
 
     if (likeIndex > -1) {
       post.likes.splice(likeIndex, 1);
+      post.likesCount = Math.max(0, (post.likesCount || post.likes.length) - 1);
     } else {
       post.likes.push(userId);
+      post.likesCount = (post.likesCount || post.likes.length - 1) + 1;
+
+      // Notify post author (if not self)
+      if (post.userId && post.userId.toString() !== userId.toString()) {
+        const liker = await User.findById(userId);
+        await Notification.create({
+          userId: post.userId,
+          type: 'like',
+          title: 'New Like',
+          body: `@${liker.username || liker.name} liked your post`,
+          data: { postId: post._id, senderId: userId },
+        });
+      }
     }
     await post.save();
 
     res.status(200).json({
       success: true,
       message: likeIndex > -1 ? 'Unliked' : 'Liked',
-      data: { likesCount: post.likes.length, isLiked: likeIndex === -1 },
+      data: { likesCount: post.likesCount, isLiked: likeIndex === -1 },
     });
   } catch (error) {
     next(error);
@@ -170,15 +226,104 @@ const addComment = async (req, res, next) => {
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
     post.comments.push({ userId: req.user._id, text: text.trim() });
+    post.commentsCount = (post.commentsCount || 0) + 1;
     await post.save();
 
-    // Populate the last comment
-    await post.populate('comments.userId', 'name avatar');
+    await post.populate('comments.userId', 'name username profilePic avatar');
+
+    // Notify post author
+    if (post.userId && post.userId.toString() !== req.user._id.toString()) {
+      const commenter = await User.findById(req.user._id);
+      await Notification.create({
+        userId: post.userId,
+        type: 'comment',
+        title: 'New Comment',
+        body: `@${commenter.username || commenter.name} commented: ${text.substring(0, 60)}`,
+        data: { postId: post._id, senderId: req.user._id },
+      });
+    }
 
     res.status(201).json({
       success: true,
       message: 'Comment added',
       data: post.comments[post.comments.length - 1],
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Save / unsave a post
+// @route   POST /api/social/posts/:id/save
+const savePost = async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
+
+    const userId = req.user._id;
+    const idx = post.savedBy.findIndex((id) => id.toString() === userId.toString());
+
+    if (idx > -1) {
+      post.savedBy.splice(idx, 1);
+    } else {
+      post.savedBy.push(userId);
+    }
+    await post.save();
+
+    res.status(200).json({
+      success: true,
+      message: idx > -1 ? 'Unsaved' : 'Saved',
+      data: { isSaved: idx === -1 },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Unsave a post
+// @route   DELETE /api/social/posts/:id/save
+const unsavePost = async (req, res, next) => {
+  try {
+    await Post.findByIdAndUpdate(req.params.id, {
+      $pull: { savedBy: req.user._id },
+    });
+    res.status(200).json({ success: true, message: 'Unsaved' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get a user's posts (profile grid)
+// @route   GET /api/social/users/:userId/posts?cursor=&limit=
+const getUserPosts = async (req, res, next) => {
+  try {
+    const { cursor, limit = 12 } = req.query;
+    const query = {
+      $or: [
+        { userId: req.params.userId },
+        { ownerId: req.params.userId },
+      ],
+      isHidden: { $ne: true },
+    };
+    if (cursor) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
+
+    const posts = await Post.find(query)
+      .sort({ _id: -1 })
+      .limit(parseInt(limit))
+      .populate('userId', 'name username profilePic avatar accountType')
+      .lean();
+
+    _addLikeStatus(posts, req.user._id);
+
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+
+    res.status(200).json({
+      success: true,
+      count: posts.length,
+      nextCursor,
+      data: posts,
     });
   } catch (error) {
     next(error);
@@ -191,16 +336,14 @@ const updatePost = async (req, res, next) => {
   try {
     const { content } = req.body;
     let post = await Post.findById(req.params.id);
-
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    // Check ownership
-    if (post.ownerId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to update this post' });
+    if (post.ownerId.toString() !== req.user._id.toString() &&
+        post.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     post = await Post.findByIdAndUpdate(req.params.id, { content }, { new: true, runValidators: true });
-
     res.status(200).json({ success: true, data: post });
   } catch (error) {
     next(error);
@@ -212,16 +355,14 @@ const updatePost = async (req, res, next) => {
 const deletePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id);
-
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    // Check ownership
-    if (post.ownerId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this post' });
+    if (post.ownerId.toString() !== req.user._id.toString() &&
+        post.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     await Post.findByIdAndDelete(req.params.id);
-
     res.status(200).json({ success: true, message: 'Post deleted' });
   } catch (error) {
     next(error);
@@ -233,17 +374,15 @@ const deletePost = async (req, res, next) => {
 const toggleHidePost = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id);
-
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    // Check ownership
-    if (post.ownerId.toString() !== req.user._id.toString()) {
+    if (post.ownerId.toString() !== req.user._id.toString() &&
+        post.userId?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     post.isHidden = !post.isHidden;
     await post.save();
-
     res.status(200).json({ success: true, message: post.isHidden ? 'Post hidden' : 'Post unhidden', data: post });
   } catch (error) {
     next(error);
@@ -260,14 +399,13 @@ const deleteComment = async (req, res, next) => {
     const comment = post.comments.id(req.params.commentId);
     if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
 
-    // Authorized if owner of post OR author of comment
     if (post.ownerId.toString() !== req.user._id.toString() && comment.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this comment' });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     comment.deleteOne();
+    post.commentsCount = Math.max(0, (post.commentsCount || 1) - 1);
     await post.save();
-
     res.status(200).json({ success: true, message: 'Comment deleted' });
   } catch (error) {
     next(error);
@@ -281,7 +419,6 @@ const toggleHideComment = async (req, res, next) => {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    // Only post owner can hide comments
     if (post.ownerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Only post owner can hide comments' });
     }
@@ -291,8 +428,7 @@ const toggleHideComment = async (req, res, next) => {
 
     comment.isHidden = !comment.isHidden;
     await post.save();
-
-    res.status(200).json({ success: true, message: comment.isHidden ? 'Comment hidden' : 'Comment unhidden', data: comment });
+    res.status(200).json({ success: true, data: comment });
   } catch (error) {
     next(error);
   }
@@ -302,23 +438,26 @@ const toggleHideComment = async (req, res, next) => {
 // @route   GET /api/social/posts/:id/likes
 const getPostLikes = async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate('likes', 'name avatar');
+    const post = await Post.findById(req.params.id).populate('likes', 'name username profilePic avatar');
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
-
     res.status(200).json({ success: true, count: post.likes.length, data: post.likes });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get my own posts (for shop owner management)
+// @desc    Get my posts
 // @route   GET /api/social/my-posts
 const getMyPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({ ownerId: req.user._id })
+    const posts = await Post.find({
+      $or: [{ userId: req.user._id }, { ownerId: req.user._id }],
+    })
       .sort({ createdAt: -1 })
-      .populate('comments.userId', 'name avatar');
+      .populate('comments.userId', 'name username profilePic avatar')
+      .lean();
 
+    _addLikeStatus(posts, req.user._id);
     res.status(200).json({ success: true, count: posts.length, data: posts });
   } catch (error) {
     next(error);
@@ -331,78 +470,118 @@ const getMyPosts = async (req, res, next) => {
 // @route   POST /api/social/stories
 const createStory = async (req, res, next) => {
   try {
-    const shop = await Shop.findOne({ ownerId: req.user._id });
-    if (!shop) {
-      return res.status(404).json({ success: false, message: 'You must register a shop first' });
-    }
+    const userId = req.user._id;
 
     if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Image is required for stories' });
+      return res.status(400).json({ success: false, message: 'Media is required for stories' });
     }
 
-    const story = await Story.create({
-      shopId: shop._id,
-      ownerId: req.user._id,
-      imageUrl: req.file.path,
+    const storyData = {
+      userId,
+      ownerId: userId,
+      mediaUrl: req.file.path,
+      imageUrl: req.file.path, // backward compat
+      mediaType: req.file.mimetype?.startsWith('video') ? 'video' : 'image',
       caption: req.body.caption || '',
-    });
+    };
 
+    // If shop owner, also link the shop
+    const shop = await Shop.findOne({ ownerId: userId });
+    if (shop) {
+      storyData.shopId = shop._id;
+    }
+
+    const story = await Story.create(storyData);
     res.status(201).json({ success: true, message: 'Story created', data: story });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get active stories (from followed shops)
+// @desc    Get stories feed (grouped by user)
 // @route   GET /api/social/stories
 const getStories = async (req, res, next) => {
   try {
-    const follows = await Follow.find({ userId: req.user._id });
-    const shopIds = follows.map((f) => f.shopId);
+    const userId = req.user._id;
+    const follows = await Follow.find({ followerId: userId }).lean();
+    const followingIds = follows.map((f) => f.followingId);
+    const shopIds = follows.filter((f) => f.shopId).map((f) => f.shopId);
 
-    // Get stories from followed shops, grouped by shop
     const stories = await Story.find({
-      shopId: { $in: shopIds },
+      $or: [
+        { userId: { $in: followingIds } },
+        { ownerId: { $in: followingIds } },
+        { shopId: { $in: shopIds } },
+      ],
       expiresAt: { $gt: new Date() },
       isHidden: { $ne: true },
     })
-      .sort({ createdAt: -1 })
-      .populate('shopId', 'shopName logo');
+      .sort({ createdAt: 1 })
+      .populate('userId', 'name username profilePic avatar accountType')
+      .populate('shopId', 'shopName logo')
+      .lean();
 
-    // Group by shop
+    // Group by user
     const grouped = {};
     stories.forEach((story) => {
-      const sid = story.shopId._id.toString();
-      if (!grouped[sid]) {
-        grouped[sid] = {
-          shop: story.shopId,
+      const key = story.userId?._id?.toString() || story.ownerId?.toString() || story.shopId?._id?.toString();
+      if (!key) return;
+      if (!grouped[key]) {
+        const user = story.userId || {};
+        const shop = story.shopId || {};
+        grouped[key] = {
+          user: {
+            _id: key,
+            username: user.username || user.name || shop.shopName || '',
+            profilePic: user.profilePic || user.avatar || shop.logo || '',
+            accountType: user.accountType || 'user',
+          },
+          // Backward compat
+          shop: story.shopId || { _id: key, shopName: user.name || '', logo: user.avatar || '' },
           stories: [],
+          hasUnseen: false,
         };
       }
-      grouped[sid].stories.push(story);
+      // Check if current user has viewed this story
+      const viewed = (story.viewers || []).some((v) => v.toString() === userId.toString());
+      if (!viewed) grouped[key].hasUnseen = true;
+      grouped[key].stories.push(story);
     });
 
-    res.status(200).json({ success: true, data: Object.values(grouped) });
+    // Sort: unseen groups first
+    const result = Object.values(grouped).sort((a, b) => (b.hasUnseen ? 1 : 0) - (a.hasUnseen ? 1 : 0));
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Mark story as viewed
+// @route   POST /api/social/stories/:id/view
+const markStoryViewed = async (req, res, next) => {
+  try {
+    await Story.findByIdAndUpdate(req.params.id, {
+      $addToSet: { viewers: req.user._id },
+    });
+    res.status(200).json({ success: true, message: 'Story viewed' });
   } catch (error) {
     next(error);
   }
 };
 
 // @desc    Delete a story
-// @route   DELETE /api/social/stories/:id
 const deleteStory = async (req, res, next) => {
   try {
     const story = await Story.findById(req.params.id);
-
     if (!story) return res.status(404).json({ success: false, message: 'Story not found' });
 
-    // Check ownership
-    if (story.ownerId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this story' });
+    if (story.ownerId?.toString() !== req.user._id.toString() &&
+        story.userId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     await Story.findByIdAndDelete(req.params.id);
-
     res.status(200).json({ success: true, message: 'Story deleted' });
   } catch (error) {
     next(error);
@@ -410,32 +589,30 @@ const deleteStory = async (req, res, next) => {
 };
 
 // @desc    Toggle hide story
-// @route   PATCH /api/social/stories/:id/hide
 const toggleHideStory = async (req, res, next) => {
   try {
     const story = await Story.findById(req.params.id);
-
     if (!story) return res.status(404).json({ success: false, message: 'Story not found' });
 
-    // Check ownership
-    if (story.ownerId.toString() !== req.user._id.toString()) {
+    if (story.ownerId?.toString() !== req.user._id.toString() &&
+        story.userId?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     story.isHidden = !story.isHidden;
     await story.save();
-
-    res.status(200).json({ success: true, message: story.isHidden ? 'Story hidden' : 'Story unhidden', data: story });
+    res.status(200).json({ success: true, data: story });
   } catch (error) {
     next(error);
   }
 };
 
 // @desc    Get my active stories
-// @route   GET /api/social/my-stories
 const getMyStories = async (req, res, next) => {
   try {
-    const stories = await Story.find({ ownerId: req.user._id }).sort({ createdAt: -1 });
+    const stories = await Story.find({
+      $or: [{ userId: req.user._id }, { ownerId: req.user._id }],
+    }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: stories.length, data: stories });
   } catch (error) {
     next(error);
@@ -444,12 +621,13 @@ const getMyStories = async (req, res, next) => {
 
 // ===================== REELS =====================
 
-// @desc    Get reels feed
+// @desc    Get reels feed (followed users first, then trending)
 // @route   GET /api/social/reels?page=&limit=
 const getReels = async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user._id;
 
     const reels = await Post.find({
       type: 'reel',
@@ -459,8 +637,12 @@ const getReels = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
-      .populate('ownerId', 'name avatar');
+      .populate('ownerId', 'name avatar')
+      .lean();
+
+    _addLikeStatus(reels, userId);
 
     res.status(200).json({ success: true, count: reels.length, data: reels });
   } catch (error) {
@@ -468,67 +650,264 @@ const getReels = async (req, res, next) => {
   }
 };
 
-// ===================== FOLLOW =====================
+// @desc    Like a reel
+// @route   POST /api/social/reels/:id/like
+const likeReel = async (req, res, next) => {
+  // Reels are stored as Posts with type='reel', so reuse toggleLike
+  req.params.id = req.params.id;
+  return toggleLike(req, res, next);
+};
 
-// @desc    Toggle follow a shop
-// @route   POST /api/social/follow/:shopId
+// ===================== FOLLOW SYSTEM =====================
+
+// @desc    Follow / unfollow a user (toggle)
+// @route   POST /api/social/follow/:userId
 const toggleFollow = async (req, res, next) => {
   try {
-    const { shopId } = req.params;
-    const userId = req.user._id;
+    const followerId = req.user._id;
+    const followingId = req.params.userId || req.params.shopId;
 
-    const existing = await Follow.findOne({ userId, shopId });
+    if (followerId.toString() === followingId.toString()) {
+      return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
+    }
+
+    const existing = await Follow.findOne({ followerId, followingId });
 
     if (existing) {
+      // Unfollow
       await Follow.findByIdAndDelete(existing._id);
+      // Atomic decrement
+      await User.updateOne({ _id: followingId }, { $inc: { followersCount: -1 } });
+      await User.updateOne({ _id: followerId }, { $inc: { followingCount: -1 } });
       return res.status(200).json({ success: true, message: 'Unfollowed', data: { isFollowing: false } });
     }
 
-    await Follow.create({ userId, shopId });
+    // Follow
+    const followData = { followerId, followingId };
+
+    // Backward compat: if following a shop owner, also store shopId
+    const shop = await Shop.findOne({ ownerId: followingId });
+    if (shop) {
+      followData.shopId = shop._id;
+    }
+
+    await Follow.create(followData);
+    // Atomic increment
+    await User.updateOne({ _id: followingId }, { $inc: { followersCount: 1 } });
+    await User.updateOne({ _id: followerId }, { $inc: { followingCount: 1 } });
+
+    // Notify
+    const follower = await User.findById(followerId);
+    await Notification.create({
+      userId: followingId,
+      type: 'follow',
+      title: 'New Follower',
+      body: `@${follower.username || follower.name} started following you`,
+      data: { senderId: followerId },
+    });
+
     res.status(201).json({ success: true, message: 'Followed', data: { isFollowing: true } });
+  } catch (error) {
+    // Handle duplicate key error (already following)
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Already following' });
+    }
+    next(error);
+  }
+};
+
+// @desc    Unfollow a user explicitly
+// @route   DELETE /api/social/unfollow/:userId
+const unfollowUser = async (req, res, next) => {
+  try {
+    const followerId = req.user._id;
+    const followingId = req.params.userId;
+
+    const existing = await Follow.findOneAndDelete({ followerId, followingId });
+    if (existing) {
+      await User.updateOne({ _id: followingId }, { $inc: { followersCount: -1 } });
+      await User.updateOne({ _id: followerId }, { $inc: { followingCount: -1 } });
+    }
+
+    res.status(200).json({ success: true, message: 'Unfollowed', data: { isFollowing: false } });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Check if user follows a shop
-// @route   GET /api/social/follow/:shopId/check
+// @desc    Check follow status
+// @route   GET /api/social/follow/:userId/check
 const checkFollow = async (req, res, next) => {
   try {
-    const existing = await Follow.findOne({ userId: req.user._id, shopId: req.params.shopId });
+    const existing = await Follow.findOne({
+      followerId: req.user._id,
+      $or: [
+        { followingId: req.params.userId },
+        { shopId: req.params.userId },
+      ],
+    });
     res.status(200).json({ success: true, data: { isFollowing: !!existing } });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get followers count for a shop
-// @route   GET /api/social/follow/:shopId/count
+// @desc    Get followers count
+// @route   GET /api/social/follow/:userId/count
 const getFollowersCount = async (req, res, next) => {
   try {
-    const count = await Follow.countDocuments({ shopId: req.params.shopId });
+    const count = await Follow.countDocuments({
+      $or: [
+        { followingId: req.params.userId },
+        { shopId: req.params.userId },
+      ],
+    });
     res.status(200).json({ success: true, data: { count } });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get shops the current user follows
+// @desc    Get followers list (paginated)
+// @route   GET /api/social/followers/:userId?page=
+const getFollowers = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const follows = await Follow.find({ followingId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('followerId', 'name username profilePic avatar accountType');
+
+    const users = follows.filter((f) => f.followerId).map((f) => f.followerId);
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get following list (paginated)
+// @route   GET /api/social/following/:userId?page=
+const getFollowing = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const follows = await Follow.find({ followerId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('followingId', 'name username profilePic avatar accountType');
+
+    const users = follows.filter((f) => f.followingId).map((f) => f.followingId);
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get shops the current user follows (backward compat)
 // @route   GET /api/social/follow/my-follows
 const getMyFollowedShops = async (req, res, next) => {
   try {
-    const follows = await Follow.find({ userId: req.user._id })
-      .populate('shopId', 'shopName logo category address status rating openingTime closingTime phone');
+    const follows = await Follow.find({
+      followerId: req.user._id,
+      shopId: { $ne: null },
+    }).populate('shopId', 'shopName logo category address status rating openingTime closingTime phone');
 
-    const shops = follows
-      .filter((f) => f.shopId != null)
-      .map((f) => f.shopId);
-
+    const shops = follows.filter((f) => f.shopId != null).map((f) => f.shopId);
     res.status(200).json({ success: true, count: shops.length, data: shops });
   } catch (error) {
     next(error);
   }
 };
+
+// ===================== USER PROFILE =====================
+
+// @desc    Get user profile
+// @route   GET /api/users/:userId
+const getUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select('-password');
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Count posts
+    const postsCount = await Post.countDocuments({
+      $or: [{ userId: user._id }, { ownerId: user._id }],
+      isHidden: { $ne: true },
+    });
+
+    // Check if current user follows this user
+    let isFollowing = false;
+    if (req.user && req.user._id.toString() !== user._id.toString()) {
+      const follow = await Follow.findOne({ followerId: req.user._id, followingId: user._id });
+      isFollowing = !!follow;
+    }
+
+    const profileData = {
+      _id: user._id,
+      name: user.name,
+      username: user.username || user.name.toLowerCase().replace(/\s+/g, ''),
+      email: user.email,
+      profilePic: user.profilePic || user.avatar || '',
+      avatar: user.avatar || '',
+      bio: user.bio || '',
+      accountType: user.accountType || 'user',
+      followersCount: user.followersCount || 0,
+      followingCount: user.followingCount || 0,
+      postsCount,
+      isFollowing,
+      isVerified: user.isVerified || false,
+      createdAt: user.createdAt,
+    };
+
+    res.status(200).json({ success: true, data: profileData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Search users
+// @route   GET /api/users/search?q=
+const searchUsers = async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { username: { $regex: q, $options: 'i' } },
+      ],
+    })
+      .select('name username profilePic avatar accountType bio followersCount')
+      .limit(20)
+      .lean();
+
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ===================== HELPERS =====================
+
+function _addLikeStatus(posts, userId) {
+  const userIdStr = userId.toString();
+  posts.forEach((post) => {
+    post.isLiked = (post.likes || []).some((id) => id.toString() === userIdStr);
+    post.likesCount = post.likesCount || (post.likes || []).length;
+    post.commentsCount = post.commentsCount || (post.comments || []).length;
+  });
+}
+
+// ===================== EXPORTS =====================
 
 module.exports = {
   createPost,
@@ -536,6 +915,9 @@ module.exports = {
   explorePosts,
   toggleLike,
   addComment,
+  savePost,
+  unsavePost,
+  getUserPosts,
   updatePost,
   deletePost,
   toggleHidePost,
@@ -545,12 +927,19 @@ module.exports = {
   getMyPosts,
   createStory,
   getStories,
+  markStoryViewed,
   deleteStory,
   toggleHideStory,
   getMyStories,
   getReels,
+  likeReel,
   toggleFollow,
+  unfollowUser,
   checkFollow,
   getFollowersCount,
+  getFollowers,
+  getFollowing,
   getMyFollowedShops,
+  getUserProfile,
+  searchUsers,
 };

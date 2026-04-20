@@ -131,6 +131,21 @@ exports.acceptOrder = async (req, res, next) => {
     order.timeline.push({ status: 'accepted', note: 'Shop accepted the order' });
     await order.save();
 
+    // Trigger delivery partner notification if home delivery
+    if (order.deliveryType === 'home_delivery') {
+      const DeliveryRequest = require('../models/DeliveryRequest');
+      const deliveryRequest = await DeliveryRequest.findOneAndUpdate(
+        { orderId: order._id },
+        { status: 'accepted' },
+        { new: true }
+      );
+      
+      if (deliveryRequest) {
+        const { notifyNearbyPartners } = require('./deliveryPartnerController');
+        notifyNearbyPartners(deliveryRequest);
+      }
+    }
+
     res.json({ success: true, data: order });
   } catch (error) {
     next(error);
@@ -154,8 +169,8 @@ exports.packOrder = async (req, res, next) => {
 
     const images = req.files.map((file) => file.path);
     order.packedImages = images;
-    order.status = order.deliveryType === 'home_delivery' ? 'ready' : 'packed';
-    order.timeline.push({ status: order.status, note: 'Order packed and ready' });
+    order.status = 'packed';
+    order.timeline.push({ status: 'packed', note: 'Order packed and ready for handover' });
     await order.save();
 
     res.json({ success: true, data: order });
@@ -180,8 +195,8 @@ exports.verifyPickupCode = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid verification code' });
     }
 
-    order.status = 'picked_up';
-    order.timeline.push({ status: 'picked_up', note: 'Order picked up by delivery partner' });
+    order.status = 'out_for_delivery';
+    order.timeline.push({ status: 'out_for_delivery', note: 'Order dispatched with delivery partner' });
     await order.save();
 
     const request = await require('../models/DeliveryRequest').findOne({ orderId: order._id });

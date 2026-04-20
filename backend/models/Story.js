@@ -2,25 +2,46 @@ const mongoose = require('mongoose');
 
 const storySchema = new mongoose.Schema(
   {
-    shopId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Shop',
-      required: true,
-    },
-    ownerId: {
+    // User-centric: who created the story
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    imageUrl: {
+    // Backward compat
+    shopId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Shop',
+    },
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    mediaUrl: {
       type: String,
       required: true,
+    },
+    // Backward compat alias
+    imageUrl: {
+      type: String,
+      default: '',
+    },
+    mediaType: {
+      type: String,
+      enum: ['image', 'video'],
+      default: 'image',
     },
     caption: {
       type: String,
       default: '',
       maxlength: 200,
     },
+    viewers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     expiresAt: {
       type: Date,
       required: true,
@@ -36,6 +57,7 @@ const storySchema = new mongoose.Schema(
 
 // TTL index — MongoDB auto-deletes documents when expiresAt is reached
 storySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-storySchema.index({ shopId: 1, createdAt: -1 });
+storySchema.index({ userId: 1, expiresAt: 1 });
+storySchema.index({ shopId: 1, createdAt: -1 }); // backward compat
 
 module.exports = mongoose.model('Story', storySchema);

@@ -1,0 +1,1131 @@
+﻿Shop Radar
+
+Social Media Module
+
+Technical Specification & Implementation Guide
+
+Production-Grade | Clean Architecture | Scalable
+
+1. Project Overview
+
+This document describes the complete technical design and implementation plan for integrating a production-grade social media module into the existing Shop Radar Flutter application. The system is modeled after Instagram and includes Posts, Stories, Reels, a Follow graph, real-time Messaging, and push Notifications.
+
+1.1 Core Objectives
+
+Allow all users to create and consume content: posts, reels, and stories
+
+Support a bidirectional social graph (follow / unfollow)
+
+Enable real-time one-to-one messaging via Socket.io
+
+Deliver push notifications exclusively through Firebase Cloud Messaging (FCM)
+
+Treat shops as a special user type (accountType: shop) without breaking existing data
+
+Maintain clean, modular, and scalable code across frontend and backend
+
+1.2 Tech Stack Summary
+Layer
+Technology
+Notes
+Mobile Frontend
+Flutter + Riverpod/Bloc
+Clean Architecture, feature-first folder structure
+Backend Runtime
+Node.js (Express or NestJS)
+Deployed on Render, RESTful + Socket.io
+Database
+MongoDB (Atlas)
+Aggregation pipelines, TTL indexes, compound indexes
+Media Storage
+Cloudinary
+Images and videos, auto-quality transformations
+Push Notifications
+Firebase Cloud Messaging
+Via Firebase Admin SDK on backend only
+Real-time
+Socket.io
+Integrated into the Node.js server
+Auth
+JWT (Access + Refresh tokens)
+No Firebase Auth
+
+2. System Architecture
+
+2.1 Backend Layer Pattern
+
+Every backend feature follows the Controller ΓåÆ Service ΓåÆ Repository (CSR) pattern:
+
+Router receives the HTTP request and delegates to the Controller
+
+Controller validates input (using Joi or class-validator), calls the Service, and formats the HTTP response
+
+Service contains all business logic (auth checks, notification triggers, count updates)
+
+Repository is the only layer that touches MongoDB. It returns plain objects to the Service
+
+2.2 Folder Structure ΓÇö Backend
+
+src/
+
+  modules/
+
+    auth/          ΓåÆ signup, login, token refresh
+
+    users/         ΓåÆ profile CRUD, search
+
+    follows/       ΓåÆ follow graph
+
+    posts/         ΓåÆ create, feed, like, comment, save
+
+    stories/       ΓåÆ create, feed (24-hour TTL)
+
+    reels/         ΓåÆ create, feed, like
+
+    messages/      ΓåÆ conversations, messages
+
+    notifications/ ΓåÆ FCM dispatch
+
+  shared/
+
+    middleware/    ΓåÆ auth guard, error handler
+
+    utils/         ΓåÆ cloudinary.js, fcm.js, paginate.js
+
+  socket/          ΓåÆ socket.io event handlers
+
+  config/          ΓåÆ env, db, cloudinary, firebase
+
+2.3 Folder Structure ΓÇö Flutter
+
+lib/social/
+
+  screens/
+
+    feed_screen.dart
+
+    reels_screen.dart
+
+    story_viewer.dart
+
+    profile_screen.dart
+
+    chat_screen.dart
+
+    chat_list_screen.dart
+
+  widgets/
+
+    post_card.dart
+
+    story_bubble.dart
+
+    reel_card.dart
+
+    comment_sheet.dart
+
+  providers/         ΓåÆ Riverpod StateNotifiers or Bloc cubits
+
+  repositories/      ΓåÆ API calls (Dio/http)
+
+  models/            ΓåÆ Dart data classes
+
+3. User System & Authentication
+
+3.1 User Schema (MongoDB)
+_id
+ObjectId
+Auto-generated primary key
+username
+String
+Unique, indexed, lowercase
+email
+String
+Unique, indexed (or phone)
+phone
+String
+Optional alternative to email
+password
+String
+Hashed with bcrypt (rounds: 12)
+profilePic
+String
+Cloudinary URL
+bio
+String
+Max 150 characters
+accountType
+Enum
+"user" or "shop"
+followersCount
+Number
+Maintained atomically
+followingCount
+Number
+Maintained atomically
+fcmToken
+String
+Updated on every login
+isVerified
+Boolean
+Optional account verification
+createdAt
+Date
+Auto-timestamp
+
+3.2 Authentication APIs
+Method
+Endpoint
+Description
+POST
+/auth/signup
+Create account; returns JWT access + refresh tokens
+POST
+/auth/login
+Login with email/phone + password; returns tokens + user
+POST
+/auth/refresh
+Rotate access token using refresh token
+POST
+/auth/logout
+Invalidate refresh token (blacklist or delete)
+GET
+/users/:id
+Fetch public profile by user ID
+GET
+/users/me
+Fetch own profile (authenticated)
+PUT
+/users/update-profile
+Update bio, username, profilePic
+PUT
+/users/update-fcm
+Update FCM token after login
+
+3.3 JWT Implementation Notes
+
+Access token TTL: 15 minutes
+
+Refresh token TTL: 30 days ΓÇö stored in DB or Redis
+
+All protected routes require Authorization: Bearer <accessToken> header
+
+On 401, Flutter client silently refreshes and retries the original request
+
+FCM token must be updated on every successful login
+
+3.4 Password & Security
+
+bcrypt with 12 salt rounds for password hashing
+
+Input validation: username (alphanumeric + underscore, 3-30 chars), password (min 8 chars)
+
+Rate limiting on /auth/* endpoints (express-rate-limit: 10 req / 15 min per IP)
+
+4. Follow / Unfollow System
+
+4.1 Followers Collection Schema
+_id
+ObjectId
+Auto-generated
+followerId
+ObjectId (ref: User)
+The user performing the follow; indexed
+followingId
+ObjectId (ref: User)
+The user being followed; indexed
+createdAt
+Date
+Auto-timestamp
+
+CRITICAL INDEX: Create a unique compound index on { followerId, followingId }.
+
+This prevents duplicate follow entries at the database level and makes
+
+follow/unfollow lookups O(log n) instead of O(n).
+
+4.2 Follow APIs
+Method
+Endpoint
+Description
+POST
+/follow/:userId
+Follow a user; idempotent via upsert
+DELETE
+/unfollow/:userId
+Unfollow; removes document
+GET
+/followers/:userId
+Paginated list of users following :userId
+GET
+/following/:userId
+Paginated list of users :userId follows
+GET
+/follow/status/:userId
+Returns { isFollowing: bool } for the current user
+
+4.3 Atomic Count Updates
+
+When a follow is created or deleted, use MongoDB $inc to update both counters in a single operation. Never derive counts by counting documents at query time.
+
+// On follow
+
+await User.updateOne({ _id: followingId }, { $inc: { followersCount: 1 } });
+
+await User.updateOne({ _id: followerId },  { $inc: { followingCount: 1 } });
+
+// On unfollow ΓÇö decrement, floor at 0
+
+await User.updateOne({ _id: followingId }, { $inc: { followersCount: -1 } });
+
+await User.updateOne({ _id: followerId },  { $inc: { followingCount: -1 } });
+
+5. Posts System
+
+5.1 Posts Collection Schema
+_id
+ObjectId
+Auto-generated
+userId
+ObjectId (ref: User)
+Author; indexed
+mediaUrl
+String
+Cloudinary URL (image or video)
+mediaType
+Enum
+"image" or "video"
+caption
+String
+Max 2200 characters
+likesCount
+Number
+Maintained atomically
+commentsCount
+Number
+Maintained atomically
+savedBy
+Array<ObjectId>
+Optional embedded saves (or separate collection)
+createdAt
+Date
+Auto-timestamp; indexed for feed sorting
+
+5.2 Likes Collection Schema
+_id
+ObjectId
+Auto-generated
+userId
+ObjectId (ref: User)
+Who liked
+postId
+ObjectId (ref: Post)
+Which post; compound unique index with userId
+createdAt
+Date
+Timestamp
+
+5.3 Comments Collection Schema
+_id
+ObjectId
+Auto-generated
+postId
+ObjectId (ref: Post)
+Indexed
+userId
+ObjectId (ref: User)
+Author
+text
+String
+Max 500 characters
+createdAt
+Date
+Auto-timestamp
+
+5.4 Posts APIs
+Method
+Endpoint
+Description
+POST
+/posts/create
+Upload media to Cloudinary, create post document
+GET
+/posts/feed
+Paginated feed from followed users (cursor-based)
+GET
+/posts/:id
+Single post with populated user info
+DELETE
+/posts/:id
+Delete own post + Cloudinary asset
+POST
+/posts/:id/like
+Toggle like (idempotent)
+DELETE
+/posts/:id/like
+Unlike
+POST
+/posts/:id/comment
+Add comment
+GET
+/posts/:id/comments
+Paginated comment list
+POST
+/posts/:id/save
+Save post to collection
+GET
+/users/:id/posts
+Paginated posts grid for profile screen
+
+5.5 Feed Query Logic (Aggregation Pipeline)
+
+The feed uses a MongoDB aggregation pipeline to avoid N+1 lookups:
+
+Match posts where userId is in the array of followingIds
+
+Sort by createdAt descending
+
+Apply cursor-based pagination (filter by _id < lastSeenId)
+
+$lookup to join user info (username, profilePic, accountType)
+
+$lookup to join the current user's like status on each post
+
+Project only the fields needed by the frontend
+
+5.6 Media Upload Flow
+
+Flutter compresses image/video locally (flutter_image_compress / ffmpeg_kit_flutter)
+
+Flutter POSTs the file as multipart/form-data to /posts/create
+
+Backend receives file via multer (memory storage), streams to Cloudinary
+
+Cloudinary returns a secure URL; backend stores only this URL in MongoDB
+
+Backend responds with the created post object
+
+6. Stories System
+
+6.1 Stories Collection Schema
+_id
+ObjectId
+Auto-generated
+userId
+ObjectId (ref: User)
+Author; indexed
+mediaUrl
+String
+Cloudinary URL
+mediaType
+Enum
+"image" or "video"
+viewers
+Array<ObjectId>
+Optional: users who viewed this story
+createdAt
+Date
+Creation timestamp
+expiresAt
+Date
+createdAt + 24 hours; used by TTL index
+
+TTL INDEX: db.stories.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+MongoDB's background thread purges expired story documents automatically.
+
+No cron job required. Cloudinary assets can be cleaned up via a separate webhook.
+
+6.2 Stories APIs
+Method
+Endpoint
+Description
+POST
+/stories/create
+Upload media, set expiresAt = now + 24h, create document
+GET
+/stories/feed
+Grouped stories from followed users (only non-expired)
+POST
+/stories/:id/view
+Mark story as viewed by current user
+GET
+/stories/my
+Current user's active stories
+
+6.3 Feed Grouping Logic
+
+The /stories/feed endpoint returns stories grouped by userId so the frontend can render one avatar bubble per user. Use MongoDB aggregation:
+
+Match userId IN followingIds AND expiresAt > now
+
+Sort by createdAt ascending
+
+$group by userId, pushing all story documents into an array
+
+$lookup to join user profile data (username, profilePic)
+
+Sort groups: users with unseen stories appear first
+
+6.4 Flutter Story Viewer
+
+HorizontalListView of StoryBubble widgets, one per user group
+
+Tapping a bubble opens StoryViewer (PageView) ΓÇö one page per story in the group
+
+Auto-advance: Timer(Duration(seconds: 5)) drives a LinearProgressIndicator
+
+Video stories: use video_player package with auto-play and auto-advance on end
+
+Swipe left/right navigates between user groups
+
+7. Reels System
+
+7.1 Reels Collection Schema
+_id
+ObjectId
+Auto-generated
+userId
+ObjectId (ref: User)
+Author; indexed
+videoUrl
+String
+Cloudinary URL (compressed video)
+thumbnailUrl
+String
+Cloudinary generated thumbnail
+caption
+String
+Max 2200 characters
+likesCount
+Number
+Maintained atomically
+commentsCount
+Number
+Maintained atomically
+duration
+Number
+Video duration in seconds
+createdAt
+Date
+Auto-timestamp
+
+7.2 Reels APIs
+Method
+Endpoint
+Description
+POST
+/reels/create
+Upload video to Cloudinary; store reel document
+GET
+/reels/feed
+Paginated reels (followed users first, then trending)
+POST
+/reels/:id/like
+Toggle like
+POST
+/reels/:id/comment
+Add comment (shared comments collection)
+GET
+/reels/:id/comments
+Paginated comments
+DELETE
+/reels/:id
+Delete own reel
+
+7.3 Flutter Reels Screen
+
+PageView.builder with scrollDirection: Axis.vertical for full-screen vertical swiping
+
+Each page renders a VideoPlayerController from video_player package
+
+Lazy initialization: initialize controller when the page is within 1 index of current
+
+Dispose controller when 2+ pages away to free memory
+
+preloadPageCount: 1 ΓÇö always preload the next reel for smooth UX
+
+Overlay: like button (double-tap on video), comment icon, share icon, caption
+
+Like animation: AnimationController with a heart SVG on double-tap
+
+8. Real-Time Messaging System
+
+8.1 Conversations Collection Schema
+_id
+ObjectId
+Auto-generated
+participants
+Array<ObjectId>
+Exactly two user IDs; compound indexed
+lastMessage
+Object
+{ text, type, senderId, createdAt } ΓÇö denormalized
+updatedAt
+Date
+Updated on every new message; used to sort chat list
+
+8.2 Messages Collection Schema
+_id
+ObjectId
+Auto-generated
+conversationId
+ObjectId (ref: Conversation)
+Indexed
+senderId
+ObjectId (ref: User)
+Author
+type
+Enum
+"text", "image", or "video"
+content
+String
+Text content or Cloudinary URL
+seen
+Boolean
+False until receiver reads it
+createdAt
+Date
+Auto-timestamp; indexed
+
+8.3 Messaging REST APIs
+Method
+Endpoint
+Description
+GET
+/conversations
+Paginated chat list for current user, sorted by updatedAt
+POST
+/conversations
+Create or fetch existing conversation with a user
+GET
+/messages/:conversationId
+Paginated messages (cursor-based, newest first)
+POST
+/messages/:conversationId
+Send a media message (media-type messages via REST)
+
+8.4 Socket.io Events
+Event
+Direction
+Payload
+connection
+Client ΓåÆ Server
+Auth token in handshake.auth.token
+join_conversation
+Client ΓåÆ Server
+{ conversationId }
+send_message
+Client ΓåÆ Server
+{ conversationId, type, content }
+receive_message
+Server ΓåÆ Client
+Full message object with sender info
+mark_seen
+Client ΓåÆ Server
+{ conversationId, messageId }
+seen_ack
+Server ΓåÆ Client
+{ conversationId, seenAt }
+typing_start
+Client ΓåÆ Server
+{ conversationId }
+typing_stop
+Client ΓåÆ Server
+{ conversationId }
+user_typing
+Server ΓåÆ Client
+{ userId, conversationId }
+
+8.5 Socket Authentication
+
+The Socket.io server authenticates the connection using a middleware that reads the JWT from handshake.auth.token and attaches the decoded user to socket.data.user. Unauthenticated sockets are disconnected immediately.
+
+8.6 Flutter Chat Implementation
+
+Use socket_io_client package for Socket.io connection
+
+Maintain a single socket connection at app level (provider singleton)
+
+ChatListScreen: StreamBuilder / StateNotifier fed by receive_message events
+
+ChatScreen: ListView.builder (reverse: true) for bottom-to-top message rendering
+
+Optimistic UI: append message to local list immediately, confirm on receive_message echo
+
+Seen receipts: mark_seen emitted when ChatScreen is foregrounded with unread messages
+
+9. Notifications System
+
+9.1 Architecture
+
+All push notifications are sent from the backend using the Firebase Admin SDK. The Flutter client only receives and displays notifications. Firebase Auth, Firestore, and Firebase Storage are NOT used.
+
+9.2 Notification Triggers
+Trigger
+Recipient
+Title / Body
+New follower
+Followed user
+"@username started following you"
+New like on post
+Post author
+"@username liked your post"
+New comment
+Post author
+"@username commented: {text snippet}"
+New message
+Conversation partner
+"@username: {message snippet}"
+New reel like
+Reel author
+"@username liked your reel"
+
+9.3 Notification Payload Structure
+
+{
+
+  title: "New Follower",
+
+  body: "@johndoe started following you",
+
+  data: {
+
+    type: "follow" | "like" | "comment" | "message" | "reel_like",
+
+    referenceId: "<postId | conversationId | userId>",
+
+    senderId: "<userId>"
+
+  }
+
+}
+
+9.4 FCM Dispatch Flow
+
+Triggering action occurs (e.g., user A likes user B's post)
+
+Service layer calls notificationService.send(receiverId, payload)
+
+Notification service fetches receiver's fcmToken from the Users collection
+
+If token exists, calls Firebase Admin SDK messaging().send(message)
+
+Handle TokenNotRegistered error by clearing stale token from DB
+
+9.5 Flutter FCM Setup
+
+Initialize firebase_messaging in main.dart before runApp()
+
+Request notification permissions on iOS (no-op on Android)
+
+FirebaseMessaging.onMessage: show in-app banner (flutter_local_notifications)
+
+FirebaseMessaging.onMessageOpenedApp: navigate to referenceId screen
+
+FirebaseMessaging.onBackgroundMessage: top-level static handler function
+
+Send updated token to PUT /users/update-fcm on every app launch
+
+10. Media Handling (Cloudinary)
+
+10.1 Upload Strategy
+
+All media uploads flow through the backend (not direct client upload) to keep Cloudinary credentials server-side only and to allow server-side transformations before storage.
+
+10.2 Cloudinary Transformations
+Media Type
+Transformation
+Purpose
+Profile picture
+w_400,h_400,c_fill,q_auto,f_auto
+Square crop, auto format/quality
+Post image
+w_1080,c_limit,q_auto:good,f_auto
+Limit width, auto quality
+Story image
+w_1080,h_1920,c_fill,q_auto,f_auto
+9:16 aspect ratio
+Reel video
+vc_h264,q_auto:good,br_1500k
+H.264 codec, 1.5Mbps bitrate
+Reel thumbnail
+so_auto,pg_1,w_540,h_960,c_fill
+Auto-generated poster frame
+Chat image
+w_800,c_limit,q_auto,f_auto
+Limit size for chat previews
+
+10.3 Flutter Pre-Upload Compression
+
+Images: flutter_image_compress ΓÇö target quality 85, max dimension 1080px
+
+Videos: ffmpeg_kit_flutter ΓÇö CRF 28, scale 720p, strip audio metadata
+
+Show upload progress using Dio's onSendProgress callback
+
+Cancel upload if user navigates away (store CancelToken in provider state)
+
+11. Feed System ΓÇö Detailed Design
+
+11.1 Pagination Strategy
+
+Use cursor-based pagination (keyset pagination) rather than page/offset. This prevents duplicate or missing items when new posts are inserted between page loads.
+
+Request: GET /posts/feed?limit=10&cursor=<lastPostId>
+
+Query: find posts where _id < cursor AND userId IN followingIds
+
+Response includes nextCursor (the _id of the last returned post)
+
+Flutter FeedScreen uses a ScrollController to detect end-of-list and fetch next page
+
+11.2 Following-Feed Aggregation
+
+Auth middleware provides req.user._id
+
+Follow repository returns array of followingIds for req.user._id
+
+Post aggregation: match userId $in followingIds, sort _id desc, apply cursor limit
+
+$lookup users collection ΓåÆ join author info
+
+$lookup likes collection ΓåÆ join isLiked boolean for current user
+
+$project to select only needed fields (avoid sending full user documents)
+
+11.3 Empty State & First-Run
+
+If followingIds is empty, return a discovery feed: recent public posts sorted by likesCount
+
+Flutter renders an EmptyFeedWidget with a "Find people to follow" CTA
+
+Pull-to-refresh resets the cursor and re-fetches from the top
+
+12. Performance & Scalability
+
+12.1 Required MongoDB Indexes
+Collection
+Index
+Type
+users
+{ username: 1 }
+Unique
+users
+{ email: 1 }
+Unique
+followers
+{ followerId: 1, followingId: 1 }
+Unique Compound
+followers
+{ followingId: 1 }
+Single
+posts
+{ userId: 1, createdAt: -1 }
+Compound
+posts
+{ createdAt: -1 }
+Single (discovery feed)
+likes
+{ userId: 1, postId: 1 }
+Unique Compound
+comments
+{ postId: 1, createdAt: 1 }
+Compound
+stories
+{ userId: 1, expiresAt: 1 }
+Compound
+stories
+{ expiresAt: 1 }
+TTL (expireAfterSeconds: 0)
+messages
+{ conversationId: 1, createdAt: -1 }
+Compound
+conversations
+{ participants: 1, updatedAt: -1 }
+Compound
+
+12.2 N+1 Query Prevention
+
+Never fetch posts then loop to fetch each author ΓÇö always use $lookup in the pipeline
+
+Batch follow-status checks in a single $lookup, not per-post
+
+Use .lean() in Mongoose to return plain JS objects (faster than Mongoose documents)
+
+Denormalize lastMessage into the Conversation document to avoid an extra query for chat list
+
+12.3 Future Scalability Options
+
+Redis cache: Cache followingIds list per user (TTL 60s) ΓÇö reduces DB reads on every feed request
+
+Redis cache: Cache feed result per user (TTL 30s) for high-traffic accounts
+
+Bull / BullMQ: Move notification dispatch to a background job queue
+
+MongoDB Atlas Search: Full-text user and post search via Lucene indexes
+
+CDN: Cloudinary already serves assets from a global CDN ΓÇö no additional setup needed
+
+13. Flutter Navigation & UI
+
+13.1 Bottom Navigation Structure
+Tab Index
+Icon
+Screen
+Route
+0
+home_outlined
+FeedScreen
+/social/feed
+1
+play_circle_outline
+ReelsScreen
+/social/reels
+2
+add_circle_outline
+CreatePostScreen
+/social/create
+3
+chat_bubble_outline
+ChatListScreen
+/social/chats
+4
+person_outline
+ProfileScreen (self)
+/social/profile
+
+13.2 Key Flutter Packages
+Package
+Version
+Purpose
+flutter_riverpod
+^2.x
+State management
+dio
+^5.x
+HTTP client with interceptors
+socket_io_client
+^2.x
+Real-time messaging
+video_player
+^2.x
+Reel and story video playback
+firebase_messaging
+^14.x
+FCM push notifications
+flutter_local_notifications
+^16.x
+In-app notification banners
+flutter_image_compress
+^2.x
+Client-side image compression
+ffmpeg_kit_flutter
+^6.x
+Client-side video compression
+cached_network_image
+^3.x
+Image caching and lazy loading
+infinite_scroll_pagination
+^4.x
+Paginated list management
+
+13.3 Animation Guidelines
+
+Like button: ScaleTransition with a heart LottieAnimation on double-tap
+
+Story progress: LinearProgressIndicator driven by AnimationController
+
+Feed scroll: Use ListView.builder ΓÇö never Column + map (causes full re-render)
+
+Profile grid: SliverGrid inside CustomScrollView for sliver header support
+
+Skeleton loading: Shimmer package for all loading states instead of circular spinners
+
+14. Backward Compatibility & Migration
+
+14.1 Existing Shop Data
+
+The existing Shop Radar database has shop documents with a shopId field. The migration maps these to the new user schema without data loss.
+
+14.2 Migration Steps
+
+Run a one-time migration script: for each Shop document, create a corresponding User document with accountType: "shop" and userId = shopId
+
+Migrate existing shop posts: set userId = shopId (rename field, keep _id)
+
+Add a shopRef field on User if the original Shop document needs to remain for shop-specific data (hours, address, categories)
+
+After migration, update all backend queries that reference shopId to use userId
+
+Deploy backend changes before Flutter changes to maintain backward compatibility during rollout
+
+14.3 Dual-Type UI
+
+Profile screens for accountType: "shop" display shop-specific info (address, hours) below the standard social profile header
+
+Feed and reels treat shop posts identically to user posts
+
+Shop users cannot send direct messages unless enabled (feature flag in User schema)
+
+15. Error Handling & Validation
+
+15.1 Backend Error Response Format
+
+All error responses must follow a consistent envelope so the Flutter client can handle them uniformly:
+
+{
+
+  "success": false,
+
+  "error": {
+
+    "code": "VALIDATION_ERROR",
+
+    "message": "username must be between 3 and 30 characters",
+
+    "field": "username"
+
+  }
+
+}
+
+15.2 Standard Error Codes
+Code
+HTTP Status
+Meaning
+VALIDATION_ERROR
+400
+Request body failed schema validation
+UNAUTHORIZED
+401
+Missing or invalid JWT
+FORBIDDEN
+403
+Action not allowed (e.g., delete another's post)
+NOT_FOUND
+404
+Resource does not exist
+CONFLICT
+409
+Duplicate (e.g., already following, username taken)
+RATE_LIMITED
+429
+Too many requests
+INTERNAL_ERROR
+500
+Unexpected server error
+
+15.3 Flutter Error Handling
+
+DioInterceptor catches 401 and silently refreshes the access token
+
+All repositories return Either<AppError, T> (using dartz or a custom Result type)
+
+StateNotifiers expose AsyncValue<T> which handles loading / data / error states
+
+GlobalErrorWidget shown for 500 errors with a retry button
+
+Snackbar shown for 409 conflicts and 400 validation errors
+
+16. Deployment & Environment
+
+16.1 Render Deployment
+
+Deploy the Node.js backend as a Web Service on Render
+
+Set Health Check path to /health ΓÇö return 200 with { status: "ok" }
+
+Use Render Environment Variables for all secrets (never commit .env)
+
+Enable Auto-Deploy on push to main branch
+
+16.2 Required Environment Variables
+Variable
+Description
+Example
+PORT
+HTTP server port
+3000
+MONGODB_URI
+MongoDB Atlas connection string
+mongodb+srv://...
+JWT_ACCESS_SECRET
+Secret for access tokens
+random 64-char string
+JWT_REFRESH_SECRET
+Secret for refresh tokens
+random 64-char string
+CLOUDINARY_CLOUD_NAME
+Cloudinary account name
+my-app
+CLOUDINARY_API_KEY
+Cloudinary API key
+123456789
+CLOUDINARY_API_SECRET
+Cloudinary API secret
+abc...
+FIREBASE_SERVICE_ACCOUNT
+JSON of Firebase Admin credentials
+{ type: service_account, ... }
+CLIENT_URL
+Flutter deep link origin (optional)
+shoprader://app
+
+16.3 Flutter Build Environments
+
+Use --dart-define or flutter_dotenv for environment-specific API base URLs
+
+Dev: http://localhost:3000 | Staging: https://staging-api.render.com | Prod: https://api.render.com
+
+Firebase google-services.json (Android) and GoogleService-Info.plist (iOS) must be in .gitignore
+
+17. Implementation Roadmap
+
+Phase 1 ΓÇö Foundation (Weeks 1ΓÇô2)
+
+Set up Node.js project with Express/NestJS, MongoDB connection, JWT middleware
+
+Implement User schema, /auth/* endpoints, profile CRUD
+
+Set up Cloudinary integration and media upload utility
+
+Flutter: Auth screens, JWT storage, Dio interceptor, basic navigation shell
+
+Phase 2 ΓÇö Core Social (Weeks 3ΓÇô4)
+
+Follow system: API + Flutter follow/unfollow buttons on profile
+
+Posts: create, feed, like, comment APIs + Flutter feed screen and post card widget
+
+Profile screen: posts grid, followers/following counts, edit profile
+
+Phase 3 ΓÇö Stories & Reels (Weeks 5ΓÇô6)
+
+Stories: create API, TTL index, feed grouping, Flutter story viewer with progress animation
+
+Reels: create API, vertical scroll screen, video player with lazy init/dispose
+
+Phase 4 ΓÇö Messaging & Notifications (Weeks 7ΓÇô8)
+
+Socket.io server setup + Flutter socket_io_client integration
+
+Conversations and messages: REST APIs + socket events
+
+Firebase Admin SDK: FCM dispatch service + all notification triggers
+
+Flutter: flutter_local_notifications for foreground banners, deep link routing from tap
+
+Phase 5 ΓÇö Polish & Production (Week 9ΓÇô10)
+
+Add all MongoDB indexes, run explain() on critical queries
+
+Implement rate limiting, request validation, and global error handler
+
+Backward compatibility migration script for existing shop data
+
+End-to-end testing, performance profiling (Flutter DevTools + MongoDB Atlas metrics)
+
+Deploy to Render production, set up Render health checks and alerts
+
+Shop Radar ΓÇö Social Module Technical Specification  |  Confidential  |  April 19, 2026

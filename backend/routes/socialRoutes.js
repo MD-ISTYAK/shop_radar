@@ -1,12 +1,14 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
 const {
   createPost,
   getFeed,
   explorePosts,
   toggleLike,
   addComment,
+  savePost,
+  unsavePost,
+  getUserPosts,
   updatePost,
   deletePost,
   toggleHidePost,
@@ -16,16 +18,23 @@ const {
   getMyPosts,
   createStory,
   getStories,
+  markStoryViewed,
   deleteStory,
   toggleHideStory,
   getMyStories,
   getReels,
+  likeReel,
   toggleFollow,
+  unfollowUser,
   checkFollow,
   getFollowersCount,
+  getFollowers,
+  getFollowing,
   getMyFollowedShops,
+  getUserProfile,
+  searchUsers,
 } = require('../controllers/socialController');
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -37,41 +46,52 @@ const upload = multer({
 });
 
 const postUpload = upload.fields([
-  { name: 'images', maxCount: 5 },
+  { name: 'images', maxCount: 10 },
   { name: 'video', maxCount: 1 },
 ]);
 
 // All routes require authentication
 router.use(protect);
 
-// Posts
-router.post('/posts', authorize('owner'), postUpload, createPost);
+// ===================== POSTS =====================
+router.post('/posts', postUpload, createPost);
 router.get('/feed', getFeed);
 router.get('/explore', explorePosts);
-router.get('/my-posts', authorize('owner'), getMyPosts);
+router.get('/my-posts', getMyPosts);
 router.post('/posts/:id/like', toggleLike);
 router.get('/posts/:id/likes', getPostLikes);
 router.post('/posts/:id/comment', addComment);
-router.put('/posts/:id', authorize('owner'), updatePost);
-router.delete('/posts/:id', authorize('owner'), deletePost);
-router.patch('/posts/:id/hide', authorize('owner'), toggleHidePost);
+router.post('/posts/:id/save', savePost);
+router.delete('/posts/:id/save', unsavePost);
+router.put('/posts/:id', updatePost);
+router.delete('/posts/:id', deletePost);
+router.patch('/posts/:id/hide', toggleHidePost);
 router.delete('/posts/:postId/comments/:commentId', deleteComment);
-router.patch('/posts/:postId/comments/:commentId/hide', authorize('owner'), toggleHideComment);
+router.patch('/posts/:postId/comments/:commentId/hide', toggleHideComment);
 
-// Stories
-router.post('/stories', authorize('owner'), upload.single('image'), createStory);
+// ===================== USER POSTS =====================
+router.get('/users/:userId/posts', getUserPosts);
+
+// ===================== STORIES =====================
+router.post('/stories', upload.single('image'), createStory);
 router.get('/stories', getStories);
-router.get('/my-stories', authorize('owner'), getMyStories);
-router.delete('/stories/:id', authorize('owner'), deleteStory);
-router.patch('/stories/:id/hide', authorize('owner'), toggleHideStory);
+router.post('/stories/:id/view', markStoryViewed);
+router.get('/my-stories', getMyStories);
+router.delete('/stories/:id', deleteStory);
+router.patch('/stories/:id/hide', toggleHideStory);
 
-// Reels
+// ===================== REELS =====================
 router.get('/reels', getReels);
+router.post('/reels/:id/like', likeReel);
 
-// Follow - my-follows MUST be before parameterized :shopId routes
+// ===================== FOLLOW =====================
+// Static routes MUST come before parameterized :userId routes
 router.get('/follow/my-follows', getMyFollowedShops);
-router.post('/follow/:shopId', toggleFollow);
-router.get('/follow/:shopId/check', checkFollow);
-router.get('/follow/:shopId/count', getFollowersCount);
+router.post('/follow/:userId', toggleFollow);
+router.delete('/unfollow/:userId', unfollowUser);
+router.get('/follow/:userId/check', checkFollow);
+router.get('/follow/:userId/count', getFollowersCount);
+router.get('/followers/:userId', getFollowers);
+router.get('/following/:userId', getFollowing);
 
 module.exports = router;

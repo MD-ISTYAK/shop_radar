@@ -198,20 +198,21 @@ const checkout = async (req, res, next) => {
       }
 
       const orderId = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const pickupCode = Math.floor(100000 + Math.random() * 900000).toString(); // For driver to shop
+      const userOtp = Math.floor(100000 + Math.random() * 900000).toString(); // For user to driver
 
       const order = await Order.create({
         orderId,
         userId: req.user._id,
-        shopId,
+        shopId: shopId, // already in scope
         items: orderData.items,
         totalAmount: orderData.totalAmount,
         deliveryFee,
         deliveryType,
         deliveryAddress: deliveryAddress || '',
         deliveryLocation: { type: 'Point', coordinates: userLoc },
-        userOtp: verificationCode,
-        pickupCode: verificationCode,
+        userOtp,
+        pickupCode,
         status: 'pending',
         timeline: [{ status: 'pending', note: 'Order placed' }],
       });
@@ -220,6 +221,7 @@ const checkout = async (req, res, next) => {
 
       // Create Delivery Request if Home Delivery
       if (deliveryType === 'home_delivery') {
+        const DeliveryRequest = require('../models/DeliveryRequest');
         await DeliveryRequest.create({
           orderId: order._id,
           userId: req.user._id,
@@ -228,7 +230,7 @@ const checkout = async (req, res, next) => {
           deliveryAddress: deliveryAddress || '',
           userLocation: { type: 'Point', coordinates: userLoc },
           shopLocation: { type: 'Point', coordinates: shopLoc },
-          pickupCode: verificationCode,
+          pickupCode,
           status: 'pending',
           deliveryFee,
           totalAmount: orderData.totalAmount,

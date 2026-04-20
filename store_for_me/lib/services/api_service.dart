@@ -27,9 +27,21 @@ class ApiService {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          debugPrint('--------------------------------------------------');
+          debugPrint('[API REQ] ${options.method} ${options.uri}');
+          if (options.data != null) debugPrint('[API DATA] ${options.data}');
           handler.next(options);
         },
+        onResponse: (response, handler) {
+          debugPrint('[API RES] ${response.statusCode} FROM ${response.requestOptions.path}');
+          debugPrint('[API BODY] ${response.data}');
+          debugPrint('--------------------------------------------------');
+          handler.next(response);
+        },
         onError: (error, handler) {
+          debugPrint('[API ERR] ${error.response?.statusCode} ON ${error.requestOptions.path}');
+          debugPrint('[API DATA] ${error.response?.data}');
+          debugPrint('--------------------------------------------------');
           handler.next(error);
         },
       ),
@@ -240,17 +252,56 @@ class ApiService {
   Future<Response> getReels({int page = 1}) =>
       _dio.get('/social/reels', queryParameters: {'page': page});
 
-  Future<Response> toggleFollow(String shopId) =>
-      _dio.post('/social/follow/$shopId');
+  Future<Response> toggleFollow(String userId) =>
+      _dio.post('/social/follow/$userId');
 
-  Future<Response> checkFollow(String shopId) =>
-      _dio.get('/social/follow/$shopId/check');
+  Future<Response> unfollowUser(String userId) =>
+      _dio.delete('/social/unfollow/$userId');
 
-  Future<Response> getFollowersCount(String shopId) =>
-      _dio.get('/social/follow/$shopId/count');
+  Future<Response> checkFollow(String userId) =>
+      _dio.get('/social/follow/$userId/check');
+
+  Future<Response> getFollowersCount(String userId) =>
+      _dio.get('/social/follow/$userId/count');
+
+  Future<Response> getFollowers(String userId, {int page = 1}) =>
+      _dio.get('/social/followers/$userId', queryParameters: {'page': page});
+
+  Future<Response> getFollowing(String userId, {int page = 1}) =>
+      _dio.get('/social/following/$userId', queryParameters: {'page': page});
 
   Future<Response> getFollowedShops() =>
       _dio.get('/social/follow/my-follows');
+
+  Future<Response> getUserProfile(String userId) =>
+      _dio.get('/users/$userId');
+
+  Future<Response> getUserPosts(String userId, {String? cursor, int limit = 12}) {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    return _dio.get('/social/users/$userId/posts', queryParameters: params);
+  }
+
+  Future<Response> getFeedCursor({String? cursor, int limit = 10}) {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    return _dio.get('/social/feed', queryParameters: params);
+  }
+
+  Future<Response> savePost(String postId) =>
+      _dio.post('/social/posts/$postId/save');
+
+  Future<Response> unsavePost(String postId) =>
+      _dio.delete('/social/posts/$postId/save');
+
+  Future<Response> markStoryViewed(String storyId) =>
+      _dio.post('/social/stories/$storyId/view');
+
+  Future<Response> likeReel(String reelId) =>
+      _dio.post('/social/reels/$reelId/like');
+
+  Future<Response> searchUsers(String query) =>
+      _dio.get('/users/search', queryParameters: {'q': query});
 
   // ===================== REVIEWS =====================
   Future<Response> createReview(Map<String, dynamic> data) =>

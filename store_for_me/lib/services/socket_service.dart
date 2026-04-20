@@ -127,6 +127,15 @@ class SocketService {
     _socket?.on('stream:ended', callback);
   }
 
+  // Delivery Partner specific events
+  void onDeliveryNewRequest(Function(dynamic) callback) {
+    _socket?.on('delivery:newRequest', callback);
+  }
+
+  void onDeliveryClaimed(Function(dynamic) callback) {
+    _socket?.on('delivery:claimed', callback);
+  }
+
   // Remove listeners
   void offEvent(String event) {
     _socket?.off(event);

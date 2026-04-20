@@ -1,6 +1,9 @@
 const Shop = require('../models/Shop');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Follow = require('../models/Follow');
+const CheckIn = require('../models/CheckIn');
+const DeliveryRequest = require('../models/DeliveryRequest');
 const { calculateDistance, formatDistance } = require('../utils/geoDistance');
 
 // @desc    Create a new shop
@@ -271,6 +274,17 @@ const getOwnerShop = async (req, res, next) => {
     const orders = await Order.find({ shopId: shop._id });
     const totalOrders = orders.length;
     const totalEarnings = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const successfulOrders = orders.filter(o => o.status === 'delivered').length;
+    
+    const totalFollowers = await Follow.countDocuments({ shopId: shop._id });
+    const totalCheckIns = await CheckIn.countDocuments({ shopId: shop._id });
+    
+    const deliveries = await DeliveryRequest.find({ shopId: shop._id });
+    const deliveryStats = {
+      pending: deliveries.filter(d => ['pending', 'accepted', 'partner_assigned', 'picked_up'].includes(d.status)).length,
+      delivered: deliveries.filter(d => d.status === 'delivered').length,
+      total: deliveries.length
+    };
 
     res.status(200).json({
       success: true,
@@ -280,6 +294,10 @@ const getOwnerShop = async (req, res, next) => {
           totalProducts,
           totalOrders,
           totalEarnings,
+          successfulOrders,
+          totalFollowers,
+          totalCheckIns,
+          deliveryStats
         },
       },
     });

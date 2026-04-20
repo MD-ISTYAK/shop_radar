@@ -10,6 +10,16 @@ const userSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
     },
+    // Social: unique username for @mentions
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+      minlength: 3,
+      maxlength: 30,
+    },
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -34,9 +44,26 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'owner', 'delivery_partner'],
       default: 'user',
     },
+    // Social: account type for dual-type UI (user vs shop profile)
+    accountType: {
+      type: String,
+      enum: ['user', 'shop'],
+      default: 'user',
+    },
     avatar: {
       type: String,
       default: '',
+    },
+    // Social: dedicated profilePic (falls back to avatar)
+    profilePic: {
+      type: String,
+      default: '',
+    },
+    // Social: user bio
+    bio: {
+      type: String,
+      default: '',
+      maxlength: 150,
     },
     location: {
       type: {
@@ -72,6 +99,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // Social: atomic follow counters (maintained via $inc, never derived)
+    followersCount: {
+      type: Number,
+      default: 0,
+    },
+    followingCount: {
+      type: Number,
+      default: 0,
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -92,9 +128,18 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Reference to shop document if accountType is 'shop'
+    shopRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Shop',
+    },
   },
   { timestamps: true }
 );
+
+// Indexes for social features
+userSchema.index({ username: 1 }, { unique: true, sparse: true });
+userSchema.index({ email: 1 }, { unique: true });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

@@ -128,43 +128,35 @@ exports.acceptDelivery = async (req, res, next) => {
     const userId = req.user._id;
     const { deliveryId } = req.params;
 
-    const partner = await DeliveryPartner.findOne({ userId }).populate('activeDeliveries');
-    if (!partner) return res.status(404).json({ success: false, message: 'Not a partner' });
+    // 1. Atomically assign partner if it is still null
+    // We only allow accepting if status is 'accepted' (meaning shop accepted it)
+    const delivery = await DeliveryRequest.findOneAndUpdate(
+      { _id: deliveryId, deliveryPartnerId: null, status: 'accepted' },
+      { deliveryPartnerId: userId, status: 'partner_assigned' },
+      { new: true }
+    ).populate('shopId', 'shopName address location phone').populate('userId', 'name phone address');
 
-    const newDelivery = await DeliveryRequest.findById(deliveryId);
-    if (!newDelivery || newDelivery.deliveryPartnerId) {
-      return res.status(400).json({ success: false, message: 'Delivery already taken or not found' });
+    if (!delivery) {
+      // Logic for "Missed Request" tracking
+      await DeliveryPartner.findOneAndUpdate({ userId }, { $inc: { missedRequests: 1 } });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Too late! This request was already accepted by another partner.' 
+      });
     }
 
-    if (partner.activeDeliveries && partner.activeDeliveries.length > 0) {
-      // Rule: Can accept multiple IF distance between ALL active requests and this request is <= 100m (0.1km)
-      let allowed = true;
-      for (const active of partner.activeDeliveries) {
-        const distShop = calculateDistance(
-          newDelivery.shopLocation.coordinates[1], newDelivery.shopLocation.coordinates[0],
-          active.shopLocation.coordinates[1], active.shopLocation.coordinates[0]
-        );
-        const distUser = calculateDistance(
-          newDelivery.userLocation.coordinates[1], newDelivery.userLocation.coordinates[0],
-          active.userLocation.coordinates[1], active.userLocation.coordinates[0]
-        );
+    // 2. Update Partner stats and active deliveries
+    const partner = await DeliveryPartner.findOneAndUpdate(
+      { userId },
+      { 
+        $addToSet: { activeDeliveries: deliveryId },
+        $inc: { totalAcceptedRequests: 1 }
+      },
+      { new: true }
+    );
 
-        if (distShop > 0.1 || distUser > 0.1) {
-          allowed = false;
-          break;
-        }
-      }
-
-      if (!allowed) {
-        return res.status(400).json({ success: false, message: 'Cannot accept: Locations are more than 100 meters away from your current active deliveries.' });
-      }
-    }
-
-    newDelivery.deliveryPartnerId = userId;
-    newDelivery.status = 'partner_assigned';
-    await newDelivery.save();
-
-    const order = await Order.findById(newDelivery.orderId);
+    // 3. Update Order
+    const order = await Order.findById(delivery.orderId);
     if(order) {
       order.deliveryPartnerId = userId;
       order.status = 'delivery_assigned';
@@ -172,16 +164,43 @@ exports.acceptDelivery = async (req, res, next) => {
       await order.save();
     }
 
-    partner.activeDeliveries.push(newDelivery._id);
-    await partner.save();
+    // 4. Notify all online partners that it's claimed
+    const { getIO } = require('../config/socketManager');
+    try {
+      const io = getIO();
+      io.emit('delivery:claimed', { deliveryId, claimerId: userId });
+    } catch (e) {}
 
-    const populated = await DeliveryRequest.findById(deliveryId)
-      .populate('shopId', 'shopName address location phone')
-      .populate('userId', 'name phone address');
-
-    res.json({ success: true, data: populated });
+    res.json({ success: true, data: delivery });
   } catch (error) {
     next(error);
+  }
+};
+
+// Notify nearby delivery partners helper
+exports.notifyNearbyPartners = async (deliveryRequest) => {
+  try {
+    const { getIO } = require('../config/socketManager');
+    const io = getIO();
+    const shopLoc = deliveryRequest.shopLocation.coordinates; // [lng, lat]
+
+    // Find verified online partners within 500m
+    const partners = await DeliveryPartner.find({
+      isOnline: true,
+      kycStatus: 'verified',
+      currentLocation: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: shopLoc },
+          $maxDistance: 500
+        }
+      }
+    });
+
+    partners.forEach(partner => {
+      io.to(`user:${partner.userId}`).emit('delivery:newRequest', deliveryRequest);
+    });
+  } catch (error) {
+    console.error('Notification Error:', error);
   }
 };
 
@@ -236,6 +255,7 @@ exports.completeDelivery = async (req, res, next) => {
     partner.totalDeliveries += 1;
     partner.earningsBalance += earnings;
     partner.totalEarnings += earnings;
+    partner.todayEarnings += earnings;
 
     // Update moving average for delivery time
     if(deliveryTimeMins > 0) {
@@ -256,9 +276,41 @@ exports.getMyPartnerProfile = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const partner = await DeliveryPartner.findOne({ userId })
-      .populate('activeDeliveryId');
+      .populate({
+        path: 'activeDeliveries',
+        populate: [
+          { path: 'shopId', select: 'shopName address location phone' },
+          { path: 'userId', select: 'name phone address' }
+        ]
+      });
 
     if (!partner) return res.status(404).json({ success: false, message: 'Not registered as partner' });
+
+    // Reset today's earnings if a new day has started
+    const lastUpdate = new Date(partner.updatedAt);
+    const now = new Date();
+    if (lastUpdate.toDateString() !== now.toDateString()) {
+      partner.todayEarnings = 0;
+      await partner.save();
+    }
+
+    res.json({ success: true, data: partner });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Self verify for testing
+exports.verifySelf = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const partner = await DeliveryPartner.findOneAndUpdate(
+      { userId },
+      { kycStatus: 'verified' },
+      { new: true }
+    );
+
+    if (!partner) return res.status(404).json({ success: false, message: 'Partner not found' });
 
     res.json({ success: true, data: partner });
   } catch (error) {

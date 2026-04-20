@@ -34,6 +34,7 @@ const gamificationRoutes = require('./routes/gamificationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const priceComparisonRoutes = require('./routes/priceComparisonRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -65,6 +66,7 @@ app.use('/api/orders', orderRoutes);
 
 // API Routes — Social
 app.use('/api/social', socialRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/checkins', checkInRoutes);
 app.use('/api/community', communityRoutes);

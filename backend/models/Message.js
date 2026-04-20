@@ -17,15 +17,25 @@ const messageSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    // Optional: shop context for shop-related messages
     shopId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shop',
-      required: true,
     },
     text: {
       type: String,
-      required: true,
+      default: '',
       maxlength: 2000,
+    },
+    // Media support for DMs
+    mediaUrl: {
+      type: String,
+      default: '',
+    },
+    mediaType: {
+      type: String,
+      enum: ['text', 'image', 'video', 'audio'],
+      default: 'text',
     },
     read: {
       type: Boolean,

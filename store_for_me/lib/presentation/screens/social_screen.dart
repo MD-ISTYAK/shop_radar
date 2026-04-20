@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/app_constants.dart';
+import '../../data/models/social_models.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/social_provider.dart';
-import '../providers/community_provider.dart';
-import '../widgets/common_widgets.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/post_card.dart';
+import '../widgets/story_bubble.dart';
+import '../widgets/comment_sheet.dart';
+import 'story_viewer_screen.dart';
+import 'reels_screen.dart';
 
 class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
@@ -14,20 +22,33 @@ class SocialScreen extends ConsumerStatefulWidget {
 
 class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _feedScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     Future.microtask(() {
       ref.read(socialProvider.notifier).fetchFeed();
-      ref.read(communityProvider.notifier).fetchQuestions();
+      ref.read(socialProvider.notifier).fetchStories();
+      ref.read(socialProvider.notifier).fetchReels();
     });
+
+    _feedScrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_feedScrollController.position.pixels >=
+        _feedScrollController.position.maxScrollExtent - 200) {
+      ref.read(socialProvider.notifier).loadMoreFeed();
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _feedScrollController.removeListener(_onScroll);
+    _feedScrollController.dispose();
     super.dispose();
   }
 
@@ -36,298 +57,322 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Community', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Shop Radar',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 22,
+            foreground: Paint()
+              ..shader = const LinearGradient(
+                colors: [AppColors.primary, AppColors.accent],
+              ).createShader(const Rect.fromLTWH(0, 0, 200, 30)),
+          ),
+        ),
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(icon: const Icon(Icons.add_box_outlined), onPressed: () => Navigator.pushNamed(context, '/create-post')),
-          IconButton(icon: const Icon(Icons.chat_outlined), onPressed: () => Navigator.pushNamed(context, '/chat-list')),
+          IconButton(
+            icon: const Icon(Icons.add_box_outlined, size: 26),
+            onPressed: () => Navigator.pushNamed(context, '/create-post'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.favorite_border, size: 26),
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, size: 24),
+            onPressed: () => Navigator.pushNamed(context, '/chat-list'),
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Feed'),
-            Tab(text: 'Reels'),
-            Tab(text: 'Q&A'),
-            Tab(text: 'Check-ins'),
+            Tab(icon: Icon(Icons.home_outlined)),
+            Tab(icon: Icon(Icons.play_circle_outline)),
+            Tab(icon: Icon(Icons.explore_outlined)),
           ],
           indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
+          labelColor: AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textLight,
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildFeedTab(),
-          _buildReelsTab(),
-          _buildQATab(),
-          _buildCheckInsTab(),
+          const ReelsScreen(),
+          _buildExploreTab(),
         ],
       ),
     );
   }
 
   Widget _buildFeedTab() {
-    final socialState = ref.watch(socialProvider);
-
-    if (socialState.isLoading) return const LoadingIndicator(message: 'Loading feed...');
-    if (socialState.feed.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.dynamic_feed_outlined,
-        title: 'No posts yet',
-        subtitle: 'Follow shops to see their posts here',
-      );
-    }
+    final social = ref.watch(socialProvider);
+    final auth = ref.watch(authProvider);
+    final currentUserId = auth.user?.id ?? '';
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(socialProvider.notifier).fetchFeed(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: socialState.feed.length,
-        itemBuilder: (context, index) {
-          final post = socialState.feed[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Shop header
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: AppColors.primary.withAlpha(25),
-                        child: const Icon(Icons.store, color: AppColors.primary, size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(post.shopName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                            Text(post.timeAgo, style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-                          ],
-                        ),
-                      ),
-                    ],
+      onRefresh: () async {
+        await Future.wait([
+          ref.read(socialProvider.notifier).fetchFeed(),
+          ref.read(socialProvider.notifier).fetchStories(),
+        ]);
+      },
+      child: social.isLoading
+          ? _buildShimmerFeed()
+          : CustomScrollView(
+              controller: _feedScrollController,
+              slivers: [
+                // ─── Stories Bar ───
+                SliverToBoxAdapter(
+                  child: _buildStoriesBar(social.stories),
+                ),
+                // ─── Divider ───
+                const SliverToBoxAdapter(
+                  child: Divider(height: 1, color: AppColors.divider),
+                ),
+                // ─── Feed ───
+                if (social.feed.isEmpty)
+                  SliverFillRemaining(
+                    child: _buildEmptyFeed(),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index == social.feed.length) {
+                          return social.isLoadingMore
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                )
+                              : const SizedBox(height: 80);
+                        }
+                        final post = social.feed[index];
+                        return PostCard(
+                          post: post,
+                          currentUserId: currentUserId,
+                          onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
+                          onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
+                          onComment: () => _showComments(post),
+                          onProfileTap: () {},
+                        );
+                      },
+                      childCount: social.feed.length + 1,
+                    ),
                   ),
-                  if (post.content.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(post.content, style: const TextStyle(fontSize: 14)),
-                  ],
-                  const SizedBox(height: 12),
-                  // Action buttons
-                  Row(
-                    children: [
-                      _buildPostAction(
-                        post.isLiked ? Icons.favorite : Icons.favorite_border,
-                        '${post.likeCount}',
-                        post.isLiked ? AppColors.error : null,
-                        () => ref.read(socialProvider.notifier).toggleLike(post.id),
-                      ),
-                      const SizedBox(width: 24),
-                      _buildPostAction(Icons.chat_bubble_outline, '${post.commentCount}', null, () {}),
-                      const SizedBox(width: 24),
-                      _buildPostAction(Icons.share_outlined, 'Share', null, () {}),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildStoriesBar(List<StoryGroupModel> stories) {
+    return Container(
+      height: 100,
+      color: AppColors.card,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        itemCount: stories.length + 1, // +1 for "Add" button
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return StoryBubble(
+              group: StoryGroupModel(stories: const [], username: 'Your story'),
+              isAddStory: true,
+              onTap: () => Navigator.pushNamed(context, '/create-story'),
+            );
+          }
+          final group = stories[index - 1];
+          return StoryBubble(
+            group: group,
+            onTap: () => _openStoryViewer(stories, index - 1),
           );
         },
       ),
     );
   }
 
-  Widget _buildPostAction(IconData icon, String label, Color? color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color ?? AppColors.textSecondary),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 13, color: color ?? AppColors.textSecondary)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReelsTab() {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(socialProvider.notifier).fetchFeed();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.video_library_outlined, size: 64, color: AppColors.textLight),
-              const SizedBox(height: 12),
-              const Text('Shop Reels', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text('Short videos from nearby shops', style: TextStyle(color: AppColors.textSecondary)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/create-story'),
-                icon: const Icon(Icons.add),
-                label: const Text('Create Reel'),
-              ),
-            ],
-          ),
+  void _openStoryViewer(List<StoryGroupModel> stories, int index) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (_, __, ___) => StoryViewerScreen(
+          storyGroups: stories,
+          initialGroupIndex: index,
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
       ),
     );
   }
 
-  Widget _buildQATab() {
-    final communityState = ref.watch(communityProvider);
+  void _showComments(PostModel post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CommentSheet(
+        postId: post.id,
+        initialComments: post.comments,
+      ),
+    );
+  }
 
-    return Column(
-      children: [
-        // Ask question button
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: GestureDetector(
-            onTap: () => _showAskQuestionDialog(),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
+  Widget _buildExploreTab() {
+    final social = ref.watch(socialProvider);
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(socialProvider.notifier).fetchExplore(),
+      child: social.explore.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: AppColors.primary.withAlpha(25),
-                    child: const Icon(Icons.help_outline, color: AppColors.primary, size: 20),
+                  Icon(Icons.explore_outlined, size: 64, color: AppColors.textLight),
+                  const SizedBox(height: 12),
+                  const Text('Explore', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Discover posts from the community',
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
-                  const SizedBox(width: 12),
-                  Text('Ask your local community...', style: TextStyle(color: AppColors.textLight, fontSize: 14)),
                 ],
               ),
-            ),
-          ),
-        ),
-        // Questions list
-        Expanded(
-          child: communityState.isLoading
-              ? const LoadingIndicator(message: 'Loading questions...')
-              : communityState.questions.isEmpty
-                  ? const EmptyStateWidget(icon: Icons.question_answer_outlined, title: 'No questions yet', subtitle: 'Be the first to ask!')
-                  : RefreshIndicator(
-                      onRefresh: () => ref.read(communityProvider.notifier).fetchQuestions(),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: communityState.questions.length,
-                        itemBuilder: (context, index) {
-                          final q = communityState.questions[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: AppColors.accent.withAlpha(25),
-                                        child: Text(q.userName.isNotEmpty ? q.userName[0] : '?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(q.userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                      if (q.area.isNotEmpty) ...[
-                                        const SizedBox(width: 6),
-                                        Text('• ${q.area}', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(q.text, style: const TextStyle(fontSize: 14)),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.textLight),
-                                      const SizedBox(width: 4),
-                                      Text('${q.answerCount} answers', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-                                      const SizedBox(width: 16),
-                                      Icon(Icons.visibility_outlined, size: 16, color: AppColors.textLight),
-                                      const SizedBox(width: 4),
-                                      Text('${q.viewCount} views', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-                                    ],
-                                  ),
-                                ],
+            )
+          : GridView.builder(
+              padding: const EdgeInsets.all(2),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 2,
+                crossAxisSpacing: 2,
+              ),
+              itemCount: social.explore.length,
+              itemBuilder: (context, index) {
+                final post = social.explore[index];
+                final imageUrl = post.images.isNotEmpty
+                    ? AppConstants.getImageUrl(post.images.first)
+                    : post.mediaUrl.isNotEmpty
+                        ? AppConstants.getImageUrl(post.mediaUrl)
+                        : '';
+
+                return GestureDetector(
+                  onTap: () => _showComments(post),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      imageUrl.isNotEmpty
+                          ? Image(
+                              image: CachedNetworkImageProvider(imageUrl),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: AppColors.shimmerBase,
+                                child: Icon(Icons.image, color: AppColors.textLight),
+                              ),
+                            )
+                          : Container(
+                              color: AppColors.primary.withAlpha(30),
+                              padding: const EdgeInsets.all(8),
+                              child: Center(
+                                child: Text(
+                                  post.content,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-        ),
-      ],
+                      if (post.images.length > 1)
+                        const Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Icon(Icons.collections, color: Colors.white, size: 16),
+                        ),
+                      if (post.isReel)
+                        const Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Icon(Icons.play_circle_outline, color: Colors.white, size: 18),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 
-  Widget _buildCheckInsTab() {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(socialProvider.notifier).fetchFeed();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.location_on_outlined, size: 64, color: AppColors.textLight),
-              const SizedBox(height: 12),
-              const Text('Check-Ins', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text('Visit a shop and check in to earn points!', style: TextStyle(color: AppColors.textSecondary)),
-            ],
+  Widget _buildEmptyFeed() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: AppColors.textLight),
+          const SizedBox(height: 16),
+          const Text(
+            'Welcome to Shop Radar',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            'Follow shops and people to see their posts',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: () {
+              _tabController.animateTo(2);
+              ref.read(socialProvider.notifier).fetchExplore();
+            },
+            icon: const Icon(Icons.explore_outlined),
+            label: const Text('Find people to follow'),
+          ),
+        ],
       ),
     );
   }
 
-  void _showAskQuestionDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Ask a Question'),
-        content: TextField(
-          controller: controller,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: 'e.g., Best salon near Lajpat Nagar?'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                ref.read(communityProvider.notifier).postQuestion(controller.text);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Post'),
+  Widget _buildShimmerFeed() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.shimmerBase,
+      highlightColor: AppColors.shimmerHighlight,
+      child: ListView.builder(
+        itemCount: 4,
+        itemBuilder: (_, __) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              // Header shimmer
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(width: 36, height: 36, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+                    const SizedBox(width: 10),
+                    Container(width: 120, height: 14, color: Colors.white),
+                  ],
+                ),
+              ),
+              // Image shimmer
+              Container(
+                width: double.infinity,
+                height: 300,
+                color: Colors.white,
+              ),
+              // Actions shimmer
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: List.generate(3, (i) => Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Container(width: 24, height: 24, color: Colors.white),
+                  )),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

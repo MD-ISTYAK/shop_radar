@@ -27,6 +27,11 @@ const register = async (req, res, next) => {
       };
     }
 
+    // Auto-generate username from name if not provided
+    if (!userData.username) {
+      userData.username = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now().toString(36).slice(-4);
+    }
+
     const user = await User.create(userData);
 
     // Generate token
@@ -39,9 +44,16 @@ const register = async (req, res, next) => {
         user: {
           id: user._id,
           name: user.name,
+          username: user.username,
           email: user.email,
           phone: user.phone,
           role: user.role,
+          accountType: user.accountType || 'user',
+          profilePic: user.profilePic || user.avatar || '',
+          avatar: user.avatar || '',
+          bio: user.bio || '',
+          followersCount: user.followersCount || 0,
+          followingCount: user.followingCount || 0,
         },
         token,
       },
@@ -87,9 +99,16 @@ const login = async (req, res, next) => {
         user: {
           id: user._id,
           name: user.name,
+          username: user.username,
           email: user.email,
           phone: user.phone,
           role: user.role,
+          accountType: user.accountType || 'user',
+          profilePic: user.profilePic || user.avatar || '',
+          avatar: user.avatar || '',
+          bio: user.bio || '',
+          followersCount: user.followersCount || 0,
+          followingCount: user.followingCount || 0,
         },
         token,
       },

@@ -15,6 +15,10 @@ class DeliveryPartnerModel {
   final double rating;
   final double earningsBalance;
   final double totalEarnings;
+  final double todayEarnings;
+  final int totalAcceptedRequests;
+  final int missedRequests;
+  final int failedOrders;
 
   DeliveryPartnerModel({
     required this.id,
@@ -33,6 +37,10 @@ class DeliveryPartnerModel {
     this.rating = 5.0,
     this.earningsBalance = 0,
     this.totalEarnings = 0,
+    this.todayEarnings = 0,
+    this.totalAcceptedRequests = 0,
+    this.missedRequests = 0,
+    this.failedOrders = 0,
   });
 
   factory DeliveryPartnerModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +64,10 @@ class DeliveryPartnerModel {
       rating: (json['rating'] ?? 5.0).toDouble(),
       earningsBalance: (json['earningsBalance'] ?? 0).toDouble(),
       totalEarnings: (json['totalEarnings'] ?? 0).toDouble(),
+      todayEarnings: (json['todayEarnings'] ?? 0).toDouble(),
+      totalAcceptedRequests: json['totalAcceptedRequests'] ?? 0,
+      missedRequests: json['missedRequests'] ?? 0,
+      failedOrders: json['failedOrders'] ?? 0,
     );
   }
 

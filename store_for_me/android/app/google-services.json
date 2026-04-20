@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "764609478993",
+    "project_id": "shopradar-92a87",
+    "storage_bucket": "shopradar-92a87.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764609478993:android:f824c546b6367f14519370",
+        "android_client_info": {
+          "package_name": "com.storefor.me.store_for_me"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvBl7VCdTttbtLDvAO-UhDHiNwWhQeCds"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

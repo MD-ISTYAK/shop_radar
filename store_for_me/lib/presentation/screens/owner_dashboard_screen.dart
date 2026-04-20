@@ -9,7 +9,8 @@ import '../providers/product_provider.dart';
 import '../widgets/common_widgets.dart';
 
 class OwnerDashboardScreen extends ConsumerStatefulWidget {
-  const OwnerDashboardScreen({super.key});
+  final ScrollController scrollController;
+  const OwnerDashboardScreen({super.key, required this.scrollController});
 
   @override
   ConsumerState<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
@@ -44,6 +45,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   await ref.read(productProvider.notifier).fetchOwnerProducts();
                 },
                 child: SingleChildScrollView(
+                  controller: widget.scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -66,20 +68,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ],
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withAlpha(15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              onPressed: () async {
-                                await ref.read(authProvider.notifier).logout();
-                                if (mounted) Navigator.pushReplacementNamed(context, '/login');
-                              },
-                              icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-                              tooltip: 'Logout',
                             ),
                           ),
                         ],
@@ -252,120 +240,47 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Analytics
-                        Row(
+                        // Analytics Grid
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.4,
                           children: [
-                            Expanded(
-                              child: _AnalyticsCard(
-                                icon: Icons.inventory_2_rounded,
-                                label: 'Products',
-                                value: '${analytics?['totalProducts'] ?? 0}',
-                                color: AppColors.info,
-                              ),
+                            _AnalyticsCard(
+                              icon: Icons.currency_rupee_rounded,
+                              label: 'Earnings',
+                              value: '₹${analytics?['totalEarnings'] ?? 0}',
+                              color: AppColors.success,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _AnalyticsCard(
-                                icon: Icons.shopping_bag_rounded,
-                                label: 'Orders',
-                                value: '${analytics?['totalOrders'] ?? 0}',
-                                color: AppColors.warning,
-                              ),
+                            _AnalyticsCard(
+                              icon: Icons.local_shipping_rounded,
+                              label: 'Delivery',
+                              value: '${analytics?['deliveryStats']?['pending'] ?? 0}/${analytics?['deliveryStats']?['total'] ?? 0}',
+                              color: AppColors.info,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _AnalyticsCard(
-                                icon: Icons.currency_rupee_rounded,
-                                label: 'Earnings',
-                                value: '₹${analytics?['totalEarnings'] ?? 0}',
-                                color: AppColors.success,
-                              ),
+                            _AnalyticsCard(
+                              icon: Icons.people_rounded,
+                              label: 'Followers',
+                              value: '${analytics?['totalFollowers'] ?? 0}',
+                              color: AppColors.accent,
+                            ),
+                            _AnalyticsCard(
+                              icon: Icons.location_on_rounded,
+                              label: 'Checking',
+                              value: '${analytics?['totalCheckIns'] ?? 0}',
+                              color: AppColors.warning,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
-
-                        // Quick actions
-                        Text('Quick Actions', style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 12),
-                        _ActionTile(
-                          icon: Icons.assignment_rounded,
-                          title: 'Manage Orders',
-                          subtitle: 'View, accept, and fulfill customer orders',
+                        _AnalyticsCard(
+                          icon: Icons.task_alt_rounded,
+                          label: 'Successful Orders Done',
+                          value: '${analytics?['successfulOrders'] ?? 0}',
                           color: AppColors.primary,
-                          onTap: () => Navigator.pushNamed(context, '/owner-orders'),
-                        ),
-                        _ActionTile(
-                          icon: Icons.add_box_rounded,
-                          title: 'Add Product',
-                          subtitle: 'Add a new product to your shop',
-                          color: AppColors.primary,
-                          onTap: () async {
-                            await Navigator.pushNamed(context, '/add-product');
-                            ref.read(productProvider.notifier).fetchOwnerProducts();
-                            ref.read(shopProvider.notifier).fetchOwnerShop();
-                          },
-                        ),
-                        _ActionTile(
-                          icon: Icons.inventory_rounded,
-                          title: 'Manage Products',
-                          subtitle: 'Edit or remove products',
-                          color: AppColors.info,
-                          onTap: () async {
-                            await Navigator.pushNamed(context, '/manage-products');
-                            ref.read(productProvider.notifier).fetchOwnerProducts();
-                            ref.read(shopProvider.notifier).fetchOwnerShop();
-                          },
-                        ),
-                        _ActionTile(
-                          icon: Icons.edit_rounded,
-                          title: 'Update Shop',
-                          subtitle: 'Update your shop details',
-                          color: AppColors.secondary,
-                          onTap: () => Navigator.pushNamed(context, '/add-shop', arguments: shop),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Social Actions
-                        Text('Social Media', style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 12),
-                        _ActionTile(
-                          icon: Icons.post_add_rounded,
-                          title: 'Create Post',
-                          subtitle: 'Share updates, offers & photos with followers',
-                          color: AppColors.accent,
-                          onTap: () async {
-                            final result = await Navigator.pushNamed(context, '/create-post');
-                            if (result == true) {
-                              ref.read(shopProvider.notifier).fetchOwnerShop();
-                            }
-                          },
-                        ),
-                        _ActionTile(
-                          icon: Icons.auto_stories_rounded,
-                          title: 'Create Story',
-                          subtitle: 'Upload a 24-hour disappearing story',
-                          color: AppColors.warning,
-                          onTap: () async {
-                            final result = await Navigator.pushNamed(context, '/create-story');
-                            if (result == true) {
-                              ref.read(shopProvider.notifier).fetchOwnerShop();
-                            }
-                          },
-                        ),
-                        _ActionTile(
-                          icon: Icons.settings_suggest_rounded,
-                          title: 'Manage Content',
-                          subtitle: 'Edit, hide or delete your posts and stories',
-                          color: AppColors.primary,
-                          onTap: () => Navigator.pushNamed(context, '/shop-management'),
-                        ),
-                        _ActionTile(
-                          icon: Icons.chat_rounded,
-                          title: 'Messages',
-                          subtitle: 'Chat with your customers',
-                          color: AppColors.success,
-                          onTap: () => Navigator.pushNamed(context, '/chat-list'),
                         ),
                         const SizedBox(height: 24),
 
@@ -564,17 +479,21 @@ class _AnalyticsCard extends StatelessWidget {
             ),
             child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 18,
+            style: const TextStyle(
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            label, 
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );

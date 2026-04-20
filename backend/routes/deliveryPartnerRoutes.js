@@ -19,10 +19,12 @@ const {
   completeDelivery,
   getMyPartnerProfile,
   getEarnings,
+  verifySelf,
 } = require('../controllers/deliveryPartnerController');
 
 router.post('/register', protect, registerAsPartner);
 router.put('/kyc', protect, updateKYC);
+router.post('/verify-self', protect, verifySelf);
 router.post('/toggle-online', protect, toggleOnline);
 router.post('/update-location', protect, updateLocation);
 router.get('/available', protect, getAvailableDeliveries);
