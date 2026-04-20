@@ -132,4 +132,45 @@ const getProfile = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getProfile };
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name, username, bio } = req.body;
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (bio !== undefined) user.bio = bio;
+    
+    // Check username uniqueness if changing
+    if (username && username !== user.username) {
+      const existing = await User.findOne({ username: username.toLowerCase() });
+      if (existing) {
+        return res.status(400).json({ success: false, message: 'Username is already taken' });
+      }
+      user.username = username.toLowerCase();
+    }
+
+    if (req.file) {
+      user.profilePic = req.file.path;
+      user.avatar = req.file.path; // Keep both in sync for now
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getProfile, updateProfile };

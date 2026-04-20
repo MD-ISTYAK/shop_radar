@@ -48,6 +48,7 @@ import 'features/sharing/presentation/screens/device_discovery_screen.dart';
 import 'features/sharing/presentation/screens/file_transfer_screen.dart';
 import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
+import 'presentation/screens/edit_profile_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
 
@@ -174,6 +175,8 @@ class ShopRadarApp extends StatelessWidget {
             return _buildRoute(const FileTransferScreen(), settings);
           case '/reels':
             return _buildRoute(const ReelsScreen(), settings);
+          case '/edit-profile':
+            return _buildRoute(const EditProfileScreen(), settings);
           default:
             return _buildRoute(const SplashScreen(), settings);
         }

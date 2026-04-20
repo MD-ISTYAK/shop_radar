@@ -58,6 +58,9 @@ class ApiService {
       _dio.post('/auth/login', data: data);
 
   Future<Response> getProfile() => _dio.get('/auth/profile');
+  
+  Future<Response> updateProfile(FormData data) =>
+      _dio.put('/auth/profile', data: data);
 
   // ===================== TOKEN MANAGEMENT =====================
   Future<void> saveToken(String token) async {

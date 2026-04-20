@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
@@ -56,10 +57,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      child: Text(
-                        user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : '?',
-                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary),
-                      ),
+                      backgroundImage: user?.avatar.isNotEmpty == true 
+                          ? CachedNetworkImageProvider(AppConstants.getImageUrl(user!.avatar))
+                          : null,
+                      child: (user?.avatar.isEmpty == true)
+                          ? Text(
+                              user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : '?',
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.primary),
+                            )
+                          : null,
                     ),
                   ).animate().scale(duration: 400.ms),
                   const SizedBox(height: 14),
@@ -67,9 +73,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     user?.name ?? 'User',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
+                  if (user?.username != null && user!.username.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text('@${user.username}', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13, fontWeight: FontWeight.w500)),
+                  ],
                   const SizedBox(height: 4),
                   Text(user?.email ?? '', style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 14)),
                   const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, '/edit-profile'),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Edit Profile'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   // Stats row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,

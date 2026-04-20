@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
 import '../../services/api_service.dart';
@@ -126,6 +127,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       final message = _extractError(e);
       state = state.copyWith(status: AuthStatus.error, error: message);
+      return false;
+    }
+  }
+
+  Future<bool> updateProfile({
+    required String name,
+    required String username,
+    required String bio,
+    String? imagePath,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'name': name,
+        'username': username,
+        'bio': bio,
+        if (imagePath != null)
+          'profilePic': await MultipartFile.fromFile(imagePath),
+      });
+
+      final response = await _api.updateProfile(formData);
+
+      if (response.data['success'] == true) {
+        final user = UserModel.fromJson(response.data['data']);
+        await _authService.saveUser(user);
+        state = state.copyWith(user: user);
+        return true;
+      } else {
+        state = state.copyWith(error: response.data['message']);
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(error: _extractError(e));
       return false;
     }
   }

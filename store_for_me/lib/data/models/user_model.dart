@@ -15,6 +15,8 @@ class UserModel {
   final int totalCheckIns;
   final int totalReviews;
   final int totalOrders;
+  final String username;
+  final String bio;
 
   UserModel({
     required this.id,
@@ -33,6 +35,8 @@ class UserModel {
     this.totalCheckIns = 0,
     this.totalReviews = 0,
     this.totalOrders = 0,
+    this.username = '',
+    this.bio = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -55,9 +59,10 @@ class UserModel {
       referredBy: json['referredBy'] ?? '',
       isVerified: json['isVerified'] ?? false,
       profileComplete: json['profileComplete'] ?? false,
-      totalCheckIns: json['totalCheckIns'] ?? 0,
       totalReviews: json['totalReviews'] ?? 0,
       totalOrders: json['totalOrders'] ?? 0,
+      username: json['username'] ?? '',
+      bio: json['bio'] ?? '',
     );
   }
 
@@ -71,6 +76,8 @@ class UserModel {
     'avatar': avatar,
     'interests': interests,
     'language': language,
+    'username': username,
+    'bio': bio,
   };
 
   bool get isOwner => role == 'owner';
