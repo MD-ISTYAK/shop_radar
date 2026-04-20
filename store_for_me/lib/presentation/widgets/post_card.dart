@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:video_player/video_player.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
@@ -13,6 +14,7 @@ class PostCard extends StatefulWidget {
   final VoidCallback? onComment;
   final VoidCallback? onShare;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onVideoTap;
 
   const PostCard({
     super.key,
@@ -23,6 +25,7 @@ class PostCard extends StatefulWidget {
     this.onComment,
     this.onShare,
     this.onProfileTap,
+    this.onVideoTap,
   });
 
   @override
@@ -34,6 +37,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   late Animation<double> _heartAnim;
   bool _showHeart = false;
   final PageController _imagePageController = PageController();
+  VideoPlayerController? _videoController;
+  bool _isMuted = true;
 
   @override
   void initState() {
@@ -48,10 +53,26 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 30),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
     ]).animate(_heartAnimController);
+
+    if (widget.post.isReel && widget.post.videoUrl.isNotEmpty) {
+      final url = widget.post.videoUrl.startsWith('http')
+          ? widget.post.videoUrl
+          : AppConstants.getImageUrl(widget.post.videoUrl);
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(url))
+        ..initialize().then((_) {
+          if (mounted) {
+            _videoController!.setVolume(0);
+            _videoController!.setLooping(true);
+            _videoController!.play();
+            setState(() {});
+          }
+        });
+    }
   }
 
   @override
   void dispose() {
+    _videoController?.dispose();
     _heartAnimController.dispose();
     _imagePageController.dispose();
     super.dispose();
@@ -210,6 +231,58 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   Widget _buildMedia(PostModel post) {
+    if ((post.isReel || post.mediaType == 'video') && _videoController != null && _videoController!.value.isInitialized) {
+      return GestureDetector(
+        onDoubleTap: _onDoubleTap,
+        onTap: widget.onVideoTap,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: VideoPlayer(_videoController!),
+            ),
+            // Mute/Unmute button
+            Positioned(
+              bottom: 12,
+              right: 12,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isMuted = !_isMuted;
+                    _videoController!.setVolume(_isMuted ? 0 : 1.0);
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isMuted ? Icons.volume_off : Icons.volume_up,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+            // Heart animation
+            if (_showHeart)
+              AnimatedBuilder(
+                animation: _heartAnim,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _heartAnim.value,
+                    child: const Icon(Icons.favorite, size: 80, color: Colors.white),
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    }
+
     final images = post.images.isNotEmpty ? post.images : (post.mediaUrl.isNotEmpty ? [post.mediaUrl] : <String>[]);
 
     if (images.isEmpty) return const SizedBox.shrink();

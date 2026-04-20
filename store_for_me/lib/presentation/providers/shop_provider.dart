@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../data/models/shop_model.dart';
@@ -63,13 +64,16 @@ class ShopNotifier extends StateNotifier<ShopState> {
     try {
       // Get user location
       Position? position = state.userLocation;
+      debugPrint('🔍 [ShopProvider] fetchNearbyShops called. Cached position: ${position?.latitude}, ${position?.longitude}');
       if (position == null) {
         position = await _locationService.getCurrentLocation();
+        debugPrint('📍 [ShopProvider] Fresh location: ${position?.latitude}, ${position?.longitude}');
         if (position != null) {
           state = state.copyWith(userLocation: position);
         }
       }
 
+      debugPrint('🌐 [ShopProvider] Calling API with: lat=${position?.latitude}, lng=${position?.longitude}, category=${state.selectedCategory}, search=${state.searchQuery}');
       final response = await _api.getNearbyShops(
         lat: position?.latitude,
         lng: position?.longitude,
@@ -77,13 +81,16 @@ class ShopNotifier extends StateNotifier<ShopState> {
         search: state.searchQuery,
       );
 
+      debugPrint('📦 [ShopProvider] API response success=${response.data['success']}, count=${response.data['count']}');
       if (response.data['success'] == true) {
         final shops = (response.data['data'] as List)
             .map((e) => ShopModel.fromJson(e))
             .toList();
+        debugPrint('✅ [ShopProvider] Parsed ${shops.length} shops');
         state = state.copyWith(shops: shops, isLoading: false);
       }
     } catch (e) {
+      debugPrint('❌ [ShopProvider] Error: $e');
       state = state.copyWith(isLoading: false, error: 'Failed to load shops');
     }
   }

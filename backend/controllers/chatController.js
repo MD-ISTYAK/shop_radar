@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const Shop = require('../models/Shop');
 const User = require('../models/User');
+const { sendToUser } = require('../config/socketManager');
 
 // @desc    Send a message (user to shop or shop to user)
 // @route   POST /api/chat/send
@@ -27,6 +28,21 @@ const sendMessage = async (req, res, next) => {
     });
 
     await message.populate('senderId', 'name');
+
+    // Notify receiver via socket
+    sendToUser(receiverId, 'notification:new', {
+      type: 'message',
+      title: `New message from ${req.user.name}`,
+      body: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      data: {
+        conversationId,
+        senderId: senderId.toString(),
+        messageId: message._id,
+      }
+    });
+
+    // Also emit message directly if they are in the chat
+    sendToUser(receiverId, 'message:new', message);
 
     res.status(201).json({ success: true, data: message });
   } catch (error) {

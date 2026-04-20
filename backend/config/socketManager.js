@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 let io = null;
+const connectedUsers = new Map(); // userId -> socketId
 
 const initSocket = (server) => {
   const { Server } = require('socket.io');
@@ -30,6 +32,27 @@ const initSocket = (server) => {
 
     // Join user-specific room
     socket.join(`user:${socket.userId}`);
+    connectedUsers.set(socket.userId, socket.id);
+
+    // Update user online status
+    const updateOnlineStatus = async (isOnline) => {
+      try {
+        await User.findByIdAndUpdate(socket.userId, {
+          isOnline,
+          lastSeen: new Date()
+        });
+        // Broadcast to friends/chats that this user is online/offline
+        io.emit('user:statusChange', {
+          userId: socket.userId,
+          isOnline,
+          lastSeen: new Date()
+        });
+      } catch (err) {
+        console.error('Error updating online status:', err);
+      }
+    };
+
+    updateOnlineStatus(true);
 
     // Join shop room (for owners)
     socket.on('join:shop', (shopId) => {
@@ -97,6 +120,25 @@ const initSocket = (server) => {
 
     socket.on('disconnect', () => {
       console.log(`🔌 User disconnected: ${socket.userId}`);
+      connectedUsers.delete(socket.userId);
+      updateOnlineStatus(false);
+    });
+
+    // Message status updates
+    socket.on('message:received', (data) => {
+      // data: { messageId, senderId }
+      io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
+        messageId: data.messageId,
+        status: 'delivered'
+      });
+    });
+
+    socket.on('message:seen', (data) => {
+      // data: { conversationId, senderId }
+      io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
+        conversationId: data.conversationId,
+        status: 'seen'
+      });
     });
   });
 

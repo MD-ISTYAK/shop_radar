@@ -62,20 +62,38 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                         ),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          leading: CircleAvatar(
-                            radius: 24,
-                            backgroundColor: AppColors.primaryLight.withAlpha(30),
-                            child: conv.shop != null && conv.shop!.logo.isNotEmpty
-                                ? ClipOval(
-                                    child: CachedNetworkImage(
-                                      imageUrl: AppConstants.getImageUrl(conv.shop!.logo),
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => const Icon(Icons.store, color: AppColors.primary),
+                          leading: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: AppColors.primaryLight.withAlpha(30),
+                                child: conv.shop != null && conv.shop!.logo.isNotEmpty
+                                    ? ClipOval(
+                                        child: CachedNetworkImage(
+                                          imageUrl: AppConstants.getImageUrl(conv.shop!.logo),
+                                          width: 48,
+                                          height: 48,
+                                          fit: BoxFit.cover,
+                                          errorWidget: (_, __, ___) => const Icon(Icons.store, color: AppColors.primary),
+                                        ),
+                                      )
+                                    : const Icon(Icons.store, color: AppColors.primary),
+                              ),
+                              if (conv.otherUser?.isOnline == true)
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppColors.surface, width: 2),
                                     ),
-                                  )
-                                : const Icon(Icons.store, color: AppColors.primary),
+                                  ),
+                                ),
+                            ],
                           ),
                           title: Row(
                             children: [

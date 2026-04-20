@@ -38,7 +38,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> checkAuth() async {
     final isLoggedIn = await _authService.isLoggedIn();
     if (isLoggedIn) {
-      final user = await _authService.getUser();
+      UserModel? user = await _authService.getUser();
+      // If user local cache is missing its ID (due to previous bug), fetch fresh from backend
+      if (user != null && user.id.isEmpty) {
+        try {
+          final response = await _api.getProfile();
+          if (response.data['success'] == true) {
+            user = UserModel.fromJson(response.data['data']);
+            await _authService.saveUser(user);
+          }
+        } catch (_) {}
+      }
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } else {
       state = const AuthState(status: AuthStatus.unauthenticated);

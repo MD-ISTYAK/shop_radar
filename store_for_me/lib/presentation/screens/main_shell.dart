@@ -7,6 +7,7 @@ import 'discover_screen.dart';
 import 'orders_screen.dart';
 import 'social_screen.dart';
 import 'profile_screen.dart';
+import '../../services/notification_service.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -30,7 +31,20 @@ class _MainShellState extends ConsumerState<MainShell> {
   void initState() {
     super.initState();
     // Connect to Socket.io
-    SocketService().connect();
+    SocketService().connect().then((_) {
+      // Listen for socket notifications globally
+      SocketService().onNotification((data) {
+        final title = data['title'] ?? 'New Notification';
+        final body = data['body'] ?? '';
+        final useCustomSound = data['useCustomSound'] == true;
+        
+        NotificationService().showNotification(
+          title: title,
+          body: body,
+          useCustomSound: useCustomSound,
+        );
+      });
+    });
   }
 
   @override

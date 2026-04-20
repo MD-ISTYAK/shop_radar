@@ -33,6 +33,7 @@ const {
   getMyFollowedShops,
   getUserProfile,
   searchUsers,
+  getSuggestedUsers,
 } = require('../controllers/socialController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -70,6 +71,7 @@ router.delete('/posts/:postId/comments/:commentId', deleteComment);
 router.patch('/posts/:postId/comments/:commentId/hide', toggleHideComment);
 
 // ===================== USER POSTS =====================
+router.get('/users/suggested', protect, getSuggestedUsers);
 router.get('/users/:userId/posts', getUserPosts);
 
 // ===================== STORIES =====================

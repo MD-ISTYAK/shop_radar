@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
+import '../../data/models/chat_models.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -87,7 +88,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.title),
+            Builder(
+              builder: (context) {
+                final conv = chatState.conversations.firstWhere(
+                  (c) => c.conversationId == widget.conversationId,
+                  orElse: () => ConversationModel(
+                    conversationId: widget.conversationId, 
+                    lastMessage: LastMessageModel(createdAt: DateTime.now())
+                  ),
+                );
+                final otherUser = conv.otherUser;
+                if (otherUser == null) return const SizedBox.shrink();
+                
+                return Text(
+                  otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${DateFormat.jm().format(otherUser.lastSeen!)}' : 'Offline'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: otherUser.isOnline ? Colors.green : AppColors.textSecondary,
+                    fontWeight: FontWeight.normal,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -149,12 +178,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    DateFormat.jm().format(msg.createdAt),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isMine ? Colors.white70 : AppColors.textLight,
-                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        DateFormat.jm().format(msg.createdAt),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isMine ? Colors.white70 : AppColors.textLight,
+                                        ),
+                                      ),
+                                      if (isMine) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          msg.status == 'seen' ? Icons.done_all : (msg.status == 'delivered' ? Icons.done_all : Icons.done),
+                                          size: 14,
+                                          color: msg.status == 'seen' ? Colors.blue : (isMine ? Colors.white70 : AppColors.textLight),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),

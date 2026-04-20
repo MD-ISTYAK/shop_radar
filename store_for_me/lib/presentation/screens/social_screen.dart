@@ -12,6 +12,8 @@ import '../widgets/story_bubble.dart';
 import '../widgets/comment_sheet.dart';
 import 'story_viewer_screen.dart';
 import 'reels_screen.dart';
+import 'search_users_screen.dart';
+import 'public_profile_screen.dart';
 
 class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
@@ -54,6 +56,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = ref.watch(authProvider).user?.id ?? '';
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -70,6 +73,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
         ),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search, size: 26),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchUsersScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.add_box_outlined, size: 26),
             onPressed: () => Navigator.pushNamed(context, '/create-post'),
@@ -88,7 +95,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
           tabs: const [
             Tab(icon: Icon(Icons.home_outlined)),
             Tab(icon: Icon(Icons.play_circle_outline)),
-            Tab(icon: Icon(Icons.explore_outlined)),
+            Tab(icon: Icon(Icons.person_outline)),
           ],
           indicatorColor: AppColors.primary,
           labelColor: AppColors.textPrimary,
@@ -100,7 +107,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
         children: [
           _buildFeedTab(),
           const ReelsScreen(),
-          _buildExploreTab(),
+          PublicProfileScreen(userId: currentUserId),
         ],
       ),
     );
@@ -155,7 +162,18 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
                           onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
                           onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
                           onComment: () => _showComments(post),
-                          onProfileTap: () {},
+                          onProfileTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PublicProfileScreen(userId: post.userId),
+                              ),
+                            );
+                          },
+                          onVideoTap: () {
+                            ref.read(socialProvider.notifier).setTargetReelId(post.id);
+                            _tabController.animateTo(1);
+                          },
                         );
                       },
                       childCount: social.feed.length + 1,

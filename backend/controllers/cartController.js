@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const Shop = require('../models/Shop');
 const DeliveryRequest = require('../models/DeliveryRequest');
 const { calculateDistance } = require('../utils/geoDistance');
+const { sendToUser } = require('../config/socketManager');
 
 // @desc    Add item to cart
 // @route   POST /api/cart/add
@@ -218,6 +219,20 @@ const checkout = async (req, res, next) => {
       });
       
       orders.push(order);
+
+      // Notify shop owner via socket with "zing" sound
+      if (shop && shop.ownerId) {
+        sendToUser(shop.ownerId.toString(), 'notification:new', {
+          type: 'order_request',
+          title: 'New Order Received!',
+          body: `Order ${orderId} placed for ₹${orderData.totalAmount}`,
+          useCustomSound: true,
+          data: {
+            orderId: order._id,
+            status: 'pending'
+          }
+        });
+      }
 
       // Create Delivery Request if Home Delivery
       if (deliveryType === 'home_delivery') {

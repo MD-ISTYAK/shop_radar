@@ -15,14 +15,14 @@ class CreateStoryScreen extends ConsumerStatefulWidget {
 
 class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
   final _captionController = TextEditingController();
-  XFile? _selectedImage;
+  XFile? _selectedMedia;
   bool _isSubmitting = false;
 
-  Future<void> _pickImage() async {
+  Future<void> _pickMedia() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (image != null) {
-      setState(() => _selectedImage = image);
+    final media = await picker.pickMedia(imageQuality: 85);
+    if (media != null) {
+      setState(() => _selectedMedia = media);
     }
   }
 
@@ -30,14 +30,22 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
     if (image != null) {
-      setState(() => _selectedImage = image);
+      setState(() => _selectedMedia = image);
+    }
+  }
+
+  Future<void> _takeVideo() async {
+    final picker = ImagePicker();
+    final video = await picker.pickVideo(source: ImageSource.camera);
+    if (video != null) {
+      setState(() => _selectedMedia = video);
     }
   }
 
   Future<void> _submitStory() async {
-    if (_selectedImage == null) {
+    if (_selectedMedia == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an image'), backgroundColor: AppColors.warning),
+        const SnackBar(content: Text('Please select an image/video'), backgroundColor: AppColors.warning),
       );
       return;
     }
@@ -48,7 +56,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
     formData.fields.add(MapEntry('caption', _captionController.text.trim()));
     formData.files.add(MapEntry(
       'image',
-      await MultipartFile.fromFile(_selectedImage!.path, filename: _selectedImage!.name),
+      await MultipartFile.fromFile(_selectedMedia!.path, filename: _selectedMedia!.name),
     ));
 
     final success = await ref.read(socialProvider.notifier).createStory(formData);
@@ -100,9 +108,9 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Image preview
+            // Media preview
             GestureDetector(
-              onTap: _pickImage,
+              onTap: _pickMedia,
               child: Container(
                 width: double.infinity,
                 height: 350,
@@ -111,43 +119,61 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppColors.divider, width: 2),
                   boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10)],
-                  image: _selectedImage != null
+                  image: _selectedMedia != null && !_selectedMedia!.path.endsWith('.mp4') // basic check for image
                       ? DecorationImage(
-                          image: FileImage(File(_selectedImage!.path)),
+                          image: FileImage(File(_selectedMedia!.path)),
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
-                child: _selectedImage == null
+                child: _selectedMedia == null
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.add_photo_alternate_outlined, size: 64, color: AppColors.textLight),
                           const SizedBox(height: 12),
-                          Text('Tap to select image', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                          Text('Tap to select photo/video', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
                         ],
                       )
-                    : null,
+                    : (_selectedMedia!.path.endsWith('.mp4') || _selectedMedia!.name.toLowerCase().endsWith('.mp4')
+                        ? const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.video_file, size: 64, color: AppColors.primary),
+                              SizedBox(height: 12),
+                              Text('Video Selected', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                            ],
+                          )
+                        : null),
               ),
             ),
             const SizedBox(height: 16),
 
             // Camera/Gallery buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.photo_library_outlined, size: 20),
-                  label: const Text('Gallery'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _takePhoto,
-                  icon: const Icon(Icons.camera_alt_outlined, size: 20),
-                  label: const Text('Camera'),
-                ),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _pickMedia,
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: const Text('Gallery'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _takePhoto,
+                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                    label: const Text('Photo'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _takeVideo,
+                    icon: const Icon(Icons.videocam_outlined, size: 18),
+                    label: const Text('Video'),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
 

@@ -89,6 +89,8 @@ const getFeed = async (req, res, next) => {
     const query = {
       isHidden: { $ne: true },
       $or: [
+        { userId: userId },
+        { ownerId: userId },
         { userId: { $in: followingIds } },
         { ownerId: { $in: followingIds } },
         { shopId: { $in: shopFollows } },
@@ -509,6 +511,8 @@ const getStories = async (req, res, next) => {
 
     const stories = await Story.find({
       $or: [
+        { userId: userId },      // include my own stories
+        { ownerId: userId },     // include my own stories (backward compat)
         { userId: { $in: followingIds } },
         { ownerId: { $in: followingIds } },
         { shopId: { $in: shopIds } },
@@ -896,6 +900,31 @@ const searchUsers = async (req, res, next) => {
   }
 };
 
+// @desc    Get suggested users to follow
+// @route   GET /api/social/users/suggested
+const getSuggestedUsers = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // Discover who user already follows
+    const follows = await Follow.find({ followerId: userId }).lean();
+    let excludeIds = follows.map((f) => f.followingId);
+    excludeIds.push(userId); // Also exclude oneself
+
+    // Find users
+    const suggested = await User.find({ _id: { $nin: excludeIds } })
+      .select('name username profilePic avatar accountType bio')
+      // simple random sampling approach (limit and sort)
+      .sort({ followersCount: -1, _id: -1 })
+      .limit(10)
+      .lean();
+
+    res.status(200).json({ success: true, count: suggested.length, data: suggested });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ===================== HELPERS =====================
 
 function _addLikeStatus(posts, userId) {
@@ -942,4 +971,5 @@ module.exports = {
   getMyFollowedShops,
   getUserProfile,
   searchUsers,
+  getSuggestedUsers,
 };

@@ -128,6 +128,15 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Realtime Presence Tracking
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
     // Reference to shop document if accountType is 'shop'
     shopRef: {
       type: mongoose.Schema.Types.ObjectId,

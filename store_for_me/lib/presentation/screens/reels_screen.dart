@@ -81,6 +81,20 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(
+      socialProvider.select((s) => s.targetReelId),
+      (previous, next) {
+        if (next != null) {
+          final reels = ref.read(socialProvider).reels;
+          final idx = reels.indexWhere((r) => r.id == next);
+          if (idx != -1 && _pageController.hasClients) {
+            _pageController.jumpToPage(idx);
+          }
+          Future.microtask(() => ref.read(socialProvider.notifier).setTargetReelId(null));
+        }
+      },
+    );
+
     final socialState = ref.watch(socialProvider);
     final reels = socialState.reels;
 

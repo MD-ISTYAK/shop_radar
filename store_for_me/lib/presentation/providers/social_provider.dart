@@ -8,6 +8,7 @@ class SocialState {
   final List<PostModel> explore;
   final List<StoryGroupModel> stories;
   final List<ReelModel> reels;
+  final String? targetReelId;
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMoreFeed;
@@ -15,12 +16,14 @@ class SocialState {
   final String? error;
   final UserProfileModel? viewingProfile;
   final List<PostModel> profilePosts;
+  final List<UserProfileModel> suggestedUsers;
 
   const SocialState({
     this.feed = const [],
     this.explore = const [],
     this.stories = const [],
     this.reels = const [],
+    this.targetReelId,
     this.isLoading = false,
     this.isLoadingMore = false,
     this.hasMoreFeed = true,
@@ -28,6 +31,7 @@ class SocialState {
     this.error,
     this.viewingProfile,
     this.profilePosts = const [],
+    this.suggestedUsers = const [],
   });
 
   SocialState copyWith({
@@ -35,6 +39,7 @@ class SocialState {
     List<PostModel>? explore,
     List<StoryGroupModel>? stories,
     List<ReelModel>? reels,
+    String? targetReelId,
     bool? isLoading,
     bool? isLoadingMore,
     bool? hasMoreFeed,
@@ -42,12 +47,14 @@ class SocialState {
     String? error,
     UserProfileModel? viewingProfile,
     List<PostModel>? profilePosts,
+    List<UserProfileModel>? suggestedUsers,
   }) {
     return SocialState(
       feed: feed ?? this.feed,
       explore: explore ?? this.explore,
       stories: stories ?? this.stories,
       reels: reels ?? this.reels,
+      targetReelId: targetReelId ?? this.targetReelId,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMoreFeed: hasMoreFeed ?? this.hasMoreFeed,
@@ -55,6 +62,7 @@ class SocialState {
       error: error,
       viewingProfile: viewingProfile ?? this.viewingProfile,
       profilePosts: profilePosts ?? this.profilePosts,
+      suggestedUsers: suggestedUsers ?? this.suggestedUsers,
     );
   }
 }
@@ -172,6 +180,10 @@ class SocialNotifier extends StateNotifier<SocialState> {
     }
   }
 
+  void setTargetReelId(String? reelId) {
+    state = state.copyWith(targetReelId: reelId);
+  }
+
   Future<void> toggleReelLike(String reelId) async {
     // Optimistic update
     final reels = state.reels.map((r) {
@@ -278,6 +290,7 @@ class SocialNotifier extends StateNotifier<SocialState> {
       final response = await _api.createPost(data);
       if (response.data['success'] == true) {
         await fetchFeed();
+        await fetchReels();
         return true;
       }
     } catch (e) {
@@ -316,6 +329,19 @@ class SocialNotifier extends StateNotifier<SocialState> {
       if (response.data['success'] == true) {
         final profile = UserProfileModel.fromJson(response.data['data']);
         state = state.copyWith(viewingProfile: profile);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  Future<void> fetchSuggestedUsers() async {
+    try {
+      final response = await _api.getSuggestedUsers();
+      if (response.data['success'] == true) {
+        final data = response.data['data'] as List;
+        final users = data.map((e) => UserProfileModel.fromJson(e)).toList();
+        state = state.copyWith(suggestedUsers: users);
       }
     } catch (e) {
       // ignore

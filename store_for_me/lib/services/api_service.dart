@@ -303,6 +303,9 @@ class ApiService {
   Future<Response> searchUsers(String query) =>
       _dio.get('/users/search', queryParameters: {'q': query});
 
+  Future<Response> getSuggestedUsers() =>
+      _dio.get('/social/users/suggested');
+
   // ===================== REVIEWS =====================
   Future<Response> createReview(Map<String, dynamic> data) =>
       _dio.post('/reviews', data: data);

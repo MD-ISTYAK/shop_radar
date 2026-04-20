@@ -16,6 +16,7 @@ class CreatePostScreen extends ConsumerStatefulWidget {
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final _contentController = TextEditingController();
   final List<XFile> _selectedImages = [];
+  XFile? _selectedVideo;
   bool _isSubmitting = false;
 
   Future<void> _pickImages() async {
@@ -24,12 +25,24 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (images.isNotEmpty) {
       setState(() {
         _selectedImages.addAll(images.take(5 - _selectedImages.length));
+        _selectedVideo = null; // Clear video if images selected
+      });
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final video = await picker.pickVideo(source: ImageSource.gallery);
+    if (video != null) {
+      setState(() {
+        _selectedVideo = video;
+        _selectedImages.clear(); // Clear images if video selected
       });
     }
   }
 
   Future<void> _submitPost() async {
-    if (_contentController.text.trim().isEmpty && _selectedImages.isEmpty) {
+    if (_contentController.text.trim().isEmpty && _selectedImages.isEmpty && _selectedVideo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add some content or images'), backgroundColor: AppColors.warning),
       );
@@ -42,11 +55,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     formData.fields.add(MapEntry('content', _contentController.text.trim()));
     formData.fields.add(const MapEntry('type', 'post'));
 
-    for (var image in _selectedImages) {
+    if (_selectedVideo != null) {
       formData.files.add(MapEntry(
-        'images',
-        await MultipartFile.fromFile(image.path, filename: image.name),
+        'video',
+        await MultipartFile.fromFile(_selectedVideo!.path, filename: _selectedVideo!.name),
       ));
+    } else {
+      for (var image in _selectedImages) {
+        formData.files.add(MapEntry(
+          'images',
+          await MultipartFile.fromFile(image.path, filename: image.name),
+        ));
+      }
     }
 
     final success = await ref.read(socialProvider.notifier).createPost(formData);
@@ -169,17 +189,80 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               const SizedBox(height: 20),
             ],
 
-            // Add photos button
-            if (_selectedImages.length < 5)
-              OutlinedButton.icon(
-                onPressed: _pickImages,
-                icon: const Icon(Icons.photo_library_outlined),
-                label: Text(_selectedImages.isEmpty ? 'Add Photos' : 'Add More Photos'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+            // Selected video
+            if (_selectedVideo != null) ...[
+              Text('Video Selected', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.video_file, size: 48, color: AppColors.primary),
+                        const SizedBox(height: 8),
+                        Text('1 Video Attached', style: TextStyle(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedVideo = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 20),
+            ],
+
+            // Add photos/video button
+            Row(
+              children: [
+                if (_selectedImages.length < 5 && _selectedVideo == null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickImages,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: Text(_selectedImages.isEmpty ? 'Add Photos' : 'Add More Photos'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                if (_selectedImages.isEmpty && _selectedVideo == null) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickVideo,
+                      icon: const Icon(Icons.video_camera_back_outlined),
+                      label: const Text('Add Video/Reel'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),

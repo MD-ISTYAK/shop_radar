@@ -28,14 +28,24 @@ class ChatUserModel {
   final String id;
   final String name;
   final String phone;
+  final bool isOnline;
+  final DateTime? lastSeen;
 
-  ChatUserModel({required this.id, required this.name, this.phone = ''});
+  ChatUserModel({
+    required this.id,
+    required this.name,
+    this.phone = '',
+    this.isOnline = false,
+    this.lastSeen,
+  });
 
   factory ChatUserModel.fromJson(Map<String, dynamic> json) {
     return ChatUserModel(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
       phone: json['phone'] ?? '',
+      isOnline: json['isOnline'] ?? false,
+      lastSeen: json['lastSeen'] != null ? DateTime.parse(json['lastSeen']) : null,
     );
   }
 }
@@ -83,6 +93,7 @@ class MessageModel {
   final String shopId;
   final String text;
   final bool read;
+  final String status; // 'sent', 'delivered', 'seen'
   final DateTime createdAt;
 
   MessageModel({
@@ -94,6 +105,7 @@ class MessageModel {
     required this.shopId,
     required this.text,
     this.read = false,
+    this.status = 'sent',
     required this.createdAt,
   });
 
@@ -107,7 +119,23 @@ class MessageModel {
       shopId: json['shopId'] ?? '',
       text: json['text'] ?? '',
       read: json['read'] ?? false,
+      status: json['status'] ?? 'sent',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+    );
+  }
+
+  MessageModel copyWith({String? status}) {
+    return MessageModel(
+      id: id,
+      conversationId: conversationId,
+      senderId: senderId,
+      senderName: senderName,
+      receiverId: receiverId,
+      shopId: shopId,
+      text: text,
+      read: read,
+      status: status ?? this.status,
+      createdAt: createdAt,
     );
   }
 }

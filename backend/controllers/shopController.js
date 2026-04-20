@@ -60,6 +60,8 @@ const getNearbyShops = async (req, res, next) => {
   try {
     const { lat, lng, radius = 10, category, search } = req.query;
 
+    console.log(`\n🔍 [getNearbyShops] Query params: lat=${lat}, lng=${lng}, radius=${radius}, category=${category}, search=${search}`);
+
     let query = {};
 
     // Geospatial query if coordinates provided
@@ -73,6 +75,9 @@ const getNearbyShops = async (req, res, next) => {
           $maxDistance: parseFloat(radius) * 1000, // Convert km to meters
         },
       };
+      console.log(`📍 [getNearbyShops] Geo query: center=[${lng}, ${lat}], maxDistance=${parseFloat(radius) * 1000}m`);
+    } else {
+      console.log(`⚠️ [getNearbyShops] No valid coordinates provided, skipping geo filter`);
     }
 
     // Category filter
@@ -85,7 +90,22 @@ const getNearbyShops = async (req, res, next) => {
       query.shopName = { $regex: search, $options: 'i' };
     }
 
+    console.log(`📋 [getNearbyShops] Final query:`, JSON.stringify(query));
+
+    // First, let's see total shops in the DB regardless of filter
+    const totalShops = await Shop.countDocuments({});
+    console.log(`🏪 [getNearbyShops] Total shops in DB: ${totalShops}`);
+
+    // List all shops with their coordinates for debugging
+    if (totalShops > 0 && totalShops <= 50) {
+      const allShops = await Shop.find({}, 'shopName location category status');
+      allShops.forEach(s => {
+        console.log(`   -> ${s.shopName} | coords: [${s.location?.coordinates}] | category: ${s.category} | status: ${s.status}`);
+      });
+    }
+
     const shops = await Shop.find(query).populate('ownerId', 'name email');
+    console.log(`✅ [getNearbyShops] Shops found matching query: ${shops.length}`);
 
     // Calculate distance for each shop
     const shopsWithDistance = shops.map((shop) => {
@@ -109,6 +129,7 @@ const getNearbyShops = async (req, res, next) => {
       data: shopsWithDistance,
     });
   } catch (error) {
+    console.error(`❌ [getNearbyShops] Error:`, error.message);
     next(error);
   }
 };

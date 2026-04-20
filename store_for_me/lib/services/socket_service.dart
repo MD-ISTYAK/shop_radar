@@ -98,7 +98,27 @@ class SocketService {
     _socket?.emit('stream:end', {'shopId': shopId});
   }
 
+  // Chat/Social Events
+  void emitMessageReceived(String messageId, String senderId) {
+    _socket?.emit('message:received', {'messageId': messageId, 'senderId': senderId});
+  }
+
+  void emitMessageSeen(String conversationId, String senderId) {
+    _socket?.emit('message:seen', {'conversationId': conversationId, 'senderId': senderId});
+  }
+
   // Listen to events
+  void onUserStatusChange(Function(dynamic) callback) {
+    _socket?.on('user:statusChange', callback);
+  }
+
+  void onMessageStatusUpdate(Function(dynamic) callback) {
+    _socket?.on('message:statusUpdate', callback);
+  }
+
+  void onNewMessage(Function(dynamic) callback) {
+    _socket?.on('message:new', callback);
+  }
   void onQueueUpdate(Function(dynamic) callback) {
     _socket?.on('queue:update', callback);
   }

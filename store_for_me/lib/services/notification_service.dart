@@ -26,6 +26,15 @@ class NotificationService {
     importance: Importance.max,
   );
 
+  static const AndroidNotificationChannel _customChannel = AndroidNotificationChannel(
+    'high_importance_custom_sound', // id
+    'Order & Urgent Alerts', // title
+    description: 'This channel is used for orders with a custom zing sound.', // description
+    importance: Importance.max,
+    sound: RawResourceAndroidNotificationSound('zing'),
+    playSound: true,
+  );
+
   Future<void> initialize() async {
     // 1. Request permissions (especially for iOS)
     NotificationSettings settings = await _fcm.requestPermission(
@@ -58,6 +67,10 @@ class NotificationService {
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_customChannel);
 
     // 3. Set background handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -103,6 +116,41 @@ class NotificationService {
     // This will be handled in main.dart or via a GlobalKey
     // For now, we print it. The actual navigation logic usually goes through a Navigator state.
     debugPrint("Notification clicked with payload: $payload");
+  }
+
+  Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+    bool useCustomSound = false,
+  }) async {
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      useCustomSound ? _customChannel.id : _channel.id,
+      useCustomSound ? _customChannel.name : _channel.name,
+      channelDescription: useCustomSound ? _customChannel.description : _channel.description,
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: useCustomSound ? const RawResourceAndroidNotificationSound('zing') : null,
+      playSound: true,
+    );
+
+    final NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'zing.wav', // For iOS, usually Needs a wav file in bundle
+      ),
+    );
+
+    await _localNotifications.show(
+      id: DateTime.now().millisecond,
+      title: title,
+      body: body,
+      notificationDetails: details,
+      payload: payload,
+    );
   }
 
   Future<String?> getToken() async {
