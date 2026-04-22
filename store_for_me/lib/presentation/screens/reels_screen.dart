@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
+import '../providers/data_saver_provider.dart';
 
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
@@ -13,7 +14,7 @@ class ReelsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReelsScreen> createState() => _ReelsScreenState();
 }
 
-class _ReelsScreenState extends ConsumerState<ReelsScreen> {
+class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAliveClientMixin {
   final PageController _pageController = PageController();
   final Map<int, VideoPlayerController> _controllers = {};
   int _currentPage = 0;
@@ -33,18 +34,26 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     super.dispose();
   }
 
-  void _initController(int index, String url) {
+  void _initController(int index, String url, {bool forceAutoplay = false}) {
     if (_controllers.containsKey(index)) return;
     if (url.isEmpty) return;
 
+    final isDataSaver = ref.read(dataSaverProvider);
     final fullUrl = url.startsWith('http') ? url : AppConstants.getImageUrl(url);
-    final controller = VideoPlayerController.networkUrl(Uri.parse(fullUrl));
+    
+    // Cloudinary optimization for reel: q_auto:low, br_1.5M (reels need slightly more bitrate than tiny feed videos)
+    final optimizedUrl = fullUrl.contains('cloudinary') 
+        ? fullUrl.replaceFirst('/upload/', '/upload/q_auto:low,br_1.5m/') 
+        : fullUrl;
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(optimizedUrl));
     _controllers[index] = controller;
 
     controller.initialize().then((_) {
       if (mounted) {
         controller.setLooping(true);
-        if (index == _currentPage) {
+        // Autoplay if it's the current page AND either Data Saver is OFF or it's forced
+        if (index == _currentPage && (!isDataSaver || forceAutoplay)) {
           controller.play();
         }
         setState(() {});
@@ -58,8 +67,11 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
 
     _currentPage = index;
 
-    // Play the new one
-    _controllers[index]?.play();
+    final isDataSaver = ref.read(dataSaverProvider);
+    // Play the new one only if Data Saver is OFF
+    if (!isDataSaver) {
+      _controllers[index]?.play();
+    }
 
     // Preload next
     final reels = ref.read(socialProvider).reels;
@@ -80,7 +92,15 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final socialState = ref.watch(socialProvider);
+    final isDataSaver = ref.watch(dataSaverProvider);
+    final reels = socialState.reels;
+
     ref.listen<String?>(
       socialProvider.select((s) => s.targetReelId),
       (previous, next) {
@@ -94,9 +114,6 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
         }
       },
     );
-
-    final socialState = ref.watch(socialProvider);
-    final reels = socialState.reels;
 
     if (reels.isEmpty) {
       return _buildEmptyState();
@@ -138,7 +155,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
                     )
                   : reel.thumbnailUrl.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: AppConstants.getImageUrl(reel.thumbnailUrl),
+                          imageUrl: _getOptimizedThumb(reel.thumbnailUrl, isDataSaver),
                           fit: BoxFit.cover,
                           placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
                         )
@@ -242,6 +259,13 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
         );
       },
     );
+  }
+
+  String _getOptimizedThumb(String url, bool isDataSaver) {
+    if (!url.contains('cloudinary')) return AppConstants.getImageUrl(url);
+    final baseUrl = AppConstants.getImageUrl(url);
+    final transformation = isDataSaver ? 'q_low,f_auto,w_400' : 'q_auto,f_auto,w_800';
+    return baseUrl.replaceFirst('/upload/', '/upload/$transformation/');
   }
 
   Widget _buildSideAction({

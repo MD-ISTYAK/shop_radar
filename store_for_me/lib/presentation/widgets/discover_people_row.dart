@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
 import '../providers/social_provider.dart';
+import '../providers/auth_provider.dart';
 import '../screens/public_profile_screen.dart';
 
 class DiscoverPeopleRow extends ConsumerWidget {
@@ -53,7 +54,8 @@ class DiscoverPeopleRow extends ConsumerWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PublicProfileScreen(userId: user.id),
+                            builder: (_) =>
+                                PublicProfileScreen(userId: user.id),
                           ),
                         );
                       },
@@ -64,20 +66,30 @@ class DiscoverPeopleRow extends ConsumerWidget {
                             ? CachedNetworkImageProvider(user.profilePicUrl)
                             : null,
                         child: user.profilePicUrl.isEmpty
-                            ? const Icon(Icons.person, color: AppColors.textLight, size: 36)
+                            ? const Icon(
+                                Icons.person,
+                                color: AppColors.textLight,
+                                size: 36,
+                              )
                             : null,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       user.username,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       user.bio.isNotEmpty ? user.bio : 'Suggested',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -87,21 +99,35 @@ class DiscoverPeopleRow extends ConsumerWidget {
                       height: 30,
                       child: ElevatedButton(
                         onPressed: () async {
-                          final success = await ref.read(socialProvider.notifier).toggleFollow(user.id);
-                          if (success) {
-                            ref.read(socialProvider.notifier).fetchSuggestedUsers(); // Refresh suggestions
-                          }
+                          final currentUserId =
+                              ref.read(authProvider).user?.id ?? '';
+                          final success = await ref
+                              .read(socialProvider.notifier)
+                              .toggleFollow(user.id, currentUserId);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
+                          backgroundColor: user.isFollowing
+                              ? Colors.transparent
+                              : AppColors.primary,
+                          foregroundColor: user.isFollowing
+                              ? AppColors.textPrimary
+                              : Colors.white,
                           elevation: 0,
                           padding: EdgeInsets.zero,
+                          side: user.isFollowing
+                              ? const BorderSide(color: AppColors.divider)
+                              : null,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: const Text('Follow', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          user.isFollowing ? 'Following' : 'Follow',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],

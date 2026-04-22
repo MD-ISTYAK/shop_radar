@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:video_player/video_player.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
+import '../providers/data_saver_provider.dart';
 
-class PostCard extends StatefulWidget {
+class PostCard extends ConsumerStatefulWidget {
   final PostModel post;
   final String currentUserId;
   final VoidCallback onLike;
@@ -29,10 +31,10 @@ class PostCard extends StatefulWidget {
   });
 
   @override
-  State<PostCard> createState() => _PostCardState();
+  ConsumerState<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
+class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderStateMixin {
   late AnimationController _heartAnimController;
   late Animation<double> _heartAnim;
   bool _showHeart = false;
@@ -55,19 +57,37 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     ]).animate(_heartAnimController);
 
     if (widget.post.isReel && widget.post.videoUrl.isNotEmpty) {
-      final url = widget.post.videoUrl.startsWith('http')
-          ? widget.post.videoUrl
-          : AppConstants.getImageUrl(widget.post.videoUrl);
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(url))
-        ..initialize().then((_) {
-          if (mounted) {
-            _videoController!.setVolume(0);
-            _videoController!.setLooping(true);
-            _videoController!.play();
-            setState(() {});
-          }
-        });
+      _initVideo();
     }
+  }
+
+  void _initVideo() {
+    final url = widget.post.videoUrl.startsWith('http')
+        ? widget.post.videoUrl
+        : AppConstants.getImageUrl(widget.post.videoUrl);
+    
+    // Cloudinary optimization for video: q_auto, br_1m (limit bitrate)
+    final optimizedUrl = url.contains('cloudinary') 
+        ? url.replaceFirst('/upload/', '/upload/q_auto:low,br_1m/') 
+        : url;
+
+    _videoController = VideoPlayerController.networkUrl(Uri.parse(optimizedUrl))
+      ..initialize().then((_) {
+        if (mounted) {
+          _videoController!.setVolume(0);
+          _videoController!.setLooping(true);
+          // Auto-play disabled for data saving; require tap
+          setState(() {});
+        }
+      });
+  }
+
+  String _getOptimizedUrl(String url, bool isDataSaver) {
+    if (!url.contains('cloudinary')) return AppConstants.getImageUrl(url);
+    
+    final baseUrl = AppConstants.getImageUrl(url);
+    final transformation = isDataSaver ? 'q_low,f_auto,w_400' : 'q_auto,f_auto,w_800';
+    return baseUrl.replaceFirst('/upload/', '/upload/$transformation/');
   }
 
   @override
@@ -231,42 +251,61 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   Widget _buildMedia(PostModel post) {
-    if ((post.isReel || post.mediaType == 'video') && _videoController != null && _videoController!.value.isInitialized) {
+    final isDataSaver = ref.watch(dataSaverProvider);
+
+    if ((post.isReel || post.mediaType == 'video')) {
+      final isInitialized = _videoController != null && _videoController!.value.isInitialized;
+      final isPlaying = isInitialized && _videoController!.value.isPlaying;
+      
       return GestureDetector(
         onDoubleTap: _onDoubleTap,
-        onTap: widget.onVideoTap,
+        onTap: () {
+          if (!isInitialized) return;
+          setState(() {
+            if (isPlaying) {
+              _videoController!.pause();
+            } else {
+              _videoController!.play();
+            }
+          });
+        },
         child: Stack(
           alignment: Alignment.center,
           children: [
             AspectRatio(
-              aspectRatio: _videoController!.value.aspectRatio,
-              child: VideoPlayer(_videoController!),
+              aspectRatio: isInitialized ? _videoController!.value.aspectRatio : 1,
+              child: isInitialized 
+                ? VideoPlayer(_videoController!)
+                : (post.images.isNotEmpty 
+                    ? CachedNetworkImage(imageUrl: _getOptimizedUrl(post.images[0], isDataSaver), fit: BoxFit.cover)
+                    : Container(color: AppColors.shimmerBase)),
             ),
-            // Mute/Unmute button
-            Positioned(
-              bottom: 12,
-              right: 12,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isMuted = !_isMuted;
-                    _videoController!.setVolume(_isMuted ? 0 : 1.0);
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isMuted ? Icons.volume_off : Icons.volume_up,
-                    color: Colors.white,
-                    size: 18,
+            // Play overlay if not playing
+            if (!isPlaying)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
+                child: Icon(Icons.play_arrow, color: Colors.white, size: 32),
+              ),
+            // Mute/Unmute
+            if (isPlaying)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isMuted = !_isMuted;
+                      _videoController!.setVolume(_isMuted ? 0 : 1.0);
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    child: Icon(_isMuted ? Icons.volume_off : Icons.volume_up, color: Colors.white, size: 18),
                   ),
                 ),
               ),
-            ),
             // Heart animation
             if (_showHeart)
               AnimatedBuilder(
@@ -296,7 +335,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             aspectRatio: 1,
             child: images.length == 1
                 ? CachedNetworkImage(
-                    imageUrl: AppConstants.getImageUrl(images[0]),
+                    imageUrl: _getOptimizedUrl(images[0], isDataSaver),
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: AppColors.shimmerBase),
                     errorWidget: (_, __, ___) => Container(
@@ -311,7 +350,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         itemCount: images.length,
                         itemBuilder: (context, i) {
                           return CachedNetworkImage(
-                            imageUrl: AppConstants.getImageUrl(images[i]),
+                            imageUrl: _getOptimizedUrl(images[i], isDataSaver),
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(color: AppColors.shimmerBase),
                             errorWidget: (_, __, ___) => Container(

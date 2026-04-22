@@ -276,8 +276,10 @@ class ApiService {
   Future<Response> getFollowedShops() =>
       _dio.get('/social/follow/my-follows');
 
-  Future<Response> getUserProfile(String userId) =>
-      _dio.get('/users/$userId');
+  Future<Response> getUserProfile(String userId) {
+    debugPrint('[API] Requesting User Profile: /users/$userId');
+    return _dio.get('/users/$userId');
+  }
 
   Future<Response> getUserPosts(String userId, {String? cursor, int limit = 12}) {
     final params = <String, dynamic>{'limit': limit};
@@ -508,8 +510,16 @@ class ApiService {
   }
 
   // ===================== CHAT =====================
-  Future<Response> sendChatMessage(String receiverId, String shopId, String text) =>
-      _dio.post('/chat/send', data: {'receiverId': receiverId, 'shopId': shopId, 'text': text});
+  Future<Response> sendChatMessage(String receiverId, String? shopId, String text) {
+    final data = {
+      'receiverId': receiverId,
+      'text': text,
+    };
+    if (shopId != null && shopId.isNotEmpty) {
+      data['shopId'] = shopId;
+    }
+    return _dio.post('/chat/send', data: data);
+  }
 
   Future<Response> getConversations() => _dio.get('/chat/conversations');
 

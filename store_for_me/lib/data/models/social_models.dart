@@ -49,6 +49,36 @@ class UserProfileModel {
 
   String get profilePicUrl => profilePic.isNotEmpty ? AppConstants.getImageUrl(profilePic) : '';
   bool get isShop => accountType == 'shop';
+
+  UserProfileModel copyWith({
+    String? id,
+    String? username,
+    String? email,
+    String? profilePic,
+    String? bio,
+    String? accountType,
+    int? followersCount,
+    int? followingCount,
+    int? postsCount,
+    bool? isFollowing,
+    bool? isVerified,
+    DateTime? createdAt,
+  }) {
+    return UserProfileModel(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      profilePic: profilePic ?? this.profilePic,
+      bio: bio ?? this.bio,
+      accountType: accountType ?? this.accountType,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
+      postsCount: postsCount ?? this.postsCount,
+      isFollowing: isFollowing ?? this.isFollowing,
+      isVerified: isVerified ?? this.isVerified,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 // ===================== POST =====================

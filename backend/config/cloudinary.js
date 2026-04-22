@@ -26,6 +26,10 @@ const storage = new CloudinaryStorage({
       resource_type: resource_type,
       allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'mp4', 'mov', 'avi'],
       public_id: `${file.fieldname}-${Date.now()}`,
+      transformation: [
+        { quality: 'auto', fetch_format: 'auto' },
+        { width: 800, crop: 'limit' }
+      ]
     };
   },
 });

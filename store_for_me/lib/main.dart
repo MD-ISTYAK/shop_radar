@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'data/models/shop_model.dart';
 import 'data/models/product_model.dart';
 import 'data/models/order_model.dart';
+import 'data/models/chat_models.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/register_screen.dart';
@@ -134,12 +135,13 @@ class ShopRadarApp extends StatelessWidget {
           case '/chat-list':
             return _buildRoute(const ChatListScreen(), settings);
           case '/chat':
-            final args = settings.arguments as Map<String, String>;
+            final args = settings.arguments as Map<String, dynamic>;
             return _buildRoute(ChatScreen(
               conversationId: args['conversationId']!,
               receiverId: args['receiverId']!,
               shopId: args['shopId']!,
               title: args['title'] ?? 'Chat',
+              otherUser: args['otherUser'] as ChatUserModel?,
             ), settings);
           case '/followed-shops':
             return _buildRoute(const FollowedShopsScreen(), settings);

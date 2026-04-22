@@ -12,6 +12,7 @@ import '../providers/cart_provider.dart';
 import '../providers/social_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
+import '../../data/models/chat_models.dart';
 import '../providers/review_provider.dart';
 import '../providers/deal_provider.dart';
 import '../providers/check_in_provider.dart';
@@ -648,7 +649,8 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
 
   Future<void> _toggleFollow() async {
     setState(() => _isLoadingFollow = true);
-    final success = await ref.read(socialProvider.notifier).toggleFollow(widget.shopId);
+    final currentUserId = ref.read(authProvider).user?.id ?? '';
+    final success = await ref.read(socialProvider.notifier).toggleFollow(widget.shopId, currentUserId);
     if (success) {
       setState(() {
         _isFollowing = !_isFollowing;
@@ -668,6 +670,7 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
         'receiverId': data['otherUser']?['_id']?.toString() ?? '',
         'shopId': data['shop']?['_id']?.toString() ?? '',
         'title': data['shop']?['shopName']?.toString() ?? 'Chat',
+        'otherUser': ChatUserModel.fromJson(data['otherUser'] ?? {}),
       });
     }
   }

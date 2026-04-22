@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../data/models/social_models.dart';
@@ -10,6 +11,7 @@ class SocialState {
   final List<ReelModel> reels;
   final String? targetReelId;
   final bool isLoading;
+  final bool isProfileLoading;
   final bool isLoadingMore;
   final bool hasMoreFeed;
   final String? feedCursor;
@@ -17,6 +19,7 @@ class SocialState {
   final UserProfileModel? viewingProfile;
   final List<PostModel> profilePosts;
   final List<UserProfileModel> suggestedUsers;
+  final String lastLoadedProfileId;
 
   const SocialState({
     this.feed = const [],
@@ -25,6 +28,7 @@ class SocialState {
     this.reels = const [],
     this.targetReelId,
     this.isLoading = false,
+    this.isProfileLoading = false,
     this.isLoadingMore = false,
     this.hasMoreFeed = true,
     this.feedCursor,
@@ -32,6 +36,7 @@ class SocialState {
     this.viewingProfile,
     this.profilePosts = const [],
     this.suggestedUsers = const [],
+    this.lastLoadedProfileId = '',
   });
 
   SocialState copyWith({
@@ -41,6 +46,7 @@ class SocialState {
     List<ReelModel>? reels,
     String? targetReelId,
     bool? isLoading,
+    bool? isProfileLoading,
     bool? isLoadingMore,
     bool? hasMoreFeed,
     String? feedCursor,
@@ -48,6 +54,7 @@ class SocialState {
     UserProfileModel? viewingProfile,
     List<PostModel>? profilePosts,
     List<UserProfileModel>? suggestedUsers,
+    String? lastLoadedProfileId,
   }) {
     return SocialState(
       feed: feed ?? this.feed,
@@ -56,6 +63,7 @@ class SocialState {
       reels: reels ?? this.reels,
       targetReelId: targetReelId ?? this.targetReelId,
       isLoading: isLoading ?? this.isLoading,
+      isProfileLoading: isProfileLoading ?? this.isProfileLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMoreFeed: hasMoreFeed ?? this.hasMoreFeed,
       feedCursor: feedCursor ?? this.feedCursor,
@@ -63,6 +71,7 @@ class SocialState {
       viewingProfile: viewingProfile ?? this.viewingProfile,
       profilePosts: profilePosts ?? this.profilePosts,
       suggestedUsers: suggestedUsers ?? this.suggestedUsers,
+      lastLoadedProfileId: lastLoadedProfileId ?? this.lastLoadedProfileId,
     );
   }
 }
@@ -86,6 +95,11 @@ class SocialNotifier extends StateNotifier<SocialState> {
         cursor: refresh ? null : state.feedCursor,
         limit: 10,
       );
+      
+      // Log response size for optimization tracking
+      final resSize = response.toString().length / 1024;
+      print('DEBUG: Feed API Response Size: ${resSize.toStringAsFixed(2)} KB');
+
       if (response.data['success'] == true) {
         final posts = (response.data['data'] as List)
             .map((e) => PostModel.fromJson(e))
@@ -170,6 +184,11 @@ class SocialNotifier extends StateNotifier<SocialState> {
   Future<void> fetchReels() async {
     try {
       final response = await _api.getReels();
+
+      // Log response size
+      final resSize = response.toString().length / 1024;
+      print('DEBUG: Reels API Response Size: ${resSize.toStringAsFixed(2)} KB');
+
       if (response.data['success'] == true) {
         final data = response.data['data'] as List;
         final reels = data.map((e) => ReelModel.fromJson(e)).toList();
@@ -313,53 +332,188 @@ class SocialNotifier extends StateNotifier<SocialState> {
   }
 
   // ===================== FOLLOW =====================
-  Future<bool> toggleFollow(String userId) async {
+  Future<bool> toggleFollow(String targetUserId, String currentUserId) async {
+    // 1. Identify current follow state for target user
+    bool isNowFollowing = false;
+    final targetInView = state.viewingProfile?.id == targetUserId;
+    if (targetInView) {
+      isNowFollowing = !state.viewingProfile!.isFollowing;
+    } else {
+      final suggestion = state.suggestedUsers.cast<UserProfileModel?>().firstWhere(
+        (u) => u?.id == targetUserId, 
+        orElse: () => null
+      );
+      if (suggestion != null) {
+        isNowFollowing = !suggestion.isFollowing;
+      }
+    }
+
+    // 2. Optimistic update for viewing profile (if target)
+    final currentProfile = state.viewingProfile;
+    if (currentProfile != null && currentProfile.id == targetUserId) {
+      final updatedProfile = currentProfile.copyWith(
+        isFollowing: isNowFollowing,
+        followersCount: isNowFollowing 
+            ? currentProfile.followersCount + 1 
+            : currentProfile.followersCount - 1,
+      );
+      state = state.copyWith(viewingProfile: updatedProfile);
+    }
+
+    // 3. Optimistic update for MY profile followingCount (if currently viewing ME)
+    if (currentProfile != null && currentProfile.id == currentUserId && currentUserId != targetUserId) {
+      final updatedProfile = currentProfile.copyWith(
+        followingCount: isNowFollowing 
+            ? currentProfile.followingCount + 1 
+            : currentProfile.followingCount - 1,
+      );
+      state = state.copyWith(viewingProfile: updatedProfile);
+    }
+
+    // 4. Optimistic update for suggested users
+    final updatedSuggested = state.suggestedUsers.map((u) {
+      if (u.id == targetUserId) {
+        return u.copyWith(isFollowing: isNowFollowing);
+      }
+      return u;
+    }).toList();
+
+    state = state.copyWith(suggestedUsers: updatedSuggested);
+
     try {
-      final response = await _api.toggleFollow(userId);
+      final response = await _api.toggleFollow(targetUserId);
       return response.data['success'] == true;
     } catch (e) {
+      // Revert viewing profile on failure
+      if (currentProfile != null) {
+        state = state.copyWith(viewingProfile: currentProfile);
+      }
       return false;
     }
   }
 
   // ===================== PROFILE =====================
-  Future<void> fetchUserProfile(String userId) async {
+  
+  /// Atomic loader for profile data
+  Future<void> loadFullProfile(String userId) async {
+    if (userId.isEmpty) return;
+    
+    debugPrint('SocialNotifier: Loading full profile for userId: $userId');
+    // 1. Set initial loading state
+    state = state.copyWith(
+      isProfileLoading: true,
+      lastLoadedProfileId: '', 
+      error: null, 
+      viewingProfile: state.viewingProfile?.id == userId ? state.viewingProfile : null,
+      profilePosts: state.viewingProfile?.id == userId ? state.profilePosts : [],
+    );
+
+    String? errorMessage;
+
     try {
-      final response = await _api.getUserProfile(userId);
-      if (response.data['success'] == true) {
-        final profile = UserProfileModel.fromJson(response.data['data']);
-        state = state.copyWith(viewingProfile: profile);
-      }
+      debugPrint('SocialNotifier: Triggering parallel API calls...');
+      // 2. Execute all in parallel and WAIT for results
+      final results = await Future.wait([
+        _fetchUserProfileData(userId).catchError((e) {
+          debugPrint('SocialNotifier: Profile fetch error: $e');
+          errorMessage = e.toString();
+          return null as UserProfileModel?;
+        }),
+        _fetchUserPostsData(userId),
+        _fetchSuggestedUsersData(),
+      ]);
+      
+      final profile = results[0] as UserProfileModel?;
+      final posts = results[1] as List<PostModel>?;
+      final suggested = results[2] as List<UserProfileModel>?;
+
+      debugPrint('SocialNotifier: Data received. Profile: ${profile?.username}, Posts: ${posts?.length}, Suggested: ${suggested?.length}');
+
+      // 3. Update state ONCE with all results
+      state = state.copyWith(
+        isProfileLoading: false,
+        viewingProfile: profile ?? state.viewingProfile,
+        profilePosts: posts ?? state.profilePosts,
+        suggestedUsers: suggested ?? state.suggestedUsers,
+        lastLoadedProfileId: profile != null ? userId : '', 
+        error: profile == null ? (errorMessage ?? state.error ?? 'Profile not found') : null,
+      );
+      debugPrint('SocialNotifier: State updated. isProfileLoading: false, lastLoadedProfileId: ${state.lastLoadedProfileId}');
     } catch (e) {
-      // ignore
+      debugPrint('SocialNotifier: CRITICAL Error in loadFullProfile: $e');
+      state = state.copyWith(
+        isProfileLoading: false, 
+        lastLoadedProfileId: '',
+        error: e.toString(),
+      );
     }
   }
 
-  Future<void> fetchSuggestedUsers() async {
+  // Internal helpers that return data instead of updating state directly
+  Future<UserProfileModel?> _fetchUserProfileData(String userId) async {
+    try {
+      final response = await _api.getUserProfile(userId);
+      if (response.data['success'] == true) {
+        return UserProfileModel.fromJson(response.data['data']);
+      }
+    } catch (e) {
+      debugPrint('Error in _fetchUserProfileData: $e');
+      rethrow; // Rethrow so caller can catch error message
+    }
+    return null;
+  }
+
+  Future<List<PostModel>?> _fetchUserPostsData(String userId) async {
+    try {
+      final response = await _api.getUserPosts(userId);
+      if (response.data['success'] == true) {
+        final List<dynamic> postsData = response.data['data'];
+        return postsData.map((json) => PostModel.fromJson(json)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error in _fetchUserPostsData: $e');
+    }
+    return null;
+  }
+
+  Future<List<UserProfileModel>?> _fetchSuggestedUsersData() async {
     try {
       final response = await _api.getSuggestedUsers();
       if (response.data['success'] == true) {
-        final data = response.data['data'] as List;
-        final users = data.map((e) => UserProfileModel.fromJson(e)).toList();
-        state = state.copyWith(suggestedUsers: users);
+        final List<dynamic> usersData = response.data['data'];
+        return usersData.map((json) => UserProfileModel.fromJson(json)).toList();
       }
     } catch (e) {
-      // ignore
+      debugPrint('Error in _fetchSuggestedUsersData: $e');
+    }
+    return null;
+  }
+
+  // Preserve public methods for simple refreshes
+  Future<void> fetchUserProfile(String userId) async {
+    state = state.copyWith(isProfileLoading: true);
+    final profile = await _fetchUserProfileData(userId);
+    state = state.copyWith(
+      viewingProfile: profile,
+      isProfileLoading: false,
+      lastLoadedProfileId: profile != null ? userId : state.lastLoadedProfileId,
+    );
+  }
+
+  Future<void> fetchSuggestedUsers() async {
+    final suggested = await _fetchSuggestedUsersData();
+    if (suggested != null) {
+      state = state.copyWith(suggestedUsers: suggested);
     }
   }
 
   Future<void> fetchUserPosts(String userId) async {
-    try {
-      final response = await _api.getUserPosts(userId);
-      if (response.data['success'] == true) {
-        final posts = (response.data['data'] as List)
-            .map((e) => PostModel.fromJson(e))
-            .toList();
-        state = state.copyWith(profilePosts: posts);
-      }
-    } catch (e) {
-      // ignore
-    }
+    state = state.copyWith(isProfileLoading: true);
+    final posts = await _fetchUserPostsData(userId);
+    state = state.copyWith(
+      profilePosts: posts ?? [],
+      isProfileLoading: false,
+    );
   }
 }
 

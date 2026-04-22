@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
@@ -49,6 +50,7 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
+app.use(compression());
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

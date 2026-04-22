@@ -1,3 +1,5 @@
+import '../../core/constants/app_constants.dart';
+
 class ConversationModel {
   final String conversationId;
   final ChatUserModel? otherUser;
@@ -27,6 +29,8 @@ class ConversationModel {
 class ChatUserModel {
   final String id;
   final String name;
+  final String username;
+  final String profilePic;
   final String phone;
   final bool isOnline;
   final DateTime? lastSeen;
@@ -34,6 +38,8 @@ class ChatUserModel {
   ChatUserModel({
     required this.id,
     required this.name,
+    this.username = '',
+    this.profilePic = '',
     this.phone = '',
     this.isOnline = false,
     this.lastSeen,
@@ -43,11 +49,16 @@ class ChatUserModel {
     return ChatUserModel(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
+      username: json['username'] ?? '',
+      profilePic: json['profilePic'] ?? json['avatar'] ?? '',
       phone: json['phone'] ?? '',
       isOnline: json['isOnline'] ?? false,
       lastSeen: json['lastSeen'] != null ? DateTime.parse(json['lastSeen']) : null,
     );
   }
+
+  String get displayName => username.isNotEmpty ? '@$username' : name;
+  String get profilePicUrl => profilePic.isNotEmpty ? AppConstants.getImageUrl(profilePic) : '';
 }
 
 class ChatShopModel {

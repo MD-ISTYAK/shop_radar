@@ -48,9 +48,8 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                     itemBuilder: (context, index) {
                       final conv = chatState.conversations[index];
                       final isShopOwner = conv.shop?.ownerId == currentUserId;
-                      final title = isShopOwner 
-                          ? (conv.otherUser?.name ?? 'Customer')
-                          : (conv.shop?.shopName ?? 'Shop');
+                      final title = conv.otherUser?.displayName ?? (conv.shop?.shopName ?? 'Shop');
+                      final profilePic = conv.otherUser?.profilePicUrl ?? (conv.shop?.logo ?? '');
 
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -67,17 +66,12 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                               CircleAvatar(
                                 radius: 24,
                                 backgroundColor: AppColors.primaryLight.withAlpha(30),
-                                child: conv.shop != null && conv.shop!.logo.isNotEmpty
-                                    ? ClipOval(
-                                        child: CachedNetworkImage(
-                                          imageUrl: AppConstants.getImageUrl(conv.shop!.logo),
-                                          width: 48,
-                                          height: 48,
-                                          fit: BoxFit.cover,
-                                          errorWidget: (_, __, ___) => const Icon(Icons.store, color: AppColors.primary),
-                                        ),
-                                      )
-                                    : const Icon(Icons.store, color: AppColors.primary),
+                                backgroundImage: profilePic.isNotEmpty
+                                    ? CachedNetworkImageProvider(profilePic)
+                                    : null,
+                                child: profilePic.isEmpty
+                                    ? const Icon(Icons.person, color: AppColors.primary)
+                                    : null,
                               ),
                               if (conv.otherUser?.isOnline == true)
                                 Positioned(
@@ -149,6 +143,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                               'receiverId': conv.otherUser?.id ?? '',
                               'shopId': conv.shop?.id ?? '',
                               'title': title,
+                              'otherUser': conv.otherUser,
                             });
                           },
                         ),

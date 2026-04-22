@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
@@ -9,15 +10,17 @@ import '../../data/models/chat_models.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
   final String receiverId;
-  final String shopId;
+  final String? shopId;
   final String title;
+  final ChatUserModel? otherUser;
 
   const ChatScreen({
     super.key,
     required this.conversationId,
     required this.receiverId,
-    required this.shopId,
+    this.shopId,
     required this.title,
+    this.otherUser,
   });
 
   @override
@@ -52,18 +55,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (text.isEmpty || _isSending) return;
 
     setState(() => _isSending = true);
+    final originalText = _messageController.text;
     _messageController.clear();
 
-    final success = await ref.read(chatProvider.notifier).sendMessage(
-      widget.receiverId,
-      widget.shopId,
-      text,
-    );
-
-    setState(() => _isSending = false);
-
-    if (success) {
+    try {
+      await ref.read(chatProvider.notifier).sendMessage(
+        widget.receiverId,
+        widget.shopId,
+        text,
+      );
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    } catch (e) {
+      if (mounted) {
+        // Restore text on failure
+        _messageController.text = originalText;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -88,32 +102,74 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        titleSpacing: 0,
+        title: Row(
           children: [
-            Text(widget.title),
             Builder(
               builder: (context) {
                 final conv = chatState.conversations.firstWhere(
                   (c) => c.conversationId == widget.conversationId,
                   orElse: () => ConversationModel(
                     conversationId: widget.conversationId, 
-                    lastMessage: LastMessageModel(createdAt: DateTime.now())
+                    lastMessage: LastMessageModel(createdAt: DateTime.now()),
+                    otherUser: widget.otherUser,
                   ),
                 );
-                final otherUser = conv.otherUser;
-                if (otherUser == null) return const SizedBox.shrink();
+                final imageUrl = conv.otherUser?.profilePicUrl ?? '';
                 
-                return Text(
-                  otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${DateFormat.jm().format(otherUser.lastSeen!)}' : 'Offline'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: otherUser.isOnline ? Colors.green : AppColors.textSecondary,
-                    fontWeight: FontWeight.normal,
-                  ),
+                return CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primaryLight.withAlpha(30),
+                  backgroundImage: imageUrl.isNotEmpty ? CachedNetworkImageProvider(imageUrl) : null,
+                  child: imageUrl.isEmpty ? const Icon(Icons.person, size: 20, color: AppColors.primary) : null,
                 );
               },
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Builder(
+                    builder: (context) {
+                      final conv = chatState.conversations.firstWhere(
+                        (c) => c.conversationId == widget.conversationId,
+                        orElse: () => ConversationModel(
+                          conversationId: widget.conversationId, 
+                          lastMessage: LastMessageModel(createdAt: DateTime.now()),
+                          otherUser: widget.otherUser,
+                        ),
+                      );
+                      final displayTitle = conv.otherUser?.displayName ?? widget.title;
+                      return Text(displayTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700));
+                    },
+                  ),
+                  Builder(
+                    builder: (context) {
+                      final conv = chatState.conversations.firstWhere(
+                        (c) => c.conversationId == widget.conversationId,
+                        orElse: () => ConversationModel(
+                          conversationId: widget.conversationId, 
+                          lastMessage: LastMessageModel(createdAt: DateTime.now()),
+                          otherUser: widget.otherUser,
+                        ),
+                      );
+                      final otherUser = conv.otherUser;
+                      if (otherUser == null) return const SizedBox.shrink();
+                      
+                      return Text(
+                        otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${DateFormat.jm().format(otherUser.lastSeen!)}' : 'Offline'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: otherUser.isOnline ? Colors.green : AppColors.textSecondary,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),

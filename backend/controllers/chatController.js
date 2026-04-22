@@ -7,14 +7,20 @@ const { sendToUser } = require('../config/socketManager');
 // @route   POST /api/chat/send
 const sendMessage = async (req, res, next) => {
   try {
-    const { receiverId, shopId, text } = req.body;
+    let { receiverId, shopId, text } = req.body;
     const senderId = req.user._id;
+
+    // Fallback: If shopId is missing but user is a shop, find their shop
+    if (!shopId && req.user.accountType === 'shop') {
+      const myShop = await Shop.findOne({ ownerId: senderId });
+      if (myShop) shopId = myShop._id;
+    }
 
     if (!text || !text.trim()) {
       return res.status(400).json({ success: false, message: 'Message text is required' });
     }
-    if (!receiverId || !shopId) {
-      return res.status(400).json({ success: false, message: 'receiverId and shopId are required' });
+    if (!receiverId) {
+      return res.status(400).json({ success: false, message: 'receiverId is required' });
     }
 
     const conversationId = Message.getConversationId(senderId.toString(), receiverId);
@@ -23,7 +29,7 @@ const sendMessage = async (req, res, next) => {
       conversationId,
       senderId,
       receiverId,
-      shopId,
+      shopId: shopId || null,
       text: text.trim(),
     });
 
@@ -93,12 +99,41 @@ const getConversations = async (req, res, next) => {
       conversations.map(async (conv) => {
         const msg = conv.lastMessage;
         const otherUserId = msg.senderId.toString() === userId ? msg.receiverId : msg.senderId;
-        const otherUser = await User.findById(otherUserId).select('name phone');
-        const shop = await Shop.findById(msg.shopId).select('shopName logo ownerId');
+        
+        // Use Promise.all for faster secondary lookups
+        const [otherUser, shop] = await Promise.all([
+          User.findById(otherUserId).select('name username phone profilePic avatar isOnline lastSeen'),
+          (async () => {
+            let sId = msg.shopId;
+            // Fallback 1: If last message has no shopId, find ANY message in this conversation with a shopId
+            if (!sId) {
+              const msgWithShop = await Message.findOne({ conversationId: conv._id, shopId: { $ne: null } }).select('shopId');
+              if (msgWithShop) sId = msgWithShop.shopId;
+            }
+            // Fallback 2: If still no shopId and user is shop owner, use their shop
+            if (!sId && req.user.accountType === 'shop') {
+              const Shop = require('../models/Shop');
+              const myShop = await Shop.findOne({ ownerId: userId }).select('_id');
+              if (myShop) sId = myShop._id;
+            }
+            
+            if (!sId) return null;
+            const Shop = require('../models/Shop');
+            return await Shop.findById(sId).select('shopName logo ownerId');
+          })()
+        ]);
 
         return {
           conversationId: conv._id,
-          otherUser: otherUser ? { _id: otherUser._id, name: otherUser.name, phone: otherUser.phone } : null,
+          otherUser: otherUser ? {
+            _id: otherUser._id,
+            name: otherUser.name,
+            username: otherUser.username,
+            phone: otherUser.phone,
+            profilePic: otherUser.profilePic || otherUser.avatar,
+            isOnline: otherUser.isOnline,
+            lastSeen: otherUser.lastSeen,
+          } : null,
           shop: shop ? { _id: shop._id, shopName: shop.shopName, logo: shop.logo, ownerId: shop.ownerId } : null,
           lastMessage: {
             text: msg.text,
@@ -128,7 +163,7 @@ const getMessages = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('senderId', 'name');
+      .populate('senderId', 'name username profilePic avatar');
 
     // Mark received messages as read
     await Message.updateMany(
@@ -162,13 +197,21 @@ const startConversation = async (req, res, next) => {
     }
 
     const conversationId = Message.getConversationId(userId, ownerId);
-    const owner = await User.findById(ownerId).select('name phone');
+    const owner = await User.findById(ownerId).select('name username phone profilePic avatar isOnline lastSeen');
 
     res.status(200).json({
       success: true,
       data: {
         conversationId,
-        otherUser: { _id: owner._id, name: owner.name },
+        otherUser: {
+          _id: owner._id,
+          name: owner.name,
+          username: owner.username,
+          phone: owner.phone,
+          profilePic: owner.profilePic || owner.avatar,
+          isOnline: owner.isOnline,
+          lastSeen: owner.lastSeen,
+        },
         shop: { _id: shop._id, shopName: shop.shopName, logo: shop.logo, ownerId: shop.ownerId },
       },
     });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../providers/auth_provider.dart';
+import '../providers/data_saver_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -41,6 +42,19 @@ class SettingsScreen extends ConsumerWidget {
 
           // Preferences
           const _SectionTitle(title: 'Preferences'),
+          Consumer(builder: (context, ref, _) {
+            final isDataSaver = ref.watch(dataSaverProvider);
+            return _SettingsTile(
+              icon: Icons.data_usage,
+              title: 'Data Saver Mode',
+              subtitle: 'Reduces image quality & disables autoplay',
+              trailing: Switch(
+                value: isDataSaver,
+                onChanged: (val) => ref.read(dataSaverProvider.notifier).toggle(),
+                activeColor: AppColors.primary,
+              ),
+            );
+          }),
           _SettingsTile(
             icon: Icons.notifications_outlined,
             title: 'Notifications',

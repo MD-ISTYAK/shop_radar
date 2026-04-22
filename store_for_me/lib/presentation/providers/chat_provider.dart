@@ -167,18 +167,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<bool> sendMessage(String receiverId, String shopId, String text) async {
+  Future<void> sendMessage(String receiverId, String? shopId, String text) async {
     try {
       final response = await _api.sendChatMessage(receiverId, shopId, text);
       if (response.data['success'] == true) {
         final message = MessageModel.fromJson(response.data['data']);
         state = state.copyWith(messages: [...state.messages, message]);
-        return true;
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to send message');
       }
     } catch (e) {
-      // ignore
+      rethrow;
     }
-    return false;
   }
 
   Future<Map<String, dynamic>?> startConversation(String shopId) async {

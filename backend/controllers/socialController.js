@@ -97,7 +97,9 @@ const getFeed = async (req, res, next) => {
       ],
     };
 
-    // Cursor-based: filter by _id < cursor
+    // Optimized field selection for minimal payload
+    const selectFields = 'userId shopId ownerId content images videoUrl mediaUrl mediaType type likesCount commentsCount createdAt isHidden';
+    
     if (cursor) {
       query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
     } else if (page && parseInt(page) > 1) {
@@ -107,10 +109,10 @@ const getFeed = async (req, res, next) => {
         .sort({ _id: -1 })
         .skip(skip)
         .limit(limitNum)
+        .select(selectFields)
         .populate('userId', 'name username profilePic avatar accountType')
         .populate('shopId', 'shopName logo')
         .populate('ownerId', 'name avatar')
-        .populate({ path: 'comments.userId', select: 'name username profilePic avatar' })
         .lean();
 
       _addLikeStatus(posts, userId);
@@ -120,21 +122,14 @@ const getFeed = async (req, res, next) => {
     const posts = await Post.find(query)
       .sort({ _id: -1 })
       .limit(limitNum)
+      .select(selectFields)
       .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
       .populate('ownerId', 'name avatar')
-      .populate({ path: 'comments.userId', select: 'name username profilePic avatar' })
       .lean();
 
     // Add isLiked status for current user
     _addLikeStatus(posts, userId);
-
-    // Filter hidden comments
-    posts.forEach((post) => {
-      if (post.comments) {
-        post.comments = post.comments.filter((c) => !c.isHidden);
-      }
-    });
 
     const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
 
@@ -157,10 +152,14 @@ const explorePosts = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const userId = req.user._id;
 
+    // Optimized field selection
+    const selectFields = 'userId shopId ownerId content images videoUrl mediaUrl mediaType type likesCount commentsCount createdAt isHidden';
+
     const posts = await Post.find({ type: 'post', isHidden: { $ne: true } })
       .sort({ likesCount: -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .select(selectFields)
       .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
       .populate('ownerId', 'name avatar')
@@ -633,6 +632,9 @@ const getReels = async (req, res, next) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const userId = req.user._id;
 
+    // Optimized field selection
+    const selectFields = 'userId shopId ownerId content caption videoUrl mediaUrl thumbnailUrl mediaType type likesCount commentsCount createdAt duration isHidden';
+
     const reels = await Post.find({
       type: 'reel',
       videoUrl: { $ne: '' },
@@ -641,9 +643,9 @@ const getReels = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .select(selectFields)
       .populate('userId', 'name username profilePic avatar accountType')
       .populate('shopId', 'shopName logo')
-      .populate('ownerId', 'name avatar')
       .lean();
 
     _addLikeStatus(reels, userId);
@@ -669,7 +671,17 @@ const likeReel = async (req, res, next) => {
 const toggleFollow = async (req, res, next) => {
   try {
     const followerId = req.user._id;
-    const followingId = req.params.userId || req.params.shopId;
+    let followingId = req.params.userId;
+
+    if (!followingId) {
+      return res.status(400).json({ success: false, message: 'Target ID is required' });
+    }
+
+    // Check if followingId is actually a shopId
+    const shopByShopId = await Shop.findById(followingId);
+    if (shopByShopId) {
+      followingId = shopByShopId.ownerId;
+    }
 
     if (followerId.toString() === followingId.toString()) {
       return res.status(400).json({ success: false, message: 'Cannot follow yourself' });
@@ -681,24 +693,24 @@ const toggleFollow = async (req, res, next) => {
       // Unfollow
       await Follow.findByIdAndDelete(existing._id);
       // Atomic decrement
-      await User.updateOne({ _id: followingId }, { $inc: { followersCount: -1 } });
-      await User.updateOne({ _id: followerId }, { $inc: { followingCount: -1 } });
+      await User.findByIdAndUpdate(followingId, { $inc: { followersCount: -1 } });
+      await User.findByIdAndUpdate(followerId, { $inc: { followingCount: -1 } });
       return res.status(200).json({ success: true, message: 'Unfollowed', data: { isFollowing: false } });
     }
 
     // Follow
     const followData = { followerId, followingId };
 
-    // Backward compat: if following a shop owner, also store shopId
-    const shop = await Shop.findOne({ ownerId: followingId });
-    if (shop) {
-      followData.shopId = shop._id;
+    // Backward compat: Store shopId if the target is a shop owner
+    const targetShop = await Shop.findOne({ ownerId: followingId });
+    if (targetShop) {
+      followData.shopId = targetShop._id;
     }
 
     await Follow.create(followData);
     // Atomic increment
-    await User.updateOne({ _id: followingId }, { $inc: { followersCount: 1 } });
-    await User.updateOne({ _id: followerId }, { $inc: { followingCount: 1 } });
+    await User.findByIdAndUpdate(followingId, { $inc: { followersCount: 1 } });
+    await User.findByIdAndUpdate(followerId, { $inc: { followingCount: 1 } });
 
     // Notify
     const follower = await User.findById(followerId);
@@ -712,7 +724,6 @@ const toggleFollow = async (req, res, next) => {
 
     res.status(201).json({ success: true, message: 'Followed', data: { isFollowing: true } });
   } catch (error) {
-    // Handle duplicate key error (already following)
     if (error.code === 11000) {
       return res.status(409).json({ success: false, message: 'Already following' });
     }
@@ -834,10 +845,21 @@ const getMyFollowedShops = async (req, res, next) => {
 // @route   GET /api/users/:userId
 const getUserProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.userId)
-      .select('-password');
+    const { userId } = req.params;
+    console.log(`[SOCIAL] Fetching profile for userId: ${userId}`);
 
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    // Validate ObjectID to prevent crash
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log(`[SOCIAL] Invalid User ID format: ${userId}`);
+      return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+    }
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      console.log(`[SOCIAL] User not found: ${userId}`);
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    console.log(`[SOCIAL] Profile found for: ${user.name} (@${user.username})`);
 
     // Count posts
     const postsCount = await Post.countDocuments({
@@ -855,7 +877,7 @@ const getUserProfile = async (req, res, next) => {
     const profileData = {
       _id: user._id,
       name: user.name,
-      username: user.username || user.name.toLowerCase().replace(/\s+/g, ''),
+      username: user.username || (user.name ? user.name.toLowerCase().replace(/\s+/g, '') : 'user'),
       email: user.email,
       profilePic: user.profilePic || user.avatar || '',
       avatar: user.avatar || '',

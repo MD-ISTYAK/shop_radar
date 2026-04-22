@@ -107,7 +107,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
         children: [
           _buildFeedTab(),
           const ReelsScreen(),
-          PublicProfileScreen(userId: currentUserId),
+          currentUserId.isEmpty 
+            ? const Center(child: CircularProgressIndicator()) 
+            : PublicProfileScreen(userId: currentUserId),
         ],
       ),
     );
