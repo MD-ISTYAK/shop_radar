@@ -1,8 +1,8 @@
 class AppConstants {
   AppConstants._();
 
-  // API — Change this IP when switching devices
-  static const String _ip = '192.168.1.17';
+  // API — Change this IP when switching devices ss
+  static const String _ip = '192.168.1.16';
   static const bool useLocal = false; // Toggle this for local testing
 
   static const String baseUrl = useLocal
