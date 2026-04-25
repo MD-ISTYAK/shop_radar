@@ -41,100 +41,178 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
 
   Widget _buildRegistration(DeliveryPartnerState state) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Hero Section
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
+            height: 300,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [AppColors.primary, AppColors.accent]),
-              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primary, AppColors.primaryDark],
+              ),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
             ),
-            child: Column(
+            child: Stack(
               children: [
-                const Icon(Icons.delivery_dining, color: Colors.white, size: 56),
-                const SizedBox(height: 12),
-                const Text('Become a Delivery Partner', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text('Earn ₹200-500/day delivering orders', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 14)),
-              ],
-            ),
-          ).animate().fadeIn(duration: 500.ms),
-          const SizedBox(height: 24),
-          const Text('Select Your Vehicle', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12, runSpacing: 12,
-            children: ['bicycle', 'bike', 'scooter', 'car', 'auto'].map((v) {
-              final isSelected = _selectedVehicle == v;
-              final icons = {'bicycle': Icons.pedal_bike, 'bike': Icons.two_wheeler, 'scooter': Icons.electric_scooter, 'car': Icons.directions_car, 'auto': Icons.local_taxi};
-              return GestureDetector(
-                onTap: () => setState(() => _selectedVehicle = v),
-                child: Container(
-                  width: 90, height: 80,
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withAlpha(15) : AppColors.card,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: isSelected ? AppColors.primary : AppColors.divider, width: isSelected ? 2 : 1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icons[v] ?? Icons.directions_car, color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 28),
-                      const SizedBox(height: 4),
-                      Text(v[0].toUpperCase() + v.substring(1), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textSecondary)),
-                    ],
+                Positioned(
+                  right: -50,
+                  bottom: -20,
+                  child: Opacity(
+                    opacity: 0.2,
+                    child: Icon(Icons.delivery_dining, size: 250, color: Colors.white),
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
-          // Benefits
-          const Text('Benefits', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 12),
-          _buildBenefit(Icons.payments, 'Earn up to ₹500/day', 'Get 85% of delivery fee'),
-          _buildBenefit(Icons.schedule, 'Flexible hours', 'Work when you want'),
-          _buildBenefit(Icons.trending_up, 'Weekly payouts', 'Get paid every week'),
-          _buildBenefit(Icons.shield, 'Insurance coverage', 'Protected on every delivery'),
-          const SizedBox(height: 24),
-
-          if (state.error != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: AppColors.error.withAlpha(20), borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(state.error!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
-                ],
-              ),
-            ),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: state.isLoading ? null : () async {
-                final result = await ref.read(deliveryPartnerProvider.notifier).register(_selectedVehicle);
-                if (result && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('🎉 Registered! Complete KYC to start.'),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Join Our\nDelivery Fleet',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(40),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Earn up to ₹15,000/month',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              child: state.isLoading 
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('Register Now', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+                Positioned(
+                  right: 20,
+                  bottom: 20,
+                  child: Image.asset(
+                    'assets/images/delivery_partner_hero.png',
+                    height: 180,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.delivery_dining, size: 100, color: Colors.white),
+                  ).animate().fadeIn(duration: 600.ms).slideX(begin: 0.2),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Choose Your Vehicle', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: ['bicycle', 'bike', 'scooter', 'car', 'auto'].map((v) {
+                      final isSelected = _selectedVehicle == v;
+                      final icons = {
+                        'bicycle': Icons.pedal_bike_rounded,
+                        'bike': Icons.two_wheeler_rounded,
+                        'scooter': Icons.electric_scooter_rounded,
+                        'car': Icons.directions_car_rounded,
+                        'auto': Icons.local_taxi_rounded
+                      };
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedVehicle = v),
+                        child: Container(
+                          width: 100,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary : AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: isSelected ? AppColors.primary : AppColors.divider, width: 1.5),
+                            boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withAlpha(60), blurRadius: 12, offset: const Offset(0, 4))] : [],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(icons[v] ?? Icons.directions_car, color: isSelected ? Colors.white : AppColors.textSecondary, size: 32),
+                              const SizedBox(height: 6),
+                              Text(
+                                v[0].toUpperCase() + v.substring(1),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                
+                const Text('Partner Benefits', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                _buildBenefit(Icons.account_balance_wallet_rounded, 'Competitive Earnings', 'Get 85% of delivery fee + tips'),
+                _buildBenefit(Icons.history_toggle_off_rounded, 'Flexible Schedule', 'Be your own boss, work when you want'),
+                _buildBenefit(Icons.electric_bolt_rounded, 'Instant Payouts', 'Withdraw your earnings every week'),
+                _buildBenefit(Icons.security_rounded, 'Partner Insurance', 'Full coverage during delivery hours'),
+                
+                const SizedBox(height: 32),
+
+                if (state.error != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Text(
+                        '⚠️ ${state.error}',
+                        style: TextStyle(color: AppColors.error.withAlpha(200), fontSize: 13, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ).animate().fadeIn(),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: state.isLoading ? null : () async {
+                      final result = await ref.read(deliveryPartnerProvider.notifier).register(_selectedVehicle);
+                      if (result && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('🎉 Welcome Aboard! Complete KYC to start.'),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 4,
+                      shadowColor: AppColors.primary.withAlpha(100),
+                    ),
+                    child: state.isLoading 
+                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                      : const Text('Register Now', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  ),
+                ).animate().slideY(begin: 0.2, duration: 400.ms),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ],
@@ -544,24 +622,27 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
 
   Widget _buildBenefit(IconData icon, String title, String subtitle) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.success.withAlpha(20),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.primary.withAlpha(15),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, color: AppColors.success, size: 22),
+            child: Icon(icon, color: AppColors.primary, size: 24),
           ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
-            ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3)),
+              ],
+            ),
           ),
         ],
       ),

@@ -75,7 +75,16 @@ class DeliveryPartnerNotifier extends StateNotifier<DeliveryPartnerState> {
         fetchEarnings();
       }
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      if (e is DioException) {
+        if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
+          state = state.copyWith(isLoading: false, partner: null, error: null);
+        } else {
+          final message = e.response?.data['message'] ?? e.message ?? 'Something went wrong';
+          state = state.copyWith(isLoading: false, error: message.toString());
+        }
+      } else {
+        state = state.copyWith(isLoading: false, error: e.toString());
+      }
     }
   }
 
