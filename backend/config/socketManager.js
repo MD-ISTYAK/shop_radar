@@ -15,7 +15,7 @@ const initSocket = (server) => {
 
   // Auth middleware for socket connections
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
+    const token = socket.handshake.auth.token || socket.handshake.query.token;
     if (!token) return next(new Error('Authentication required'));
 
     try {
@@ -125,20 +125,38 @@ const initSocket = (server) => {
     });
 
     // Message status updates
-    socket.on('message:received', (data) => {
+    socket.on('message:received', async (data) => {
       // data: { messageId, senderId }
-      io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
-        messageId: data.messageId,
-        status: 'delivered'
-      });
+      try {
+        const Message = require('../models/Message');
+        await Message.findByIdAndUpdate(data.messageId, { status: 'delivered' });
+        
+        io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
+          messageId: data.messageId,
+          status: 'delivered'
+        });
+      } catch (err) {
+        console.error('Error updating message received status:', err);
+      }
     });
 
-    socket.on('message:seen', (data) => {
+    socket.on('message:seen', async (data) => {
       // data: { conversationId, senderId }
-      io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
-        conversationId: data.conversationId,
-        status: 'seen'
-      });
+      try {
+        const Message = require('../models/Message');
+        // Mark all messages in this conversation as seen for the sender
+        await Message.updateMany(
+          { conversationId: data.conversationId, receiverId: socket.userId, status: { $ne: 'seen' } },
+          { status: 'seen', read: true }
+        );
+        
+        io.to(`user:${data.senderId}`).emit('message:statusUpdate', {
+          conversationId: data.conversationId,
+          status: 'seen'
+        });
+      } catch (err) {
+        console.error('Error updating message seen status:', err);
+      }
     });
   });
 
