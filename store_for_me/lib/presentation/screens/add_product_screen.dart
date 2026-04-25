@@ -141,7 +141,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
@@ -154,11 +154,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 'Add Product Images',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -274,7 +274,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Product' : 'Add Product'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -290,7 +290,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 'Product Images',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'Add up to 5 images • First image is the cover',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -355,10 +355,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 width: 110,
                                 height: 110,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                                placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                                 errorWidget: (_, __, ___) => Container(
                                   color: AppColors.primaryLight.withAlpha(30),
-                                  child: const Icon(Icons.broken_image, color: AppColors.textLight),
+                                  child: Icon(Icons.broken_image, color: Theme.of(context).textTheme.bodySmall?.color),
                                 ),
                               ),
                             ),
@@ -521,3 +521,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+

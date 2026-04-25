@@ -42,9 +42,9 @@ class DiscoverPeopleRow extends ConsumerWidget {
                 margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -61,20 +61,20 @@ class DiscoverPeopleRow extends ConsumerWidget {
                       },
                       child: CircleAvatar(
                         radius: 36,
-                        backgroundColor: AppColors.shimmerBase,
+                        backgroundColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                         backgroundImage: user.profilePicUrl.isNotEmpty
                             ? CachedNetworkImageProvider(user.profilePicUrl)
                             : null,
                         child: user.profilePicUrl.isEmpty
-                            ? const Icon(
+                            ? Icon(
                                 Icons.person,
-                                color: AppColors.textLight,
+                                color: Theme.of(context).textTheme.bodySmall?.color,
                                 size: 36,
                               )
                             : null,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(
                       user.username,
                       style: const TextStyle(
@@ -86,8 +86,8 @@ class DiscoverPeopleRow extends ConsumerWidget {
                     ),
                     Text(
                       user.bio.isNotEmpty ? user.bio : 'Suggested',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                         fontSize: 11,
                       ),
                       maxLines: 1,
@@ -110,12 +110,12 @@ class DiscoverPeopleRow extends ConsumerWidget {
                               ? Colors.transparent
                               : AppColors.primary,
                           foregroundColor: user.isFollowing
-                              ? AppColors.textPrimary
+                              ? Theme.of(context).textTheme.bodyLarge?.color
                               : Colors.white,
                           elevation: 0,
                           padding: EdgeInsets.zero,
                           side: user.isFollowing
-                              ? const BorderSide(color: AppColors.divider)
+                              ? BorderSide(color: Theme.of(context).dividerColor)
                               : null,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6),
@@ -141,3 +141,12 @@ class DiscoverPeopleRow extends ConsumerWidget {
     );
   }
 }
+
+
+
+
+
+
+
+
+

@@ -38,7 +38,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
         children: [
           Expanded(
@@ -60,7 +60,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                                     imageUrl: AppConstants.getImageUrl(product.images[index]),
                                     fit: BoxFit.cover,
                                     width: double.infinity,
-                                    placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                                    placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                                     errorWidget: (_, __, ___) => _buildImagePlaceholder(),
                                   );
                                 },
@@ -74,7 +74,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         child: CircleAvatar(
                           backgroundColor: Colors.black38,
                           child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            icon: Icon(Icons.arrow_back, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ),
@@ -137,7 +137,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           product.name,
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         // Price
                         Row(
@@ -155,9 +155,9 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                               const SizedBox(width: 10),
                               Text(
                                 '₹${product.price.toStringAsFixed(0)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
-                                  color: AppColors.textLight,
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
                                   decoration: TextDecoration.lineThrough,
                                 ),
                               ),
@@ -245,8 +245,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: const Offset(0, -2))],
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, -2))],
               ),
               child: Row(
                 children: [
@@ -323,12 +323,22 @@ class _QuantityButton extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Icon(icon, size: 20, color: AppColors.primary),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+
+

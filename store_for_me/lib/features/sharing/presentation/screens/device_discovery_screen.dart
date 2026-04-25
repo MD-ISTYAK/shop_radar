@@ -5,6 +5,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../providers/sharing_provider.dart';
 import '../../../../presentation/providers/auth_provider.dart';
 
+import 'package:permission_handler/permission_handler.dart';
+
 class DeviceDiscoveryScreen extends ConsumerStatefulWidget {
   const DeviceDiscoveryScreen({super.key});
 
@@ -13,9 +15,32 @@ class DeviceDiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _DeviceDiscoveryScreenState extends ConsumerState<DeviceDiscoveryScreen> {
+  bool _permissionsGranted = false;
+
   @override
   void initState() {
     super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    if (Platform.isAndroid) {
+      final statuses = await [
+        Permission.location,
+        Permission.nearbyWifiDevices,
+      ].request();
+      
+      if (statuses[Permission.location]!.isGranted || statuses[Permission.nearbyWifiDevices]!.isGranted) {
+        setState(() => _permissionsGranted = true);
+        _startDiscovery();
+      }
+    } else {
+      setState(() => _permissionsGranted = true);
+      _startDiscovery();
+    }
+  }
+
+  void _startDiscovery() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(sharingProvider.notifier).startDiscovery();
     });

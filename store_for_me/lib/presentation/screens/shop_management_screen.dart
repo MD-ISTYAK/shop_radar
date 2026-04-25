@@ -36,7 +36,7 @@ class _ShopManagementScreenState extends ConsumerState<ShopManagementScreen> wit
     final state = ref.watch(shopManagementProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Manage Social Content'),
         bottom: TabBar(
@@ -334,3 +334,7 @@ class _StoriesList extends ConsumerWidget {
     }
   }
 }
+
+
+
+

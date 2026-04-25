@@ -51,7 +51,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     final currentUserId = auth.user?.id ?? '';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Feed'),
         actions: [
@@ -77,7 +77,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                   SliverToBoxAdapter(
                     child: Container(
                       height: 100,
-                      color: AppColors.card,
+                      color: Theme.of(context).cardColor,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -98,7 +98,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                       ),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: Divider(height: 1)),
+                  SliverToBoxAdapter(child: Divider(height: 1)),
                   // Posts
                   if (social.feed.isEmpty)
                     SliverFillRemaining(
@@ -106,11 +106,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.dynamic_feed_outlined, size: 64, color: AppColors.textLight),
-                            const SizedBox(height: 12),
+                            Icon(Icons.dynamic_feed_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+                            SizedBox(height: 12),
                             const Text('No posts yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
-                            Text('Follow people to see their posts', style: TextStyle(color: AppColors.textSecondary)),
+                            Text('Follow people to see their posts', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                           ],
                         ),
                       ),
@@ -175,8 +175,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
 
   Widget _buildShimmer() {
     return Shimmer.fromColors(
-      baseColor: AppColors.shimmerBase,
-      highlightColor: AppColors.shimmerHighlight,
+      baseColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
+      highlightColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerHighlight : AppColors.shimmerHighlight),
       child: ListView.builder(
         itemCount: 3,
         itemBuilder: (_, __) => Padding(
@@ -201,3 +201,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
     );
   }
 }
+
+
+
+
+
+
+

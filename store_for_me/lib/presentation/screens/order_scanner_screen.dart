@@ -136,3 +136,6 @@ class _OrderScannerScreenState extends ConsumerState<OrderScannerScreen> {
     );
   }
 }
+
+
+

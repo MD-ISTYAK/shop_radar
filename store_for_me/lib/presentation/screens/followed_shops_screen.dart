@@ -43,7 +43,7 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Followed Shops')),
       body: _isLoading
           ? const LoadingIndicator()
@@ -63,9 +63,9 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.card,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+                          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
@@ -95,7 +95,7 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
                                           ),
                                   ),
                                 ),
-                                const SizedBox(width: 14),
+                                SizedBox(width: 14),
                                 // Shop info
                                 Expanded(
                                   child: Column(
@@ -149,7 +149,7 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right, color: AppColors.textLight),
+                                Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color),
                               ],
                             ),
                           ),
@@ -161,3 +161,11 @@ class _FollowedShopsScreenState extends ConsumerState<FollowedShopsScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+

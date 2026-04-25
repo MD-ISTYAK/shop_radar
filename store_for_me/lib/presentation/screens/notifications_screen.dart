@@ -50,7 +50,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final state = ref.watch(notificationProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [
@@ -79,7 +79,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         decoration: BoxDecoration(
-                          color: n.read ? AppColors.card : AppColors.primaryLight.withAlpha(15),
+                          color: n.read ? Theme.of(context).cardColor : AppColors.primary.withAlpha(20),
                           borderRadius: BorderRadius.circular(14),
                           border: n.read ? null : Border.all(color: AppColors.primary.withAlpha(30)),
                         ),
@@ -87,7 +87,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           leading: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: _getNotificationColor(n.type).withAlpha(20),
+                              color: (_getNotificationColor(n.type) ?? Colors.transparent).withAlpha(20),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(_getNotificationIcon(n.type), color: _getNotificationColor(n.type), size: 22),
@@ -96,8 +96,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (n.body.isNotEmpty) Text(n.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
-                              const SizedBox(height: 2),
+                              if (n.body.isNotEmpty) Text(n.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12)),
+                              SizedBox(height: 2),
                               Text(DateFormat.yMMMd().add_jm().format(n.createdAt), style: Theme.of(context).textTheme.bodySmall),
                             ],
                           ),
@@ -112,3 +112,8 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 }
+
+
+
+
+

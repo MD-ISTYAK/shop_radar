@@ -79,8 +79,8 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
     final pickupCode = widget.delivery['pickupCode'] ?? '000000';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text('Order #$shortId', style: const TextStyle(fontWeight: FontWeight.w700))),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('Order #$shortId', style: TextStyle(fontWeight: FontWeight.w700))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -88,7 +88,7 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
             // Shop / Status Header
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.divider)),
+              decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: Theme.of(context).dividerColor)),
               child: Row(
                 children: [
                   Container(
@@ -96,14 +96,14 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
                     decoration: BoxDecoration(color: AppColors.primary.withAlpha(20), shape: BoxShape.circle),
                     child: const Icon(Icons.storefront, color: AppColors.primary),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(shopName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                         Text(status == 'packed' ? 'Ready for Pickup' : 'Out for Delivery', 
-                             style: const TextStyle(color: AppColors.textLight, fontSize: 13)),
+                             style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -118,7 +118,7 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.divider)),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: Theme.of(context).dividerColor)),
                 child: Column(
                   children: [
                     QrImageView(
@@ -127,13 +127,13 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
                       size: 200.0,
                     ),
                     const SizedBox(height: 16),
-                    const Text('Order QR Code', style: TextStyle(color: AppColors.textLight, fontSize: 12)),
+                    Text('Order QR Code', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
                     const Divider(height: 32),
                     Text(pickupCode, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 8, color: AppColors.primary)),
                     const Text('HANDOVER CODE', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 10, letterSpacing: 2)),
                     const SizedBox(height: 12),
-                    const Text('Show this QR or tell the code to the shop owner to receive the package.', 
-                               textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+                    Text('Show this QR or tell the code to the shop owner to receive the package.', 
+                               textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                   ],
                 ),
               ),
@@ -146,16 +146,16 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.divider)),
+                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: Theme.of(context).dividerColor)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('CUSTOMER ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textLight)),
+                    Text('CUSTOMER ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Theme.of(context).textTheme.bodySmall?.color)),
                     const SizedBox(height: 4),
                     Text(address, style: const TextStyle(fontWeight: FontWeight.w600)),
                     const Divider(height: 32),
                     
-                    const Text('UPLOAD DELIVERY PROOF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textLight)),
+                    Text('UPLOAD DELIVERY PROOF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Theme.of(context).textTheme.bodySmall?.color)),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 80,
@@ -174,7 +174,7 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
                               onTap: _pickImages,
                               child: Container(
                                 width: 80, height: 80,
-                                decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.divider)),
+                                decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: Theme.of(context).dividerColor)),
                                 child: const Icon(Icons.add_a_photo, color: AppColors.primary),
                               ),
                             ),
@@ -211,3 +211,12 @@ class _DeliveryOrderDetailsScreenState extends ConsumerState<DeliveryOrderDetail
     );
   }
 }
+
+
+
+
+
+
+
+
+

@@ -64,3 +64,6 @@ class DealNotifier extends StateNotifier<DealState> {
 }
 
 final dealProvider = StateNotifierProvider<DealNotifier, DealState>((ref) => DealNotifier());
+
+
+

@@ -19,8 +19,8 @@ class LoadingIndicator extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(message, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          SizedBox(height: 16),
+          Text(message, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14)),
         ],
       ),
     );
@@ -60,10 +60,10 @@ class EmptyStateWidget extends StatelessWidget {
               ),
               child: Icon(icon, size: 40, color: AppColors.primary.withAlpha(150)),
             ),
-            const SizedBox(height: 20),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            SizedBox(height: 20),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
+            SizedBox(height: 8),
+            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14)),
             if (buttonText != null && onButtonPressed != null) ...[
               const SizedBox(height: 20),
               ElevatedButton(onPressed: onButtonPressed, child: Text(buttonText!)),
@@ -87,9 +87,9 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: (color ?? Colors.transparent).withAlpha(20),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(80)),
+        border: Border.all(color: (color ?? Colors.transparent).withAlpha(80)),
       ),
       child: Text(
         status,
@@ -145,8 +145,8 @@ class SectionHeader extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+              Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
+              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
             ],
           ),
           const Spacer(),
@@ -157,3 +157,8 @@ class SectionHeader extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

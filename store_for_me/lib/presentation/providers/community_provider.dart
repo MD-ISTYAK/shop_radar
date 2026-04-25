@@ -58,3 +58,6 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
 }
 
 final communityProvider = StateNotifierProvider<CommunityNotifier, CommunityState>((ref) => CommunityNotifier());
+
+
+

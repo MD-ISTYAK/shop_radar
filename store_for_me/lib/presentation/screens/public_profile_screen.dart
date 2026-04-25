@@ -79,7 +79,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     if (socialState.isProfileLoading || (profile == null && socialState.error == null)) {
       debugPrint(' -> Entering Loading State');
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(title: const Text('Profile')),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -89,20 +89,20 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     if (profile == null || profile.id != widget.userId) {
       debugPrint(' -> Entering Error State');
       return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(title: const Text('Profile')),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(title: Text('Profile')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: AppColors.textSecondary),
-                const SizedBox(height: 16),
+                Icon(Icons.error_outline, size: 48, color: Theme.of(context).textTheme.bodyMedium?.color),
+                SizedBox(height: 16),
                 Text(
                   socialState.error ?? 'Failed to load profile', 
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -122,9 +122,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text(profile.username, style: const TextStyle(fontWeight: FontWeight.w700)),
+          title: Text(profile.username, style: TextStyle(fontWeight: FontWeight.w700)),
           centerTitle: true,
         ),
         body: NestedScrollView(
@@ -139,15 +139,15 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 40,
-                        backgroundColor: AppColors.card,
+                        backgroundColor: Theme.of(context).cardColor,
                         backgroundImage: profile.profilePicUrl.isNotEmpty
                             ? CachedNetworkImageProvider(profile.profilePicUrl)
                             : null,
                         child: profile.profilePicUrl.isEmpty
-                            ? Icon(profile.isShop ? Icons.store : Icons.person, size: 40, color: AppColors.textLight)
+                            ? Icon(profile.isShop ? Icons.store : Icons.person, size: 40, color: Theme.of(context).textTheme.bodySmall?.color)
                             : null,
                       ),
-                      const SizedBox(width: 24),
+                      SizedBox(width: 24),
                       Expanded(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -177,7 +177,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                 profile.bio, 
                                 style: TextStyle(
                                   fontSize: 14, 
-                                  color: AppColors.textPrimary.withAlpha(180),
+                                  color: (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.grey).withAlpha(180),
                                   height: 1.4,
                                 )
                               ),
@@ -203,9 +203,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: profile.isFollowing ? AppColors.card : AppColors.primary,
-                              foregroundColor: profile.isFollowing ? AppColors.textPrimary : Colors.white,
-                              side: profile.isFollowing ? const BorderSide(color: AppColors.divider) : BorderSide.none,
+                              backgroundColor: profile.isFollowing ? Theme.of(context).cardColor : AppColors.primary,
+                              foregroundColor: profile.isFollowing ? Theme.of(context).textTheme.bodyLarge?.color : Colors.white,
+                              side: profile.isFollowing ? BorderSide(color: Theme.of(context).dividerColor) : BorderSide.none,
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
@@ -238,18 +238,18 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.card,
-                              foregroundColor: AppColors.textPrimary,
-                              side: const BorderSide(color: AppColors.divider),
+                              backgroundColor: Theme.of(context).cardColor,
+                              foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+                              side: BorderSide(color: Theme.of(context).dividerColor),
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Message', style: TextStyle(fontWeight: FontWeight.w600)),
+                            child: Text('Message', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],
                     ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (currentUserId == widget.userId) ...[
                     Row(
                       children: [
@@ -273,8 +273,8 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                               // Share logic
                             },
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: AppColors.divider.withAlpha(150)),
-                              foregroundColor: AppColors.textPrimary,
+                              side: BorderSide(color: Theme.of(context).dividerColor.withAlpha(150)),
+                              foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
                               minimumSize: const Size(0, 44),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
@@ -296,9 +296,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
             pinned: true,
             delegate: _SliverAppBarDelegate(
               TabBar(
-                indicatorColor: AppColors.textPrimary,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textLight,
+                indicatorColor: Theme.of(context).textTheme.bodyLarge?.color,
+                labelColor: Theme.of(context).textTheme.bodyLarge?.color,
+                unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
                 tabs: const [
                   Tab(icon: Icon(Icons.grid_on)),
                   Tab(icon: Icon(Icons.play_circle_outline)),
@@ -325,7 +325,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(profile.isShop ? Icons.storefront : Icons.camera_alt_outlined, size: 60, color: AppColors.textLight),
+            Icon(profile.isShop ? Icons.storefront : Icons.camera_alt_outlined, size: 60, color: Theme.of(context).textTheme.bodySmall?.color),
             const SizedBox(height: 16),
             const Text('No Posts Yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
@@ -352,7 +352,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
             fit: StackFit.expand,
             children: [
               Container(
-                color: AppColors.shimmerBase,
+                color: Theme.of(context).dividerColor.withAlpha(30),
                 child: (imageUrl.isNotEmpty && !post.isReel && post.mediaType != 'video')
                     ? CachedNetworkImage(
                         imageUrl: AppConstants.getImageUrl(imageUrl),
@@ -361,7 +361,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                     : Center(
                         child: Icon(
                           (post.isReel || post.mediaType == 'video') ? Icons.videocam : Icons.broken_image,
-                          color: AppColors.textLight,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           size: 32,
                         ),
                       ),
@@ -388,8 +388,8 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
   Widget _buildStat(String value, String label) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color)),
       ],
     );
   }
@@ -407,7 +407,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: AppColors.background,
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: _tabBar,
     );
   }
@@ -417,3 +417,8 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     return false;
   }
 }
+
+
+
+
+

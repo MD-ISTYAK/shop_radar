@@ -200,3 +200,6 @@ class DeliveryPartnerNotifier extends StateNotifier<DeliveryPartnerState> {
 }
 
 final deliveryPartnerProvider = StateNotifierProvider<DeliveryPartnerNotifier, DeliveryPartnerState>((ref) => DeliveryPartnerNotifier());
+
+
+

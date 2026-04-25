@@ -115,7 +115,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
 
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
-      color: AppColors.card,
+      color: Theme.of(context).cardColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -131,7 +131,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
                 '${post.likeCount} ${post.likeCount == 1 ? 'like' : 'likes'}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Theme.of(context).textTheme.bodyLarge?.color),
               ),
             ),
           // ─── Caption ───
@@ -144,7 +144,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                   children: [
                     TextSpan(
                       text: post.username,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                     ),
                     const TextSpan(text: '  '),
                     TextSpan(
@@ -165,7 +165,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 onTap: widget.onComment,
                 child: Text(
                   'View all ${post.commentCount} comments',
-                  style: TextStyle(color: AppColors.textLight, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
                 ),
               ),
             ),
@@ -174,7 +174,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
             child: Text(
               post.timeAgo,
-              style: TextStyle(color: AppColors.textLight, fontSize: 11),
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 11),
             ),
           ),
         ],
@@ -194,7 +194,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
               height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [Color(0xFFF58529), Color(0xFFDD2A7B), Color(0xFF8134AF)],
                 ),
                 border: Border.all(color: Colors.transparent, width: 2),
@@ -203,7 +203,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 padding: const EdgeInsets.all(2),
                 child: CircleAvatar(
                   radius: 14,
-                  backgroundColor: AppColors.shimmerBase,
+                  backgroundColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                   backgroundImage: post.displayProfilePic.isNotEmpty
                       ? CachedNetworkImageProvider(post.displayProfilePic)
                       : null,
@@ -211,7 +211,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                       ? Icon(
                           post.accountType == 'shop' ? Icons.store : Icons.person,
                           size: 16,
-                          color: AppColors.textLight,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                         )
                       : null,
                 ),
@@ -278,7 +278,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 ? VideoPlayer(_videoController!)
                 : (post.images.isNotEmpty 
                     ? CachedNetworkImage(imageUrl: _getOptimizedUrl(post.images[0], isDataSaver), fit: BoxFit.cover)
-                    : Container(color: AppColors.shimmerBase)),
+                    : Container(color: Theme.of(context).dividerColor.withAlpha(30))),
             ),
             // Play overlay if not playing
             if (!isPlaying)
@@ -337,11 +337,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 ? CachedNetworkImage(
                     imageUrl: _getOptimizedUrl(images[0], isDataSaver),
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: AppColors.shimmerBase),
-                    errorWidget: (_, __, ___) => Container(
-                      color: AppColors.shimmerBase,
-                      child: const Icon(Icons.broken_image, size: 48, color: AppColors.textLight),
-                    ),
+                    errorWidget: (context, url, error) => Icon(Icons.broken_image, size: 48, color: Theme.of(context).textTheme.bodySmall?.color),
                   )
                 : Stack(
                     children: [
@@ -352,9 +348,9 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                           return CachedNetworkImage(
                             imageUrl: _getOptimizedUrl(images[i], isDataSaver),
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                            placeholder: (_, __) => Container(color: Theme.of(context).dividerColor.withAlpha(30)),
                             errorWidget: (_, __, ___) => Container(
-                              color: AppColors.shimmerBase,
+                              color: Theme.of(context).dividerColor.withAlpha(30),
                               child: const Icon(Icons.broken_image, size: 48),
                             ),
                           );
@@ -404,7 +400,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
           IconButton(
             icon: Icon(
               post.isLikedBy(widget.currentUserId) ? Icons.favorite : Icons.favorite_border,
-              color: post.isLikedBy(widget.currentUserId) ? AppColors.error : AppColors.textPrimary,
+              color: post.isLikedBy(widget.currentUserId) ? AppColors.error : Theme.of(context).iconTheme.color,
               size: 26,
             ),
             onPressed: widget.onLike,
@@ -438,3 +434,8 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
     );
   }
 }
+
+
+
+
+

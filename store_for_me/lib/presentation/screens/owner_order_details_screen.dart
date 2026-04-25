@@ -140,9 +140,9 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
     final order = orderState.activeOrders.firstWhere((o) => o.id == widget.order.id, orElse: () => widget.order);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Order Details (Owner)', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text('Order Details (Owner)', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -159,18 +159,18 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                 ),
                 Text(
                   DateFormat('hh:mm a  dd-MM-yyyy').format(order.createdAt.toLocal()), 
-                  style: const TextStyle(color: AppColors.textLight, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             // Status Header
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _getStatusColor(order.status).withAlpha(20),
+                color: (_getStatusColor(order.status) ?? Colors.transparent).withAlpha(20),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _getStatusColor(order.status).withAlpha(50)),
+                border: Border.all(color: (_getStatusColor(order.status) ?? Colors.transparent).withAlpha(50)),
               ),
               child: Row(
                 children: [
@@ -180,7 +180,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Current Status', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        Text('Current Status', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13)),
                         Text(order.statusLabel.toUpperCase(), style: TextStyle(fontWeight: FontWeight.w800, color: _getStatusColor(order.status))),
                       ],
                     ),
@@ -201,7 +201,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.divider)),
+              decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Theme.of(context).dividerColor)),
               child: Row(
                 children: [
                   Container(
@@ -216,7 +216,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                       children: [
                         Text('User ID: ${order.userId.substring(order.userId.length - 6).toUpperCase()}', style: const TextStyle(fontWeight: FontWeight.w600)),
                         if (order.deliveryType != 'shop_pickup')
-                          Text('Address: ${order.deliveryAddress}', style: TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Text('Address: ${order.deliveryAddress}', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -230,7 +230,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.divider)),
+              decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Theme.of(context).dividerColor)),
               child: Column(
                 children: order.items.map((item) {
                   return Padding(
@@ -239,7 +239,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: BorderRadius.circular(8)),
                           child: Text('${item.quantity}x', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
                         ),
                         const SizedBox(width: 12),
@@ -251,15 +251,15 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                 }).toList(),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
 
             // Packing Section (Only if Accepted or Packed)
             if (order.status == 'accepted' || order.status == 'packed' || order.status == 'ready') ...[
               const Text('Proof of Packing', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               if (!_isPackedSuccessfully) ...[
-                const Text('Upload up to 5 images of the packed items. At least one image is mandatory.', 
-                           style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                Text('Upload up to 5 images of the packed items. At least one image is mandatory.', 
+                           style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13)),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 100,
@@ -294,9 +294,9 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                           child: Container(
                             width: 100, height: 100,
                             decoration: BoxDecoration(
-                              color: AppColors.card,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.divider, style: BorderStyle.none),
+                              border: Border.all(color: Theme.of(context).dividerColor, style: BorderStyle.none),
                             ),
                             child: const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -336,7 +336,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                 order.deliveryType == 'shop_pickup' 
                   ? 'Ask the customer for the 6-digit code to verify the handover.'
                   : 'Ask the delivery driver for their 6-digit PICKUP code to dispatch the order.', 
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)
+                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13)
               ),
               const SizedBox(height: 20),
               CustomTextField(
@@ -401,3 +401,12 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
     super.dispose();
   }
 }
+
+
+
+
+
+
+
+
+

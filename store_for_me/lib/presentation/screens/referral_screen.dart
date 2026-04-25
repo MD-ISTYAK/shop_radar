@@ -34,7 +34,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     final referral = gamState.referral;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Refer & Earn', style: TextStyle(fontWeight: FontWeight.w700))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -176,15 +176,15 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Column(
           children: [
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+            SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
           ],
         ),
       ),
@@ -199,14 +199,14 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-            child: Center(child: Text(number, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+            child: Center(child: Text(number, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-              Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
             ],
           ),
         ],
@@ -214,3 +214,12 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+

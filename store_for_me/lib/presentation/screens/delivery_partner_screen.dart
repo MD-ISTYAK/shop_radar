@@ -29,7 +29,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
     final state = ref.watch(deliveryPartnerProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Delivery Partner', style: TextStyle(fontWeight: FontWeight.w700))),
       body: state.isLoading
           ? const LoadingIndicator(message: 'Loading...')
@@ -72,7 +72,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Join Our\nDelivery Fleet',
                           style: TextStyle(
                             color: Colors.white,
@@ -81,7 +81,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                             height: 1.1,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -115,7 +115,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Choose Your Vehicle', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+                Text('Choose Your Vehicle', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 100,
@@ -161,9 +161,9 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                     }).toList(),
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: 32),
                 
-                const Text('Partner Benefits', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+                Text('Partner Benefits', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 const SizedBox(height: 16),
                 _buildBenefit(Icons.account_balance_wallet_rounded, 'Competitive Earnings', 'Get 85% of delivery fee + tips'),
                 _buildBenefit(Icons.history_toggle_off_rounded, 'Flexible Schedule', 'Be your own boss, work when you want'),
@@ -245,7 +245,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: (partner.isOnline ? AppColors.success : Colors.black).withAlpha(40),
+                    color: (partner.isOnline ? AppColors.success : (Colors.black) ?? Colors.transparent).withAlpha(40),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -414,7 +414,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
               ),
             ],
 
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 const Text('Available Nearby', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
@@ -431,16 +431,16 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider.withAlpha(50)),
+                  border: Border.all(color: Theme.of(context).dividerColor.withAlpha(50)),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.map_outlined, color: AppColors.textLight.withAlpha(100), size: 48),
-                    const SizedBox(height: 12),
-                    const Text('No deliveries available nearby', style: TextStyle(color: AppColors.textLight)),
-                    const Text('Try moving to a busier area', style: TextStyle(color: AppColors.textLight, fontSize: 12)),
+                    Icon(Icons.map_outlined, color: (Theme.of(context).textTheme.bodySmall?.color ?? (Colors.grey) ?? Colors.transparent).withAlpha(100), size: 48),
+                    SizedBox(height: 12),
+                    Text('No deliveries available nearby', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
+                    Text('Try moving to a busier area', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
                   ],
                 ),
               )
@@ -466,11 +466,11 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withAlpha(30), width: 1.5),
+        border: Border.all(color: (color ?? Colors.transparent).withAlpha(30), width: 1.5),
         boxShadow: [
-          BoxShadow(color: color.withAlpha(10), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: (color ?? Colors.transparent).withAlpha(10), blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -480,7 +480,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(emoji, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Flexible(
                 child: Text(
                   value,
@@ -493,7 +493,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textLight),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodySmall?.color),
             textAlign: TextAlign.center,
             maxLines: 1,
           ),
@@ -506,7 +506,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: isActive ? AppColors.primary.withAlpha(50) : AppColors.divider),
       ),
@@ -519,13 +519,13 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (isActive ? AppColors.primary : AppColors.accent).withAlpha(15),
+                    color: (isActive ? AppColors.primary : (AppColors.accent) ?? Colors.transparent).withAlpha(15),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isActive ? Icons.directions_bike : Icons.shopping_bag_outlined, 
                     color: isActive ? AppColors.primary : AppColors.accent, size: 24),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,7 +536,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                       ),
                       Text(
                         delivery != null ? (delivery['deliveryAddress'] ?? 'Address Hidden') : 'ID: ${deliveryId.substring(0, 8)}...',
-                        style: const TextStyle(color: AppColors.textLight, fontSize: 12),
+                        style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -547,21 +547,21 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('₹${delivery?['deliveryFee'] ?? 40}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
-                      const Text('Fee', style: TextStyle(fontSize: 10, color: AppColors.textLight)),
+                      Text('Fee', style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color)),
                     ],
                   ),
               ],
             ),
           ),
-          Divider(height: 1, color: AppColors.divider.withAlpha(50)),
+          Divider(height: 1, color: Theme.of(context).dividerColor.withAlpha(50)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 if (!isActive) ...[
-                  const Icon(Icons.location_on, size: 14, color: AppColors.textLight),
-                  const SizedBox(width: 4),
-                  const Text('2.4 km away', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+                  Icon(Icons.location_on, size: 14, color: Theme.of(context).textTheme.bodySmall?.color),
+                  SizedBox(width: 4),
+                  Text('2.4 km away', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                 ],
                 const Spacer(),
                 if (isActive)
@@ -633,14 +633,14 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
             ),
             child: Icon(icon, color: AppColors.primary, size: 24),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3)),
+                Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                SizedBox(height: 2),
+                Text(subtitle, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color, height: 1.3)),
               ],
             ),
           ),
@@ -717,18 +717,18 @@ class _CompletionBottomSheetState extends ConsumerState<_CompletionBottomSheet> 
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         top: 24, left: 24, right: 24,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.background,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 24),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(2))),
+          SizedBox(height: 24),
           const Text('Verification Required', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text('Enter the 6-digit OTP from the customer and take a proof photo.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+          Text('Enter the 6-digit OTP from the customer and take a proof photo.', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
           const SizedBox(height: 24),
           
           TextField(
@@ -741,7 +741,7 @@ class _CompletionBottomSheetState extends ConsumerState<_CompletionBottomSheet> 
               hintStyle: const TextStyle(letterSpacing: 8),
               counterText: '',
               filled: true,
-              fillColor: AppColors.card,
+              fillColor: Theme.of(context).cardColor,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             ),
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 12),
@@ -754,9 +754,9 @@ class _CompletionBottomSheetState extends ConsumerState<_CompletionBottomSheet> 
               height: 120,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider, style: BorderStyle.none),
+                border: Border.all(color: Theme.of(context).dividerColor, style: BorderStyle.none),
                 image: _proofImage != null ? DecorationImage(image: FileImage(_proofImage!), fit: BoxFit.cover) : null,
               ),
               child: _proofImage == null 
@@ -792,4 +792,15 @@ class _CompletionBottomSheetState extends ConsumerState<_CompletionBottomSheet> 
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
 

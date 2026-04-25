@@ -37,7 +37,7 @@ class _DealsScreenState extends ConsumerState<DealsScreen> with SingleTickerProv
     final dealState = ref.watch(dealProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Deals & Offers', style: TextStyle(fontWeight: FontWeight.w700)),
         bottom: TabBar(
@@ -95,10 +95,10 @@ class _DealsScreenState extends ConsumerState<DealsScreen> with SingleTickerProv
                         ),
                         child: Text(
                           '${deal.discountPercent}% OFF',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(deal.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
@@ -113,18 +113,18 @@ class _DealsScreenState extends ConsumerState<DealsScreen> with SingleTickerProv
                   ),
                   if (deal.description.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text(deal.description, style: TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(deal.description, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color), maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(Icons.store, size: 16, color: AppColors.textLight),
+                      Icon(Icons.store, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
                       const SizedBox(width: 4),
-                      Text(deal.shopName, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      Text(deal.shopName, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color)),
                       const Spacer(),
                       Text(
                         '₹${deal.originalPrice.toInt()}',
-                        style: const TextStyle(fontSize: 13, decoration: TextDecoration.lineThrough, color: AppColors.textLight),
+                        style: TextStyle(fontSize: 13, decoration: TextDecoration.lineThrough, color: Theme.of(context).textTheme.bodySmall?.color),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -169,3 +169,10 @@ class _DealsScreenState extends ConsumerState<DealsScreen> with SingleTickerProv
     return 'Expiring soon';
   }
 }
+
+
+
+
+
+
+

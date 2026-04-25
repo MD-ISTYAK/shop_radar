@@ -97,9 +97,9 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(shop.statusLabel,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         // Crowd
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -279,9 +279,9 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   const Divider(),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
 
                   // Follow & Chat buttons
                   _FollowChatButtons(shopId: widget.shopId),
@@ -307,7 +307,7 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: Theme.of(context).scaffoldBackgroundColor,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -339,9 +339,9 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                                   onTap: () => ref.read(reviewProvider.notifier).toggleUpvote(review.id, widget.shopId),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.thumb_up_outlined, size: 14, color: AppColors.textLight),
+                                      Icon(Icons.thumb_up_outlined, size: 14, color: Theme.of(context).textTheme.bodySmall?.color),
                                       const SizedBox(width: 4),
-                                      Text('${review.upvoteCount}', style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+                                      Text('${review.upvoteCount}', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                                     ],
                                   ),
                                 ),
@@ -375,12 +375,12 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
                       );
                     }),
                   if (reviewState.reviews.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text('No reviews yet. Be the first to review!', style: TextStyle(color: AppColors.textLight)),
+                      child: Text('No reviews yet. Be the first to review!', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
                     ),
 
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 12),
 
@@ -457,9 +457,9 @@ class _ShopDetailsScreenState extends ConsumerState<ShopDetailsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: color.withAlpha(15),
+            color: (color ?? Colors.transparent).withAlpha(15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withAlpha(50)),
+            border: Border.all(color: (color ?? Colors.transparent).withAlpha(50)),
           ),
           child: Column(
             children: [
@@ -601,8 +601,8 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
+        Icon(icon, size: 18, color: Theme.of(context).textTheme.bodyMedium?.color),
+        SizedBox(width: 10),
         Expanded(
           child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
         ),
@@ -686,7 +686,7 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
           children: [
             Column(
               children: [
-                Text('$_followersCount', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                Text('$_followersCount', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
                 Text('Followers', style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
@@ -721,3 +721,10 @@ class _FollowChatButtonsState extends ConsumerState<_FollowChatButtons> {
     );
   }
 }
+
+
+
+
+
+
+

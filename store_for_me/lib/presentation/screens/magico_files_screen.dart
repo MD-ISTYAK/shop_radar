@@ -87,9 +87,9 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Magico Files', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Magico Files', style: TextStyle(fontWeight: FontWeight.bold)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(110),
           child: Column(
@@ -102,7 +102,7 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
                     hintText: 'Search files...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
-                    fillColor: AppColors.card,
+                    fillColor: Theme.of(context).cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -116,7 +116,7 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
                 isScrollable: false,
                 indicatorColor: AppColors.primary,
                 labelColor: AppColors.primary,
-                unselectedLabelColor: AppColors.textSecondary,
+                unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
                 tabs: const [
                   Tab(text: 'All'),
                   Tab(text: 'Images'),
@@ -156,17 +156,17 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.security_rounded, size: 80, color: AppColors.textLight),
-            const SizedBox(height: 24),
+            Icon(Icons.security_rounded, size: 80, color: Theme.of(context).textTheme.bodySmall?.color),
+            SizedBox(height: 24),
             const Text(
               'Storage Access Required',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               'To show and manage your files in the Magico folder, we need storage permission.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
@@ -200,9 +200,9 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.folder_open_rounded, size: 64, color: AppColors.textLight),
-            const SizedBox(height: 16),
-            Text('No files found', style: TextStyle(color: AppColors.textSecondary, fontSize: 18)),
+            Icon(Icons.folder_open_rounded, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+            SizedBox(height: 16),
+            Text('No files found', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 18)),
           ],
         ),
       );
@@ -223,7 +223,7 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppColors.divider.withAlpha(50)),
+            side: BorderSide(color: Theme.of(context).dividerColor.withAlpha(50)),
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -273,7 +273,7 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: (color ?? Colors.transparent).withAlpha(20),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(iconData, color: color, size: 28),
@@ -303,3 +303,14 @@ class _MagicoFilesScreenState extends State<MagicoFilesScreen> with SingleTicker
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+

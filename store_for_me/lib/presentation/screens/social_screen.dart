@@ -58,7 +58,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(authProvider).user?.id ?? '';
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Shop Radar',
@@ -66,7 +66,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
             fontWeight: FontWeight.w800,
             fontSize: 22,
             foreground: Paint()
-              ..shader = const LinearGradient(
+              ..shader = LinearGradient(
                 colors: [AppColors.primary, AppColors.accent],
               ).createShader(const Rect.fromLTWH(0, 0, 200, 30)),
           ),
@@ -98,8 +98,8 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
             Tab(icon: Icon(Icons.person_outline)),
           ],
           indicatorColor: AppColors.primary,
-          labelColor: AppColors.textPrimary,
-          unselectedLabelColor: AppColors.textLight,
+          labelColor: Theme.of(context).textTheme.bodyLarge?.color,
+          unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
         ),
       ),
       body: TabBarView(
@@ -137,8 +137,8 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
                   child: _buildStoriesBar(social.stories),
                 ),
                 // ─── Divider ───
-                const SliverToBoxAdapter(
-                  child: Divider(height: 1, color: AppColors.divider),
+                SliverToBoxAdapter(
+                  child: Divider(height: 1, color: Theme.of(context).dividerColor),
                 ),
                 // ─── Feed ───
                 if (social.feed.isEmpty)
@@ -189,7 +189,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   Widget _buildStoriesBar(List<StoryGroupModel> stories) {
     return Container(
       height: 100,
-      color: AppColors.card,
+      color: Theme.of(context).cardColor,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -250,13 +250,13 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.explore_outlined, size: 64, color: AppColors.textLight),
-                  const SizedBox(height: 12),
+                   Icon(Icons.explore_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+                  SizedBox(height: 12),
                   const Text('Explore', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     'Discover posts from the community',
-                    style: TextStyle(color: AppColors.textSecondary),
+                     style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                   ),
                 ],
               ),
@@ -287,8 +287,8 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
                               image: CachedNetworkImageProvider(imageUrl),
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
-                                color: AppColors.shimmerBase,
-                                child: Icon(Icons.image, color: AppColors.textLight),
+                                color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
+                                child: Icon(Icons.image, color: Theme.of(context).textTheme.bodySmall?.color),
                               ),
                             )
                           : Container(
@@ -328,16 +328,16 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.people_outline, size: 64, color: AppColors.textLight),
-          const SizedBox(height: 16),
+           Icon(Icons.people_outline, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+          SizedBox(height: 16),
           const Text(
             'Welcome to Shop Radar',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Follow shops and people to see their posts',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+             style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
           ),
           const SizedBox(height: 20),
           ElevatedButton.icon(
@@ -355,8 +355,8 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
 
   Widget _buildShimmerFeed() {
     return Shimmer.fromColors(
-      baseColor: AppColors.shimmerBase,
-      highlightColor: AppColors.shimmerHighlight,
+      baseColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
+      highlightColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerHighlight : AppColors.shimmerHighlight),
       child: ListView.builder(
         itemCount: 4,
         itemBuilder: (_, __) => Padding(
@@ -397,3 +397,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
     );
   }
 }
+
+
+
+
+
+
+

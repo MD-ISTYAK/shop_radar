@@ -36,7 +36,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
     final orderState = ref.watch(orderProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.w700)),
         automaticallyImplyLeading: false,
@@ -100,12 +100,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                     Row(
                       children: [
                         Expanded(
-                          child: Text(shopName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                          child: Text(shopName, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(status).withAlpha(25),
+                            color: (_getStatusColor(status) ?? Colors.transparent).withAlpha(25),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -115,15 +115,15 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text('${items.length} items • ₹${total.toStringAsFixed(0)}', style: TextStyle(color: AppColors.textSecondary)),
+                    SizedBox(height: 8),
+                    Text('${items.length} items • ₹${total.toStringAsFixed(0)}', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                     const SizedBox(height: 4),
                     Text(
                       '${createdAt.day}/${createdAt.month}/${createdAt.year} at ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(fontSize: 12, color: AppColors.textLight),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                     ),
                     const SizedBox(height: 12),
-                    Divider(color: AppColors.divider),
+                    Divider(color: Theme.of(context).dividerColor),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -175,11 +175,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.confirmation_number_outlined, size: 64, color: AppColors.textLight),
-          const SizedBox(height: 12),
+          Icon(Icons.confirmation_number_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+          SizedBox(height: 12),
           const Text('Queue Tokens', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Text('Your active queue tokens will appear here', style: TextStyle(color: AppColors.textSecondary)),
+          SizedBox(height: 8),
+          Text('Your active queue tokens will appear here', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
         ],
       ),
     );
@@ -198,3 +198,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
     }
   }
 }
+
+
+
+
+
+
+

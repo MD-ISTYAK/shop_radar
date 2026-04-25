@@ -32,7 +32,7 @@ class StoryBubble extends StatelessWidget {
                 gradient: isAddStory
                     ? null
                     : group.hasUnseenStories
-                        ? const LinearGradient(
+                        ? LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
@@ -46,15 +46,15 @@ class StoryBubble extends StatelessWidget {
                             colors: [Color(0xFFD1D5DB), Color(0xFFD1D5DB)],
                           ),
                 border: isAddStory
-                    ? Border.all(color: AppColors.divider, width: 2)
+                    ? Border.all(color: Theme.of(context).dividerColor, width: 2)
                     : null,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(3),
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.card,
+                    color: Theme.of(context).cardColor,
                   ),
                   padding: const EdgeInsets.all(2),
                   child: isAddStory
@@ -65,18 +65,18 @@ class StoryBubble extends StatelessWidget {
                         )
                       : CircleAvatar(
                           radius: 28,
-                          backgroundColor: AppColors.shimmerBase,
+                          backgroundColor: Theme.of(context).dividerColor.withAlpha(50),
                           backgroundImage: group.displayProfilePic.isNotEmpty
                               ? CachedNetworkImageProvider(group.displayProfilePic)
                               : null,
                           child: group.displayProfilePic.isEmpty
-                              ? const Icon(Icons.person, size: 24, color: AppColors.textLight)
+                              ? Icon(Icons.person, size: 24, color: Theme.of(context).textTheme.bodySmall?.color)
                               : null,
                         ),
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             SizedBox(
               width: 72,
               child: Text(
@@ -86,7 +86,7 @@ class StoryBubble extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,
-                  color: isAddStory ? AppColors.textSecondary : AppColors.textPrimary,
+                  color: isAddStory ? Theme.of(context).textTheme.bodyMedium?.color : Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ),
             ),
@@ -96,3 +96,8 @@ class StoryBubble extends StatelessWidget {
     );
   }
 }
+
+
+
+
+

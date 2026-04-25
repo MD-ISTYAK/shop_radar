@@ -64,3 +64,6 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
 }
 
 final gamificationProvider = StateNotifierProvider<GamificationNotifier, GamificationState>((ref) => GamificationNotifier());
+
+
+

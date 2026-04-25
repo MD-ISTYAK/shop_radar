@@ -43,7 +43,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dealState = ref.watch(dealProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -74,11 +74,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               children: [
                                 Text(
                                   'Hi, ${authState.user?.name.split(' ').first ?? 'there'}! 👋',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
                                   ),
                                 ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Discover shops around you',
                                   style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(200)),
@@ -134,7 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           onChanged: (v) => ref.read(shopProvider.notifier).setSearchQuery(v),
                           decoration: InputDecoration(
                             hintText: 'Search shops, products...',
-                            prefixIcon: const Icon(Icons.search, color: AppColors.textLight),
+                            prefixIcon: Icon(Icons.search, color: Theme.of(context).textTheme.bodySmall?.color),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -204,7 +204,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               color: isSelected ? Colors.white : AppColors.textSecondary,
                             ),
                           ),
-                          backgroundColor: AppColors.card,
+                          backgroundColor: Theme.of(context).cardColor,
                           selectedColor: AppColors.primary,
                           checkmarkColor: Colors.white,
                           shape: RoundedRectangleBorder(
@@ -363,7 +363,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Container(
             width: 56, height: 56,
             decoration: BoxDecoration(
-              color: color.withAlpha(25),
+              color: (color ?? Colors.transparent).withAlpha(25),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color, size: 26),
@@ -375,3 +375,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+

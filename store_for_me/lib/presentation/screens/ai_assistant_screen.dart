@@ -27,8 +27,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('AI Shopping Assistant', style: TextStyle(fontWeight: FontWeight.w700))),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('AI Shopping Assistant', style: TextStyle(fontWeight: FontWeight.w700))),
       body: Column(
         children: [
           // Header
@@ -42,7 +42,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
             child: Column(
               children: [
                 const Text('🤖', style: TextStyle(fontSize: 36)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 const Text('Smart Shopping Planner', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Text('Enter items to find the cheapest shops', style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13)),
@@ -98,7 +98,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
           // Results
           Expanded(
             child: _results.isEmpty
-                ? Center(child: Text(_isLoading ? '' : 'Enter items above to get started', style: TextStyle(color: AppColors.textLight)))
+                ? Center(child: Text(_isLoading ? '' : 'Enter items above to get started', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)))
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _results.length,
@@ -118,8 +118,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.shopping_cart_outlined, size: 20, color: AppColors.primary),
-                                  const SizedBox(width: 8),
+                                  Icon(Icons.shopping_cart_outlined, size: 20, color: AppColors.primary),
+                                  SizedBox(width: 8),
                                   Text(itemName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                   const Spacer(),
                                   if (cheapest != null)
@@ -129,7 +129,7 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                               ),
                               if (cheapest != null) ...[
                                 const SizedBox(height: 4),
-                                Text('at ${cheapest['shop'] ?? 'nearby shop'}', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+                                Text('at ${cheapest['shop'] ?? 'nearby shop'}', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                               ],
                               if (options.isNotEmpty) ...[
                                 const SizedBox(height: 8),
@@ -149,8 +149,8 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
                                 }),
                               ],
                               if (options.isEmpty) ...[
-                                const SizedBox(height: 8),
-                                const Text('Not found nearby', style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+                                SizedBox(height: 8),
+                                Text('Not found nearby', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
                               ],
                             ],
                           ),
@@ -213,3 +213,10 @@ class _AIAssistantScreenState extends ConsumerState<AIAssistantScreen> {
     }
   }
 }
+
+
+
+
+
+
+

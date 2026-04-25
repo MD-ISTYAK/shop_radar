@@ -75,27 +75,27 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                   child: Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.divider),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                       boxShadow: [
-                        BoxShadow(color: AppColors.shadow.withAlpha(10), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: AppColors.shadow.withAlpha(10), blurRadius: 10, offset: Offset(0, 4)),
                       ],
                     ),
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Search order ID (8 chars)...',
-                        prefixIcon: Icon(Icons.search, color: AppColors.textLight, size: 20),
+                        prefixIcon: Icon(Icons.search, color: Theme.of(context).textTheme.bodySmall?.color, size: 20),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 11),
-                        hintStyle: TextStyle(color: AppColors.textLight, fontSize: 13),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                        hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
                       ),
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/order-scanner'),
                   child: Container(
@@ -117,7 +117,7 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
           TabBar(
             controller: _tabController,
             labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textLight,
+            unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
             indicatorColor: AppColors.primary,
             isScrollable: true,
             tabs: [
@@ -133,16 +133,16 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: _isSearching 
           ? TextField(
               controller: _searchController,
               autofocus: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search order ID (8 chars)...',
                 border: InputBorder.none,
-                hintStyle: TextStyle(color: AppColors.textLight, fontSize: 16),
+                hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 16),
               ),
               style: const TextStyle(color: AppColors.primary),
             )
@@ -160,14 +160,14 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
             },
           ),
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
+            icon: Icon(Icons.qr_code_scanner),
             onPressed: () => Navigator.pushNamed(context, '/order-scanner'),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textLight,
+          unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
           indicatorColor: AppColors.primary,
           isScrollable: true,
           tabs: [
@@ -188,9 +188,9 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 48, color: AppColors.textLight),
-            const SizedBox(height: 16),
-            Text(emptyMessage, style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            Icon(Icons.inventory_2_outlined, size: 48, color: Theme.of(context).textTheme.bodySmall?.color),
+            SizedBox(height: 16),
+            Text(emptyMessage, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 16)),
           ],
         ),
       );
@@ -219,11 +219,11 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Order ID: ${order.shortId}', 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(order.status).withAlpha(25),
+                            color: (_getStatusColor(order.status) ?? Colors.transparent).withAlpha(25),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -233,7 +233,7 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text('${order.items.length} items • ₹${order.totalAmount.toStringAsFixed(0)}', 
                          style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
@@ -244,11 +244,11 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                           style: TextStyle(color: order.deliveryType == 'shop_pickup' ? AppColors.accent : AppColors.primary, fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                         const Spacer(),
-                        const Icon(Icons.access_time, size: 14, color: AppColors.textLight),
+                        Icon(Icons.access_time, size: 14, color: Theme.of(context).textTheme.bodySmall?.color),
                         const SizedBox(width: 4),
                         Text(
                           DateFormat('hh:mm a  dd-MM-yyyy').format(order.createdAt.toLocal()), 
-                          style: const TextStyle(color: AppColors.textLight, fontSize: 12, fontWeight: FontWeight.w500)
+                          style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12, fontWeight: FontWeight.w500)
                         ),
                       ],
                     ),
@@ -284,3 +284,12 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
     }
   }
 }
+
+
+
+
+
+
+
+
+

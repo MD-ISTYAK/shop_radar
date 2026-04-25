@@ -281,7 +281,7 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
           label,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, fontSize: 14),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         GestureDetector(
           onTap: () => _pickImage(isLogo: isLogo),
           child: Container(
@@ -302,7 +302,7 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
                         CachedNetworkImage(
                           imageUrl: AppConstants.getImageUrl(existingUrl),
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                          placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                           errorWidget: (_, __, ___) => _buildPlaceholderContent(icon, hint),
                         ),
                       )
@@ -349,10 +349,10 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: 36, color: AppColors.primary.withAlpha(120)),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Text(
           hint,
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13),
         ),
       ],
     );
@@ -364,7 +364,7 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Update Shop' : 'Register Shop'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -385,7 +385,7 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
                 isLogo: false,
                 height: 150,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Logo image upload
               _buildImagePicker(
@@ -502,13 +502,13 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.divider),
+                              border: Border.all(color: Theme.of(context).dividerColor),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time, size: 20, color: AppColors.textSecondary),
+                                Icon(Icons.access_time, size: 20, color: Theme.of(context).textTheme.bodyMedium?.color),
                                 const SizedBox(width: 8),
                                 Text(_formatTime(_openingTime)),
                               ],
@@ -530,13 +530,13 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.divider),
+                              border: Border.all(color: Theme.of(context).dividerColor),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time, size: 20, color: AppColors.textSecondary),
+                                Icon(Icons.access_time, size: 20, color: Theme.of(context).textTheme.bodyMedium?.color),
                                 const SizedBox(width: 8),
                                 Text(_formatTime(_closingTime)),
                               ],
@@ -563,3 +563,13 @@ class _AddShopScreenState extends ConsumerState<AddShopScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+

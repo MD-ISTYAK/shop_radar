@@ -164,8 +164,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
               CachedNetworkImage(
                 imageUrl: story.displayMediaUrl,
                 fit: BoxFit.contain,
-                placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
-                errorWidget: (_, __, ___) => const Center(
+                placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+                errorWidget: (_, __, ___) => Center(
                   child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
                 ),
               )
@@ -236,7 +236,7 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: AppColors.shimmerBase,
+                              backgroundColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                               backgroundImage: group.displayProfilePic.isNotEmpty
                                   ? CachedNetworkImageProvider(group.displayProfilePic)
                                   : null,
@@ -295,3 +295,8 @@ class _StoryViewerScreenState extends ConsumerState<StoryViewerScreen>
     );
   }
 }
+
+
+
+
+

@@ -58,9 +58,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: AppColors.card,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+                              boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(12),
@@ -76,7 +76,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                           ? CachedNetworkImage(
                                               imageUrl: AppConstants.getImageUrl(product.images.first),
                                               fit: BoxFit.cover,
-                                              placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                                              placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                                               errorWidget: (_, __, ___) => Container(
                                                 color: AppColors.primaryLight.withAlpha(51),
                                                 child: const Icon(Icons.shopping_bag, color: AppColors.primary),
@@ -167,12 +167,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(24),
                           topRight: Radius.circular(24),
                         ),
-                        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: const Offset(0, -2))],
+                        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, -2))],
                       ),
                       child: Column(
                         children: [
@@ -200,7 +200,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -289,12 +289,21 @@ class _CartQuantityButton extends StatelessWidget {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Icon(icon, size: 16, color: AppColors.primary),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+

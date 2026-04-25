@@ -50,7 +50,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Emergency Services'),
         backgroundColor: AppColors.error,
@@ -82,7 +82,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: (e['color'] as Color).withAlpha(60), blurRadius: 10)]
+                          ? [BoxShadow(color: (e['color'] as Color? ?? Colors.transparent).withAlpha(60), blurRadius: 10)]
                           : null,
                     ),
                     child: Row(
@@ -124,7 +124,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: AppColors.card,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6)],
                             ),
@@ -136,9 +136,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                                     color: AppColors.error.withAlpha(15),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(Icons.local_hospital, color: AppColors.error),
+                                  child: Icon(Icons.local_hospital, color: AppColors.error),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,3 +185,9 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
     );
   }
 }
+
+
+
+
+
+

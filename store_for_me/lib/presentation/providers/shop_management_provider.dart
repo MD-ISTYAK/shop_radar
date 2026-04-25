@@ -159,3 +159,6 @@ class ShopManagementNotifier extends StateNotifier<ShopManagementState> {
 final shopManagementProvider = StateNotifierProvider<ShopManagementNotifier, ShopManagementState>((ref) {
   return ShopManagementNotifier();
 });
+
+
+

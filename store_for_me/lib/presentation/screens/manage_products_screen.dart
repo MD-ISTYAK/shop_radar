@@ -56,9 +56,9 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: AppColors.card,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+                        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -74,7 +74,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                                     ? CachedNetworkImage(
                                         imageUrl: AppConstants.getImageUrl(product.images.first),
                                         fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                                        placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                                         errorWidget: (_, __, ___) => Container(
                                           color: AppColors.primaryLight.withAlpha(51),
                                           child: const Icon(Icons.shopping_bag, color: AppColors.primary),
@@ -203,3 +203,9 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
     );
   }
 }
+
+
+
+
+
+

@@ -23,7 +23,7 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Map View', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Text('Map View', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: Column(
         children: [
@@ -31,13 +31,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
           Expanded(
             flex: 2,
             child: Container(
-              color: AppColors.background,
+              color: Theme.of(context).scaffoldBackgroundColor,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.map_outlined, size: 64, color: AppColors.primary),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     const Text(
                       'Google Maps',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
@@ -45,13 +45,13 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '${shopState.shops.length} shops nearby',
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Add your Google Maps API key and\nplatform config to enable maps',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: AppColors.textLight),
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                     ),
                   ],
                 ),
@@ -95,3 +95,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
   }
 }
+
+
+
+
+
+
+

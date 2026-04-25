@@ -520,3 +520,6 @@ class SocialNotifier extends StateNotifier<SocialState> {
 final socialProvider = StateNotifierProvider<SocialNotifier, SocialState>((ref) {
   return SocialNotifier();
 });
+
+
+

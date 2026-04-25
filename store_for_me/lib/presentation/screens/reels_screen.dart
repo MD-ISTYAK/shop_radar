@@ -157,9 +157,9 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                       ? CachedNetworkImage(
                           imageUrl: _getOptimizedThumb(reel.thumbnailUrl, isDataSaver),
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                          placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
                         )
-                      : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                      : Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
 
             // ─── Paused overlay ───
@@ -178,7 +178,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                   _buildSideAction(
                     child: CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.shimmerBase,
+                      backgroundColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                       backgroundImage: reel.profilePic.isNotEmpty
                           ? CachedNetworkImageProvider(AppConstants.getImageUrl(reel.profilePic))
                           : null,
@@ -226,7 +226,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                       children: [
                         CircleAvatar(
                           radius: 14,
-                          backgroundColor: AppColors.shimmerBase,
+                          backgroundColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                           backgroundImage: reel.profilePic.isNotEmpty
                               ? CachedNetworkImageProvider(AppConstants.getImageUrl(reel.profilePic))
                               : null,
@@ -325,3 +325,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
     );
   }
 }
+
+
+
+
+

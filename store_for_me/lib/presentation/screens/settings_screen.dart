@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_saver_provider.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -13,7 +14,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w700))),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -61,12 +62,20 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Manage push notifications',
             trailing: Switch(value: true, onChanged: (_) {}, activeColor: AppColors.primary),
           ),
-          _SettingsTile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Dark Mode',
-            subtitle: 'Coming soon',
-            trailing: Switch(value: false, onChanged: null),
-          ),
+          Consumer(builder: (context, ref, _) {
+            final themeMode = ref.watch(themeProvider);
+            final isDark = themeMode == ThemeMode.dark;
+            return _SettingsTile(
+              icon: Icons.dark_mode_outlined,
+              title: 'Dark Mode',
+              subtitle: isDark ? 'Dark mode is ON' : 'Light mode is ON',
+              trailing: Switch(
+                value: isDark, 
+                onChanged: (val) => ref.read(themeProvider.notifier).toggleTheme(val),
+                activeColor: AppColors.primary,
+              ),
+            );
+          }),
           _SettingsTile(
             icon: Icons.location_on_outlined,
             title: 'Location Settings',
@@ -110,9 +119,9 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
           _SettingsTile(icon: Icons.delete_outline, title: 'Delete Account', subtitle: 'Permanently delete your account and data', isDestructive: true, onTap: () {}),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Center(
-            child: Text('Made with ❤️ by Shop Radar', style: TextStyle(color: AppColors.textLight, fontSize: 12)),
+            child: Text('Made with ❤️ by Shop Radar', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
           ),
         ],
       ),
@@ -154,7 +163,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textLight)),
+      child: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodySmall?.color)),
     );
   }
 }
@@ -175,7 +184,7 @@ class _SettingsTile extends StatelessWidget {
       leading: Icon(icon, color: isDestructive ? AppColors.error : AppColors.textSecondary, size: 22),
       title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: isDestructive ? AppColors.error : AppColors.textPrimary)),
       subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(fontSize: 12, color: isDestructive ? AppColors.error.withAlpha(150) : AppColors.textLight)) : null,
-      trailing: trailing ?? (onTap != null ? Icon(Icons.chevron_right, size: 20, color: AppColors.textLight) : null),
+      trailing: trailing ?? (onTap != null ? Icon(Icons.chevron_right, size: 20, color: Theme.of(context).textTheme.bodySmall?.color) : null),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -183,3 +192,9 @@ class _SettingsTile extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

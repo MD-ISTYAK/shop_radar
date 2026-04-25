@@ -35,7 +35,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
     final analytics = shopState.analytics;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: shopState.isLoading
             ? const LoadingIndicator()
@@ -46,7 +46,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                 },
                 child: SingleChildScrollView(
                   controller: widget.scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +62,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                   'Dashboard',
                                   style: Theme.of(context).textTheme.headlineLarge,
                                 ),
-                                const SizedBox(height: 4),
+                                SizedBox(height: 4),
                                 Text(
                                   'Welcome, ${authState.user?.name ?? 'Owner'}',
                                   style: Theme.of(context).textTheme.bodyMedium,
@@ -221,7 +221,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                               shape: BoxShape.circle,
                                             ),
                                           ),
-                                          const SizedBox(width: 6),
+                                          SizedBox(width: 6),
                                           Text(
                                             shop.isOpen ? 'Open' : 'Closed',
                                             style: const TextStyle(
@@ -238,7 +238,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
 
                         // Analytics Grid
                         GridView.count(
@@ -295,11 +295,11 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                   await Navigator.pushNamed(context, '/manage-products');
                                   ref.read(productProvider.notifier).fetchOwnerProducts();
                                 },
-                                child: const Text('View All'),
+                                child: Text('View All'),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
 
                         if (productState.isLoading)
                           const Padding(
@@ -311,13 +311,13 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
-                              color: AppColors.card,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.divider.withAlpha(128)),
+                              border: Border.all(color: Theme.of(context).dividerColor.withAlpha(128)),
                             ),
                             child: Column(
                               children: [
-                                Icon(Icons.inventory_2_outlined, size: 48, color: AppColors.textLight),
+                                Icon(Icons.inventory_2_outlined, size: 48, color: Theme.of(context).textTheme.bodySmall?.color),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No products yet',
@@ -334,7 +334,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                     await Navigator.pushNamed(context, '/add-product');
                                     ref.read(productProvider.notifier).fetchOwnerProducts();
                                   },
-                                  icon: const Icon(Icons.add, size: 18),
+                                  icon: Icon(Icons.add, size: 18),
                                   label: const Text('Add Product'),
                                 ),
                               ],
@@ -345,7 +345,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               decoration: BoxDecoration(
-                                color: AppColors.card,
+                                color: Theme.of(context).cardColor,
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
                               ),
@@ -363,7 +363,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                             ? CachedNetworkImage(
                                                 imageUrl: AppConstants.getImageUrl(product.images.first),
                                                 fit: BoxFit.cover,
-                                                placeholder: (_, __) => Container(color: AppColors.shimmerBase),
+                                                placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
                                                 errorWidget: (_, __, ___) => Container(
                                                   color: AppColors.primaryLight.withAlpha(30),
                                                   child: const Icon(Icons.shopping_bag_rounded, color: AppColors.primary, size: 24),
@@ -375,7 +375,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                               ),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,7 +403,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                                   '₹${product.price.toStringAsFixed(0)}',
                                                   style: TextStyle(
                                                     fontSize: 11,
-                                                    color: AppColors.textLight,
+                                                    color: Theme.of(context).textTheme.bodySmall?.color,
                                                     decoration: TextDecoration.lineThrough,
                                                   ),
                                                 ),
@@ -465,27 +465,27 @@ class _AnalyticsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withAlpha(20),
+              color: (color ?? Colors.transparent).withAlpha(20),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
             ),
           ),
           const SizedBox(height: 2),
@@ -523,21 +523,21 @@ class _ActionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withAlpha(20),
+                color: (color ?? Colors.transparent).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,10 +548,21 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textLight),
+            Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
         ),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -34,7 +34,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = authState.user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // Profile Header
@@ -259,19 +259,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             width: 72,
                             margin: const EdgeInsets.only(right: 8),
                             decoration: BoxDecoration(
-                              color: badge.earned ? AppColors.primary.withAlpha(15) : AppColors.card,
+                              color: badge.earned ? AppColors.primary.withAlpha(15) : Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: badge.earned ? AppColors.primary.withAlpha(50) : AppColors.divider),
+                              border: Border.all(color: badge.earned ? AppColors.primary.withAlpha(50) : Theme.of(context).dividerColor),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(emoji, style: TextStyle(fontSize: 24, color: badge.earned ? null : AppColors.textLight)),
-                                const SizedBox(height: 4),
+                                Text(emoji, style: TextStyle(fontSize: 24, color: badge.earned ? null : Theme.of(context).textTheme.bodySmall?.color)),
+                                SizedBox(height: 4),
                                 Text(
                                   badge.badgeName.replaceAll('_', ' '),
                                   style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600,
-                                    color: badge.earned ? AppColors.primary : AppColors.textLight),
+                                    color: badge.earned ? AppColors.primary : Theme.of(context).textTheme.bodySmall?.color),
                                   textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -331,12 +331,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap, {bool isDestructive = false}) {
     return ListTile(
-      leading: Icon(icon, color: isDestructive ? AppColors.error : AppColors.textSecondary, size: 22),
+      leading: Icon(icon, color: isDestructive ? AppColors.error : Theme.of(context).textTheme.bodyMedium?.color, size: 22),
       title: Text(label, style: TextStyle(
         fontWeight: FontWeight.w500,
-        color: isDestructive ? AppColors.error : AppColors.textPrimary,
+        color: isDestructive ? AppColors.error : Theme.of(context).textTheme.bodyLarge?.color,
       )),
-      trailing: Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+      trailing: Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color, size: 20),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -344,3 +344,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
+
+
+

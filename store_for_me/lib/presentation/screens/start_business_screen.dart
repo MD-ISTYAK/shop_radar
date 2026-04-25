@@ -22,13 +22,13 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
     final bizState = ref.watch(businessProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // Premium Header
           SliverToBoxAdapter(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -55,7 +55,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                       child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Row(
                     children: [
                       Container(
@@ -122,7 +122,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'You can register multiple businesses',
-                    style: TextStyle(fontSize: 13, color: AppColors.textLight),
+                    style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -221,7 +221,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                               ),
                               Text(
                                 '${bizState.businessCount} registered business${bizState.businessCount > 1 ? 'es' : ''}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.textLight),
+                                style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                               ),
                             ],
                           ),
@@ -260,7 +260,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: gradient[0].withAlpha(60),
+              color: (gradient[0] ?? Colors.transparent).withAlpha(60),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -326,7 +326,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: gradient[0].withAlpha(50),
+              color: (gradient[0] ?? Colors.transparent).withAlpha(50),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -392,8 +392,8 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        decoration: const BoxDecoration(
-          color: AppColors.background,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -403,13 +403,13 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
             Center(
               child: Container(
                 width: 40, height: 4,
-                decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Text('Register $typeName', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text('Fill in your business details', style: TextStyle(color: AppColors.textLight, fontSize: 13)),
+            Text('Fill in your business details', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13)),
             const SizedBox(height: 20),
             TextField(
               controller: nameController,
@@ -417,7 +417,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                 labelText: 'Business Name',
                 hintText: 'Enter your business name',
                 filled: true,
-                fillColor: AppColors.card,
+                fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 prefixIcon: const Icon(Icons.business),
               ),
@@ -430,7 +430,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                 labelText: 'Description',
                 hintText: 'What does your business do?',
                 filled: true,
-                fillColor: AppColors.card,
+                fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 prefixIcon: const Icon(Icons.description_outlined),
               ),
@@ -443,7 +443,7 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
                 labelText: 'Contact Phone',
                 hintText: 'Business phone number',
                 filled: true,
-                fillColor: AppColors.card,
+                fillColor: Theme.of(context).cardColor,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 prefixIcon: const Icon(Icons.phone_outlined),
               ),
@@ -490,3 +490,13 @@ class _StartBusinessScreenState extends ConsumerState<StartBusinessScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+
+

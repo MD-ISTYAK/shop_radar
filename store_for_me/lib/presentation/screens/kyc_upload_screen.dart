@@ -68,8 +68,8 @@ class _KYCUploadScreenState extends ConsumerState<KYCUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('KYC Verification')),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('KYC Verification')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -79,10 +79,10 @@ class _KYCUploadScreenState extends ConsumerState<KYCUploadScreen> {
               'Upload Documents',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Please provide clear photos of your documents for verification.',
-              style: TextStyle(color: AppColors.textLight, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
             ),
             const SizedBox(height: 24),
             _buildDocTile('Aadhaar Card', 'aadhaar', Icons.badge_outlined),
@@ -127,9 +127,9 @@ class _KYCUploadScreenState extends ConsumerState<KYCUploadScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         children: [
@@ -169,3 +169,11 @@ class _KYCUploadScreenState extends ConsumerState<KYCUploadScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+

@@ -94,9 +94,9 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Create Post'),
+        title: Text('Create Post'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -107,7 +107,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 minimumSize: const Size(0, 36),
               ),
               child: _isSubmitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Post'),
             ),
           ),
@@ -121,7 +121,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             // Content input
             Container(
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6)],
               ),
@@ -131,12 +131,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 maxLength: 2000,
                 decoration: InputDecoration(
                   hintText: 'What\'s happening at your shop?',
-                  hintStyle: TextStyle(color: AppColors.textLight),
+                  hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
-                  counterStyle: TextStyle(color: AppColors.textLight),
+                  counterStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
                 ),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
@@ -186,29 +186,29 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
             ],
 
             // Selected video
             if (_selectedVideo != null) ...[
               Text('Video Selected', style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Stack(
                 children: [
                   Container(
                     width: double.infinity,
                     height: 150,
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.divider),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(Icons.video_file, size: 48, color: AppColors.primary),
                         const SizedBox(height: 8),
-                        Text('1 Video Attached', style: TextStyle(color: AppColors.textSecondary)),
+                        Text('1 Video Attached', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                       ],
                     ),
                   ),
@@ -269,3 +269,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 }
+
+
+
+
+
+
+

@@ -84,9 +84,9 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Create Story'),
+        title: Text('Create Story'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -97,7 +97,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                 minimumSize: const Size(0, 36),
               ),
               child: _isSubmitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Share'),
             ),
           ),
@@ -115,9 +115,9 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                 width: double.infinity,
                 height: 350,
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider, width: 2),
+                  border: Border.all(color: Theme.of(context).dividerColor, width: 2),
                   boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10)],
                   image: _selectedMedia != null && !_selectedMedia!.path.endsWith('.mp4') // basic check for image
                       ? DecorationImage(
@@ -130,9 +130,9 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate_outlined, size: 64, color: AppColors.textLight),
+                          Icon(Icons.add_photo_alternate_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
                           const SizedBox(height: 12),
-                          Text('Tap to select photo/video', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                          Text('Tap to select photo/video', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 16)),
                         ],
                       )
                     : (_selectedMedia!.path.endsWith('.mp4') || _selectedMedia!.name.toLowerCase().endsWith('.mp4')
@@ -180,7 +180,7 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
             // Caption
             Container(
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6)],
               ),
@@ -194,14 +194,14 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
-                  counterStyle: TextStyle(color: AppColors.textLight),
+                  counterStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
                 ),
               ),
             ),
             const SizedBox(height: 12),
             Text(
               'Stories disappear after 24 hours',
-              style: TextStyle(color: AppColors.textLight, fontSize: 13),
+              style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
             ),
           ],
         ),
@@ -209,3 +209,10 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
     );
   }
 }
+
+
+
+
+
+
+

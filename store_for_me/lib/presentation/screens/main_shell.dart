@@ -62,7 +62,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
               color: AppColors.shadow.withAlpha(30),
@@ -131,3 +131,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 }
+
+
+
+

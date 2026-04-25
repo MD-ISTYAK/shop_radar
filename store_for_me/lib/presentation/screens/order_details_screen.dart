@@ -12,9 +12,9 @@ class OrderDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Order Details',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
@@ -38,11 +38,11 @@ class OrderDetailsScreen extends ConsumerWidget {
                           fontSize: 20,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Order ID: ${order.id.substring(order.id.length - 8).toUpperCase()}',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
                           fontSize: 13,
                         ),
                       ),
@@ -55,7 +55,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(order.status).withAlpha(25),
+                    color: (_getStatusColor(order.status) ?? Colors.transparent).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -77,9 +77,9 @@ class OrderDetailsScreen extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.shadow,
@@ -94,7 +94,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                     Text(
                       'Verification Code',
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                       ),
@@ -110,10 +110,10 @@ class OrderDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Show this code to the shop owner to verify handover',
                       style: TextStyle(
-                        color: AppColors.textLight,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                         fontSize: 13,
                       ),
                     ),
@@ -131,11 +131,11 @@ class OrderDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Scan QR for faster verification',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textLight,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
                       ),
                     ),
                   ],
@@ -150,7 +150,7 @@ class OrderDetailsScreen extends ConsumerWidget {
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
             ),
             const SizedBox(height: 16),
-            _buildTimeline(order),
+            _buildTimeline(context, order),
             const SizedBox(height: 24),
 
             // Order Items
@@ -162,9 +162,9 @@ class OrderDetailsScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Column(
                 children: order.items.map((item) {
@@ -180,7 +180,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.background,
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -249,11 +249,11 @@ class OrderDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTimeline(OrderModel order) {
+  Widget _buildTimeline(BuildContext context, OrderModel order) {
     if (order.timeline.isEmpty) {
-      return const Text(
+      return Text(
         'No tracking events available',
-        style: TextStyle(color: AppColors.textLight),
+        style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
       );
     }
 
@@ -281,12 +281,12 @@ class OrderDetailsScreen extends ConsumerWidget {
                       ),
                     ),
                     child: isActive
-                        ? const Icon(Icons.check, size: 12, color: Colors.white)
+                        ? Icon(Icons.check, size: 12, color: Colors.white)
                         : null,
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,7 +298,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                             ? FontWeight.w700
                             : FontWeight.w500,
                         color: isActive
-                            ? AppColors.textPrimary
+                            ? Theme.of(context).textTheme.bodyLarge?.color
                             : AppColors.textLight,
                       ),
                     ),
@@ -308,7 +308,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                         event.note,
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).textTheme.bodyMedium?.color,
                         ),
                       ),
                     ],
@@ -320,7 +320,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                   time,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textLight,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -352,3 +352,12 @@ class OrderDetailsScreen extends ConsumerWidget {
     }
   }
 }
+
+
+
+
+
+
+
+
+

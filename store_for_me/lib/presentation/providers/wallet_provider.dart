@@ -58,3 +58,6 @@ class WalletNotifier extends StateNotifier<WalletState> {
 }
 
 final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) => WalletNotifier());
+
+
+

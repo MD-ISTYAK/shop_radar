@@ -16,8 +16,8 @@ class OwnerStoryContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Social & Content', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text('Engage with your followers and customers', style: TextStyle(color: AppColors.textLight)),
+          SizedBox(height: 8),
+          Text('Engage with your followers and customers', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
           const SizedBox(height: 24),
           
           _ActionTile(
@@ -59,7 +59,7 @@ class OwnerStoryContent extends ConsumerWidget {
             onTap: () => Navigator.pushNamed(context, '/chat-list'),
           ),
           
-          const SizedBox(height: 32),
+          SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -74,7 +74,7 @@ class OwnerStoryContent extends ConsumerWidget {
             child: Column(
               children: [
                 const Icon(Icons.insights_rounded, size: 48, color: AppColors.accent),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 const Text(
                   'Grow Your Community',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
@@ -83,7 +83,7 @@ class OwnerStoryContent extends ConsumerWidget {
                 Text(
                   'Regular posts and stories help you stay connected with your customers and drive more sales.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
                 ),
               ],
             ),
@@ -117,21 +117,21 @@ class _ActionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withAlpha(20),
+                color: (color ?? Colors.transparent).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,10 +142,18 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textLight),
+            Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
         ),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+

@@ -28,7 +28,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     final state = ref.watch(tokenProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: Text('Queue - ${widget.shopName}')),
       body: state.isLoading
           ? const LoadingIndicator()
@@ -38,7 +38,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 await ref.read(tokenProvider.notifier).fetchQueueStatus(widget.shopId);
               },
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
@@ -60,7 +60,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                       child: Column(
                         children: [
                           const Text('Currently Serving', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
                             '#${state.queueStatus?.currentlyServing ?? 0}',
                             style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w700),
@@ -97,7 +97,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: AppColors.card,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: AppColors.primary.withAlpha(40)),
                           boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8)],
@@ -171,3 +171,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     );
   }
 }
+
+
+
+
+
+

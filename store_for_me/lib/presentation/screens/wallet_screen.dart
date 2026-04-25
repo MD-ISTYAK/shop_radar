@@ -26,8 +26,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final walletState = ref.watch(walletProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Wallet', style: TextStyle(fontWeight: FontWeight.w700))),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(title: Text('Wallet', style: TextStyle(fontWeight: FontWeight.w700))),
       body: Column(
         children: [
           // Balance card
@@ -43,7 +43,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Available Balance', style: TextStyle(color: Colors.white60, fontSize: 14)),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   '₹${walletState.balance.toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: Colors.white),
@@ -96,7 +96,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           // Transaction list
           Expanded(
             child: walletState.transactions.isEmpty
-                ? Center(child: Text('No transactions yet', style: TextStyle(color: AppColors.textLight)))
+                ? Center(child: Text('No transactions yet', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)))
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: walletState.transactions.length,
@@ -115,10 +115,10 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                             color: txn.isCredit ? AppColors.success : AppColors.error,
                           ),
                         ),
-                        title: Text(txn.description, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        title: Text(txn.description, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                         subtitle: Text(
                           '${txn.createdAt.day}/${txn.createdAt.month}/${txn.createdAt.year}',
-                          style: TextStyle(fontSize: 12, color: AppColors.textLight),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                         ),
                         trailing: Text(
                           '${txn.isCredit ? '+' : '-'}₹${txn.amount.toStringAsFixed(0)}',
@@ -137,3 +137,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     );
   }
 }
+
+
+
+
+
+

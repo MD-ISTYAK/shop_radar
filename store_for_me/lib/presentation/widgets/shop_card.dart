@@ -17,13 +17,13 @@ class ShopCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: AppColors.shadow,
               blurRadius: 10,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -45,7 +45,7 @@ class ShopCard extends StatelessWidget {
                             imageUrl: AppConstants.getImageUrl(shop.logo),
                             fit: BoxFit.cover,
                             placeholder: (_, __) => Container(
-                              color: AppColors.shimmerBase,
+                              color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                               child: const Icon(Icons.store, size: 40, color: Colors.white),
                             ),
                             errorWidget: (_, __, ___) => _buildPlaceholder(),
@@ -62,7 +62,7 @@ class ShopCard extends StatelessWidget {
                       color: _getStatusColor(),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [BoxShadow(color: _getStatusColor().withAlpha(80), blurRadius: 6)],
+                      boxShadow: [BoxShadow(color: (_getStatusColor() ?? Colors.transparent).withAlpha(80), blurRadius: 6)],
                     ),
                   ),
                 ),
@@ -116,7 +116,7 @@ class ShopCard extends StatelessWidget {
                           const Icon(Icons.verified, color: AppColors.primary, size: 16),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(shop.category, style: Theme.of(context).textTheme.bodySmall),
                     const SizedBox(height: 6),
 
@@ -127,14 +127,14 @@ class ShopCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Text(
                           shop.rating.toStringAsFixed(1),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Theme.of(context).textTheme.bodyLarge?.color),
                         ),
-                        Text(' (${shop.totalRatings})', style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
+                        Text(' (${shop.totalRatings})', style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color)),
                         if (shop.distanceFormatted != null) ...[
                           const SizedBox(width: 8),
-                          Icon(Icons.location_on, size: 13, color: AppColors.textLight),
+                           Icon(Icons.location_on, size: 13, color: Theme.of(context).textTheme.bodySmall?.color),
                           const SizedBox(width: 2),
-                          Text(shop.distanceFormatted!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          Text(shop.distanceFormatted!, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodyMedium?.color)),
                         ],
                       ],
                     ),
@@ -147,7 +147,7 @@ class ShopCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: _getStatusColor().withAlpha(20),
+                            color: (_getStatusColor() ?? Colors.transparent).withAlpha(20),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -161,14 +161,14 @@ class ShopCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Text(
                           shop.crowdLabel,
-                          style: TextStyle(fontSize: 10, color: AppColors.textLight, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.w500),
                         ),
                         // Followers
                         if (shop.followers > 0) ...[
                           const Spacer(),
-                          Icon(Icons.people_outline, size: 12, color: AppColors.textLight),
+                           Icon(Icons.people_outline, size: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                           const SizedBox(width: 2),
-                          Text('${shop.followers}', style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
+                          Text('${shop.followers}', style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color)),
                         ],
                       ],
                     ),
@@ -182,12 +182,12 @@ class ShopCard extends StatelessWidget {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               _featureLabel(f),
-                              style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                                style: TextStyle(fontSize: 9, color: Theme.of(context).textTheme.bodyMedium?.color),
                             ),
                           );
                         }).toList(),
@@ -201,7 +201,7 @@ class ShopCard extends StatelessWidget {
             // Arrow
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+               child: Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color, size: 20),
             ),
           ],
         ),
@@ -241,3 +241,9 @@ class ShopCard extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

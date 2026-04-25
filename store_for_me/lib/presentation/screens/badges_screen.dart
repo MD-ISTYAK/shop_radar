@@ -25,7 +25,7 @@ class _BadgesScreenState extends ConsumerState<BadgesScreen> {
     final gamState = ref.watch(gamificationProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Badges & Rewards', style: TextStyle(fontWeight: FontWeight.w700))),
       body: gamState.isLoading
           ? const LoadingIndicator(message: 'Loading badges...')
@@ -86,7 +86,7 @@ class _BadgesScreenState extends ConsumerState<BadgesScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(emoji, style: TextStyle(fontSize: 32, color: badge.earned ? null : Colors.grey)),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 badge.badgeName.replaceAll('_', '\n'),
                                 style: TextStyle(
@@ -98,13 +98,13 @@ class _BadgesScreenState extends ConsumerState<BadgesScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 6),
+                              SizedBox(height: 6),
                               // Progress bar
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: badge.progressPercent,
-                                  backgroundColor: AppColors.divider,
+                                  backgroundColor: Theme.of(context).dividerColor,
                                   valueColor: AlwaysStoppedAnimation(
                                     badge.earned ? AppColors.success : AppColors.primary,
                                   ),
@@ -114,7 +114,7 @@ class _BadgesScreenState extends ConsumerState<BadgesScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 '${badge.progress}/${badge.target}',
-                                style: TextStyle(fontSize: 9, color: AppColors.textLight),
+                                style: TextStyle(fontSize: 9, color: Theme.of(context).textTheme.bodySmall?.color),
                               ),
                             ],
                           ),
@@ -128,3 +128,12 @@ class _BadgesScreenState extends ConsumerState<BadgesScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+
+

@@ -57,6 +57,7 @@ import 'presentation/screens/my_businesses_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
 import 'presentation/screens/magico_files_screen.dart';
+import 'presentation/providers/theme_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,15 +69,19 @@ Future<void> main() async {
   runApp(const ProviderScope(child: ShopRadarApp()));
 }
 
-class ShopRadarApp extends StatelessWidget {
+class ShopRadarApp extends ConsumerWidget {
   const ShopRadarApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+    
     return MaterialApp(
       title: 'Shop Radar',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {

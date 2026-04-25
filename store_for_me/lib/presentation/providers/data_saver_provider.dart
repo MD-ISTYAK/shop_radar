@@ -21,3 +21,6 @@ class DataSaverNotifier extends StateNotifier<bool> {
 final dataSaverProvider = StateNotifierProvider<DataSaverNotifier, bool>((ref) {
   return DataSaverNotifier();
 });
+
+
+

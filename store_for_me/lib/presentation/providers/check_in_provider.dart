@@ -46,3 +46,6 @@ class CheckInNotifier extends StateNotifier<CheckInState> {
 }
 
 final checkInProvider = StateNotifierProvider<CheckInNotifier, CheckInState>((ref) => CheckInNotifier());
+
+
+

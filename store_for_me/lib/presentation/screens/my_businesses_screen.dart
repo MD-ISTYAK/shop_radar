@@ -23,7 +23,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
     final bizState = ref.watch(businessProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('My Businesses', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
@@ -71,9 +71,9 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                 color: AppColors.primary.withAlpha(15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.store_mall_directory_outlined, size: 64, color: AppColors.primary),
+              child: Icon(Icons.store_mall_directory_outlined, size: 64, color: AppColors.primary),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             const Text(
               'No Businesses Yet',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
@@ -81,7 +81,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
             const SizedBox(height: 8),
             Text(
               'Start your first business and reach customers nearby',
-              style: TextStyle(fontSize: 14, color: AppColors.textLight),
+              style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -106,14 +106,14 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.divider.withAlpha(80)),
+        border: Border.all(color: Theme.of(context).dividerColor.withAlpha(80)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(8),
             blurRadius: 12,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -135,7 +135,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: typeConfig.gradient[0].withAlpha(50),
+                        color: (typeConfig.gradient[0] ?? Colors.transparent).withAlpha(50),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -143,7 +143,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                   ),
                   child: Icon(typeConfig.icon, color: Colors.white, size: 24),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: 14),
                 // Info
                 Expanded(
                   child: Column(
@@ -161,7 +161,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: typeConfig.gradient[0].withAlpha(15),
+                              color: (typeConfig.gradient[0] ?? Colors.transparent).withAlpha(15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -181,7 +181,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                         const SizedBox(height: 4),
                         Text(
                           business.description,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textLight),
+                          style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -189,7 +189,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppColors.textLight, size: 20),
+                Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color, size: 20),
               ],
             ),
           ),
@@ -259,8 +259,8 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.background,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -270,7 +270,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
             Center(
               child: Container(
                 width: 40, height: 4,
-                decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
@@ -324,10 +324,10 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.textLight),
-          const SizedBox(width: 10),
+          Icon(icon, size: 18, color: Theme.of(context).textTheme.bodySmall?.color),
+          SizedBox(width: 10),
           Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, color: AppColors.textLight))),
+          Expanded(child: Text(value, style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color))),
         ],
       ),
     );
@@ -354,3 +354,12 @@ class _TypeConfig {
   final List<Color> gradient;
   _TypeConfig(this.icon, this.gradient);
 }
+
+
+
+
+
+
+
+
+

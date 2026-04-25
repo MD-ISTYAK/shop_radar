@@ -22,13 +22,13 @@ class ProductCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: AppColors.shadow,
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -52,7 +52,7 @@ class ProductCard extends StatelessWidget {
                               imageUrl: AppConstants.getImageUrl(product.images.first),
                               fit: BoxFit.cover,
                               placeholder: (_, __) => Container(
-                                color: AppColors.shimmerBase,
+                                color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
                               ),
                               errorWidget: (_, __, ___) => _buildPlaceholder(),
                             )
@@ -91,7 +91,7 @@ class ProductCard extends StatelessWidget {
                             topRight: Radius.circular(16),
                           ),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Out of Stock',
                             style: TextStyle(
@@ -136,7 +136,7 @@ class ProductCard extends StatelessWidget {
                                   '₹${product.price.toStringAsFixed(0)}',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.textLight,
+                                    color: Theme.of(context).textTheme.bodySmall?.color,
                                     decoration: TextDecoration.lineThrough,
                                   ),
                                 ),
@@ -182,3 +182,11 @@ class ProductCard extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+
+

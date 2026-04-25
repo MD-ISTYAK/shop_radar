@@ -81,7 +81,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Edit Profile'),
         actions: [
@@ -216,8 +216,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textSecondary)),
-        const SizedBox(height: 8),
+        Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color)),
+        SizedBox(height: 8),
         TextFormField(
           controller: controller,
           maxLines: maxLines,
@@ -228,7 +228,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             hintText: 'Enter your $label',
             prefixIcon: Icon(icon, size: 20),
             filled: true,
-            fillColor: AppColors.card,
+            fillColor: Theme.of(context).cardColor,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             counterText: '',
@@ -238,3 +238,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 }
+
+
+
+
+
+
+
+

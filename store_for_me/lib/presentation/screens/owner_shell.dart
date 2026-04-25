@@ -84,14 +84,14 @@ class _OwnerShellState extends ConsumerState<OwnerShell> with SingleTickerProvid
     final double totalHeaderHeight = _headerHeight + topPadding;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Screen Content
           Padding(
             padding: EdgeInsets.only(top: _isHeaderVisible ? totalHeaderHeight : 0),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: Duration(milliseconds: 300),
               child: _getSelectedScreen(),
             ),
           ),
@@ -136,7 +136,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> with SingleTickerProvid
                     ),
                     child: const Icon(Icons.radar_rounded, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
                   // App Title & Subtitle
                   Expanded(
                     child: Column(
@@ -201,7 +201,7 @@ class _OwnerShellState extends ConsumerState<OwnerShell> with SingleTickerProvid
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
               color: AppColors.shadow.withAlpha(30),
@@ -299,3 +299,10 @@ class _HeaderActionIcon extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+
+

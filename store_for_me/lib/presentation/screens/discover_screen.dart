@@ -36,7 +36,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
     final shopState = ref.watch(shopProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Discover', style: TextStyle(fontWeight: FontWeight.w700)),
         automaticallyImplyLeading: false,
@@ -101,7 +101,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                     ),
                   ),
                   Text('${_selectedRadius.toStringAsFixed(1)} km',
-                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
                 ],
               ),
             ),
@@ -111,7 +111,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
               child: Row(
                 children: [
                   _buildLegendDot(Colors.green, 'Open'),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   _buildLegendDot(Colors.orange, 'Busy'),
                   const SizedBox(width: 16),
                   _buildLegendDot(Colors.grey, 'Closed'),
@@ -128,24 +128,24 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
               height: 400, // Fixed height for map placeholder in scrollable view
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.map, size: 64, color: AppColors.textLight),
+                    Icon(Icons.map, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Google Maps View',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyMedium?.color),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '${shopState.shops.length} shops found nearby',
-                      style: TextStyle(color: AppColors.textLight),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
                     ),
                     const SizedBox(height: 16),
                     Wrap(
@@ -154,8 +154,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                         final color = _getStatusColor(shop.status);
                         return Chip(
                           avatar: CircleAvatar(backgroundColor: color, radius: 6),
-                          label: Text(shop.shopName, style: const TextStyle(fontSize: 12)),
-                          backgroundColor: AppColors.background,
+                          label: Text(shop.shopName, style: TextStyle(fontSize: 12)),
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                         );
                       }).toList(),
                     ),
@@ -193,10 +193,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                 onTap: () => ref.read(shopProvider.notifier).setCategory(cat),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withAlpha(25) : AppColors.card,
+                    color: isSelected ? AppColors.primary.withAlpha(25) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : AppColors.divider,
+                      color: isSelected ? AppColors.primary : Theme.of(context).dividerColor,
                       width: isSelected ? 1.5 : 1,
                     ),
                   ),
@@ -204,10 +204,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(IconData(iconCode, fontFamily: 'MaterialIcons'),
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary, size: 28),
-                      const SizedBox(height: 6),
+                        color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color, size: 28),
+                      SizedBox(height: 6),
                       Text(cat, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                        color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color),
                         textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
@@ -348,3 +348,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
     );
   }
 }
+
+
+
+
+

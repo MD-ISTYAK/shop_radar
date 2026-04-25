@@ -69,16 +69,16 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         titleSpacing: 0,
         title: TextField(
           controller: _searchController,
           autofocus: true,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+          style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
           decoration: InputDecoration(
             hintText: 'Search people or accounts...',
-            hintStyle: TextStyle(color: AppColors.textLight),
+            hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -109,22 +109,22 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                         return ListTile(
                           leading: CircleAvatar(
                             radius: 20,
-                            backgroundColor: AppColors.shimmerBase,
+                            backgroundColor: Theme.of(context).dividerColor.withAlpha(50),
                             backgroundImage: user.profilePicUrl.isNotEmpty
                                 ? CachedNetworkImageProvider(user.profilePicUrl)
                                 : null,
                             child: user.profilePicUrl.isEmpty
                                 ? Icon(
                                     user.isShop ? Icons.store : Icons.person,
-                                    color: AppColors.textLight,
+                                    color: Theme.of(context).textTheme.bodySmall?.color,
                                   )
                                 : null,
                           ),
                           title: Row(
                             children: [
-                              Text(user.username, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text(user.username, style: TextStyle(fontWeight: FontWeight.w600)),
                               if (user.isShop) ...[
-                                const SizedBox(width: 4),
+                                SizedBox(width: 4),
                                 const Icon(Icons.verified, size: 14, color: AppColors.info),
                               ]
                             ],
@@ -133,7 +133,7 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
                             user.bio.isNotEmpty ? user.bio : (user.isShop ? 'Shop Account' : 'User'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                             style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13),
                           ),
                           onTap: () {
                             Navigator.push(
@@ -152,14 +152,20 @@ class _SearchUsersScreenState extends State<SearchUsersScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search, size: 64, color: AppColors.textLight.withAlpha(100)),
-          const SizedBox(height: 16),
+          Icon(Icons.search, size: 64, color: (Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey).withAlpha(100)),
+          SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 16),
           ),
         ],
       ),
     );
   }
 }
+
+
+
+
+
+

@@ -185,3 +185,6 @@ class ShopNotifier extends StateNotifier<ShopState> {
 final shopProvider = StateNotifierProvider<ShopNotifier, ShopState>((ref) {
   return ShopNotifier();
 });
+
+
+

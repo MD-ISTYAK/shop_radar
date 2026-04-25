@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,18 +24,70 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   }
 
   Future<void> _checkPermissions() async {
-    final status = await Permission.storage.request();
-    if (status.isGranted) {
+    Map<Permission, PermissionStatus> statuses = {};
+    
+    // Base permissions for all Android versions
+    List<Permission> permissions = [];
+    
+    if (Platform.isAndroid) {
+      // Check Android version (simplified check for SDK 33)
+      // Note: In a real app, you'd use device_info_plus, but we can infer from Permission behavior
+      
+      // Request storage/media permissions
+      final storageStatus = await Permission.storage.status;
+      if (storageStatus.isDenied || storageStatus.isLimited) {
+        // On Android 13+, Permission.storage might not be the right one
+        permissions.add(Permission.storage);
+        // Add media permissions for Android 13+
+        permissions.add(Permission.photos);
+        permissions.add(Permission.videos);
+        permissions.add(Permission.audio);
+      }
+
+      // Location/Nearby for WiFi Discovery
+      permissions.add(Permission.location);
+      permissions.add(Permission.nearbyWifiDevices);
+    }
+
+    if (permissions.isNotEmpty) {
+      statuses = await permissions.request();
+    }
+
+    bool allGranted = true;
+    
+    // On Android 13+, Permission.storage will be denied, but media permissions might be granted
+    // We check if at least some critical ones are granted
+    if (Platform.isAndroid) {
+      final locGranted = statuses[Permission.location]?.isGranted ?? await Permission.location.isGranted;
+      final nearbyGranted = statuses[Permission.nearbyWifiDevices]?.isGranted ?? await Permission.nearbyWifiDevices.isGranted;
+      
+      // Storage logic: either storage is granted (old Android) or media ones are granted (new Android)
+      final storageGranted = statuses[Permission.storage]?.isGranted ?? await Permission.storage.isGranted;
+      final mediaGranted = (statuses[Permission.photos]?.isGranted ?? await Permission.photos.isGranted) ||
+                          (statuses[Permission.videos]?.isGranted ?? await Permission.videos.isGranted);
+      
+      allGranted = (locGranted || nearbyGranted) && (storageGranted || mediaGranted);
+    }
+
+    if (allGranted) {
       setState(() => _permissionsGranted = true);
       _initReceive();
-    } else if (status.isPermanentlyDenied) {
-      _showPermissionDeniedDialog();
     } else {
-      // Re-request once
-      final retryStatus = await Permission.storage.request();
-      if (retryStatus.isGranted) {
-        setState(() => _permissionsGranted = true);
-        _initReceive();
+      // Check if any critical one is permanently denied
+      bool permanentlyDenied = false;
+      for (var s in statuses.values) {
+        if (s.isPermanentlyDenied) permanentlyDenied = true;
+      }
+      
+      if (permanentlyDenied) {
+        _showPermissionDeniedDialog();
+      } else {
+        // Optional: show a snackbar if partially denied
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Some permissions were denied. Discovery or saving might fail.')),
+          );
+        }
       }
     }
   }

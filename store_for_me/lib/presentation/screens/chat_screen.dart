@@ -159,7 +159,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         titleSpacing: 0,
         title: Row(
@@ -221,7 +221,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${DateFormat.jm().format(otherUser.lastSeen!)}' : 'Offline'),
                         style: TextStyle(
                           fontSize: 11,
-                          color: otherUser.isOnline ? Colors.green : AppColors.textSecondary,
+                          color: otherUser.isOnline ? Colors.green : Theme.of(context).textTheme.bodyMedium?.color,
                           fontWeight: FontWeight.normal,
                         ),
                       );
@@ -234,7 +234,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
             onPressed: () => ref.read(chatProvider.notifier).fetchMessages(widget.conversationId),
           ),
         ],
@@ -244,7 +244,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           // Messages
           Expanded(
             child: chatState.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator())
                 : chatState.messages.isEmpty
                     ? Center(
                         child: Column(
@@ -259,10 +259,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               child: const Icon(Icons.chat_bubble_outline_rounded, size: 48, color: AppColors.primary),
                             ),
                             const SizedBox(height: 20),
-                            const Text(
+                            Text(
                               'No messages yet', 
                               style: TextStyle(
-                                color: AppColors.textPrimary, 
+                                color: Theme.of(context).textTheme.bodyLarge?.color, 
                                 fontSize: 18, 
                                 fontWeight: FontWeight.bold
                               )
@@ -270,7 +270,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             const SizedBox(height: 8),
                             const Text(
                               'Send a message to start the conversation', 
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 14)
+                               style: TextStyle(color: Colors.grey, fontSize: 14)
                             ),
                           ],
                         ),
@@ -290,7 +290,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               margin: const EdgeInsets.only(bottom: 12),
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: isMine ? AppColors.primary : AppColors.surface,
+                                color: isMine ? AppColors.primary : Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(20),
                                   topRight: const Radius.circular(20),
@@ -301,7 +301,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   BoxShadow(
                                     color: Colors.black.withAlpha(isMine ? 10 : 5),
                                     blurRadius: 10,
-                                    offset: const Offset(0, 4),
+                                    offset: Offset(0, 4),
                                   )
                                 ],
                               ),
@@ -320,8 +320,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                               placeholder: (context, url) => Container(
                                                 height: 200,
                                                 width: double.infinity,
-                                                color: AppColors.shimmerBase,
-                                                child: const Center(child: CircularProgressIndicator()),
+                                                color: Theme.of(context).dividerColor.withAlpha(30),
+                                                child: Center(child: CircularProgressIndicator()),
                                               ),
                                               errorWidget: (context, url, error) => const Icon(Icons.error),
                                               fit: BoxFit.cover,
@@ -354,7 +354,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                           Text(
                                             msg.text,
                                             style: TextStyle(
-                                              color: isMine ? Colors.white : AppColors.textPrimary,
+                                              color: isMine ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
                                               fontSize: 15,
                                               height: 1.3,
                                             ),
@@ -367,7 +367,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                               DateFormat('h:mm a').format(msg.createdAt),
                                               style: TextStyle(
                                                 fontSize: 10,
-                                                color: isMine ? Colors.white70 : AppColors.textLight,
+                                                  color: isMine ? Colors.white70 : Theme.of(context).textTheme.bodySmall?.color,
                                               ),
                                             ),
                                             if (isMine) ...[
@@ -395,13 +395,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withAlpha(5),
                   blurRadius: 10,
-                  offset: const Offset(0, -4),
+                  offset: Offset(0, -4),
                 )
               ],
             ),
@@ -458,13 +458,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         icon: const Icon(Icons.image_outlined, color: AppColors.primary),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: Theme.of(context).scaffoldBackgroundColor,
                           borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: AppColors.divider.withAlpha(100)),
+                          border: Border.all(color: Theme.of(context).dividerColor.withAlpha(100)),
                         ),
                         child: TextField(
                           controller: _messageController,
@@ -516,3 +516,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 }
+
+
+
+
+
+

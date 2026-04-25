@@ -30,7 +30,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final currentUserId = authState.user?.id ?? '';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: const Text('Messages')),
       body: chatState.isLoading
           ? const LoadingIndicator()
@@ -54,7 +54,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                       return Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         decoration: BoxDecoration(
-                          color: conv.unreadCount > 0 ? AppColors.primaryLight.withAlpha(10) : AppColors.card,
+                          color: conv.unreadCount > 0 ? AppColors.primary.withAlpha(20) : Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(14),
                           border: conv.unreadCount > 0 ? Border.all(color: AppColors.primary.withAlpha(30)) : null,
                           boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 4)],
@@ -70,7 +70,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                     ? CachedNetworkImageProvider(profilePic)
                                     : null,
                                 child: profilePic.isEmpty
-                                    ? const Icon(Icons.person, color: AppColors.primary)
+                                    ? Icon(Icons.person, color: AppColors.primary)
                                     : null,
                               ),
                               if (conv.otherUser?.isOnline == true)
@@ -83,7 +83,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                     decoration: BoxDecoration(
                                       color: Colors.green,
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: AppColors.surface, width: 2),
+                                      border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
                                     ),
                                   ),
                                 ),
@@ -117,7 +117,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: conv.unreadCount > 0 ? AppColors.textPrimary : AppColors.textSecondary,
+                                    color: conv.unreadCount > 0 ? Theme.of(context).textTheme.bodyLarge?.color : Theme.of(context).textTheme.bodyMedium?.color,
                                     fontWeight: conv.unreadCount > 0 ? FontWeight.w500 : FontWeight.w400,
                                   ),
                                 ),
@@ -154,3 +154,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     );
   }
 }
+
+
+
+

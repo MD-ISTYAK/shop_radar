@@ -104,8 +104,8 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.65,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -117,13 +117,13 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: Theme.of(context).dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           // Title
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Text(
               'Comments',
@@ -140,16 +140,16 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.chat_bubble_outline, size: 48, color: AppColors.textLight),
+                        Icon(Icons.chat_bubble_outline, size: 48, color: Theme.of(context).textTheme.bodySmall?.color),
                         const SizedBox(height: 12),
                         Text(
                           'No comments yet',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                          style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 15),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Start the conversation.',
-                          style: TextStyle(color: AppColors.textLight, fontSize: 13),
+                          style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
                         ),
                       ],
                     ),
@@ -167,7 +167,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: AppColors.shimmerBase,
+                              backgroundColor: Theme.of(context).dividerColor.withAlpha(50),
                               backgroundImage: comment.userProfilePic.isNotEmpty
                                   ? CachedNetworkImageProvider(
                                       AppConstants.getImageUrl(comment.userProfilePic))
@@ -175,11 +175,11 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                               child: comment.userProfilePic.isEmpty
                                   ? Text(
                                       comment.userName.isNotEmpty ? comment.userName[0].toUpperCase() : '?',
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                                     )
                                   : null,
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,14 +205,14 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                     children: [
                                       Text(
                                         comment.timeAgo,
-                                        style: TextStyle(color: AppColors.textLight, fontSize: 11),
+                                        style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 11),
                                       ),
                                       const SizedBox(width: 12),
                                       GestureDetector(
                                         onTap: () => _setReplyingTo(comment),
                                         child: Text(
                                           'Reply',
-                                          style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                                          style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11, fontWeight: FontWeight.w600),
                                         ),
                                       ),
                                     ],
@@ -227,21 +227,21 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                   ),
           ),
           // Input
-          const Divider(height: 1),
+          Divider(height: 1),
           if (_replyingTo != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.surface,
+              color: Theme.of(context).colorScheme.surface,
               child: Row(
                 children: [
                   Text(
                     'Replying to @${_replyingTo!.userName}',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
                   ),
                   const Spacer(),
                   GestureDetector(
                     onTap: _cancelReply,
-                    child: const Icon(Icons.close, size: 16, color: AppColors.textLight),
+                    child: Icon(Icons.close, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
                   ),
                 ],
               ),
@@ -257,22 +257,22 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                       focusNode: _focusNode,
                       decoration: InputDecoration(
                         hintText: 'Add a comment...',
-                        hintStyle: TextStyle(color: AppColors.textLight, fontSize: 14),
+                        hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 14),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.divider),
+                          borderSide: BorderSide(color: Theme.of(context).dividerColor),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide(color: AppColors.divider),
+                          borderSide: BorderSide(color: Theme.of(context).dividerColor),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: const BorderSide(color: AppColors.primary),
                         ),
                         filled: true,
-                        fillColor: AppColors.background,
+                        fillColor: Theme.of(context).scaffoldBackgroundColor,
                         isDense: true,
                       ),
                       style: const TextStyle(fontSize: 14),
@@ -305,3 +305,10 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
     );
   }
 }
+
+
+
+
+
+
+

@@ -20,8 +20,8 @@ class OwnerShopContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Shop Management', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text('Manage your products and shop profile', style: TextStyle(color: AppColors.textLight)),
+          SizedBox(height: 8),
+          Text('Manage your products and shop profile', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
           const SizedBox(height: 24),
           
           _ActionTile(
@@ -60,16 +60,16 @@ class OwnerShopContent extends ConsumerWidget {
             color: AppColors.accent,
             onTap: () => Navigator.pushNamed(context, '/order-scanner'),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           
           Text('Current Status', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.card,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.divider.withAlpha(50)),
+              border: Border.all(color: Theme.of(context).dividerColor.withAlpha(50)),
             ),
             child: Row(
               children: [
@@ -83,7 +83,7 @@ class OwnerShopContent extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       shop?.isOpen ?? false ? 'Customers can place orders' : 'Visibility is limited',
-                      style: TextStyle(color: AppColors.textLight, fontSize: 13),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 13),
                     ),
                   ],
                 ),
@@ -125,21 +125,21 @@ class _ActionTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withAlpha(20),
+                color: (color ?? Colors.transparent).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,10 +150,19 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textLight),
+            Icon(Icons.chevron_right, color: Theme.of(context).textTheme.bodySmall?.color),
           ],
         ),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+
