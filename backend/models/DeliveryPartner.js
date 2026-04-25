@@ -121,6 +121,5 @@ const deliveryPartnerSchema = new mongoose.Schema(
 
 deliveryPartnerSchema.index({ currentLocation: '2dsphere' });
 deliveryPartnerSchema.index({ isOnline: 1, kycStatus: 1 });
-deliveryPartnerSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('DeliveryPartner', deliveryPartnerSchema);
