@@ -48,6 +48,7 @@ import 'features/sharing/presentation/screens/sharing_home_screen.dart';
 import 'features/sharing/presentation/screens/device_discovery_screen.dart';
 import 'features/sharing/presentation/screens/file_selector_screen.dart';
 import 'features/sharing/presentation/screens/file_transfer_screen.dart';
+import 'features/sharing/presentation/screens/receive_screen.dart';
 import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
 import 'presentation/screens/edit_profile_screen.dart';
@@ -189,6 +190,8 @@ class ShopRadarApp extends StatelessWidget {
               files: args?['files'],
               myName: args?['myName'],
             ), settings);
+          case '/sharing/receive':
+            return _buildRoute(const ReceiveScreen(), settings);
           case '/reels':
             return _buildRoute(const ReelsScreen(), settings);
           case '/edit-profile':
