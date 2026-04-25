@@ -41,13 +41,15 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final loc = json['location'];
+    final profile = json['profile'] ?? {};
+    
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
-      name: json['name'] ?? '',
+      name: json['name'] ?? profile['name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       role: json['role'] ?? 'user',
-      avatar: json['avatar'] ?? '',
+      avatar: json['avatar'] ?? profile['avatarUrl'] ?? '',
       coordinates: loc != null && loc['coordinates'] != null
           ? List<double>.from(loc['coordinates'].map((e) => (e as num).toDouble()))
           : [0, 0],
@@ -62,7 +64,7 @@ class UserModel {
       totalReviews: json['totalReviews'] ?? 0,
       totalOrders: json['totalOrders'] ?? 0,
       username: json['username'] ?? '',
-      bio: json['bio'] ?? '',
+      bio: json['bio'] ?? profile['bio'] ?? '',
     );
   }
 

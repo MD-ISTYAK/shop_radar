@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
 import '../providers/social_provider.dart';
+import '../../services/api_service.dart';
 
 class CommentSheet extends ConsumerStatefulWidget {
   final String postId;
@@ -24,12 +25,34 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   bool _isSending = false;
+  bool _isLoading = false;
+  CommentModel? _replyingTo;
   late List<CommentModel> _comments;
 
   @override
   void initState() {
     super.initState();
     _comments = List.from(widget.initialComments);
+    if (_comments.isEmpty) {
+      _loadComments();
+    }
+  }
+
+  Future<void> _loadComments() async {
+    setState(() => _isLoading = true);
+    try {
+      final api = ApiService();
+      final res = await api.getPostComments(widget.postId);
+      if (res.data['success'] == true) {
+        final data = res.data['data'] as List;
+        setState(() {
+          _comments = data.map((e) => CommentModel.fromJson(e)).toList();
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
@@ -44,7 +67,11 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
     if (text.isEmpty) return;
 
     setState(() => _isSending = true);
-    final success = await ref.read(socialProvider.notifier).addComment(widget.postId, text);
+    final success = await ref.read(socialProvider.notifier).addComment(
+      widget.postId, 
+      text,
+      parentCommentId: _replyingTo?.id,
+    );
 
     if (success && mounted) {
       _controller.clear();
@@ -55,11 +82,22 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
           userId: '',
           userName: 'You',
           text: text,
+          parentCommentId: _replyingTo?.id,
           createdAt: DateTime.now(),
         ));
+        _replyingTo = null;
       });
     }
     if (mounted) setState(() => _isSending = false);
+  }
+
+  void _setReplyingTo(CommentModel comment) {
+    setState(() => _replyingTo = comment);
+    _focusNode.requestFocus();
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
   }
 
   @override
@@ -95,7 +133,9 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
           const Divider(height: 1),
           // Comment list
           Expanded(
-            child: _comments.isEmpty
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : _comments.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -119,8 +159,9 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                     itemCount: _comments.length,
                     itemBuilder: (context, index) {
                       final comment = _comments[index];
+                      final isReply = comment.parentCommentId != null;
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: EdgeInsets.only(bottom: 16, left: isReply ? 32 : 0),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -160,9 +201,21 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    comment.timeAgo,
-                                    style: TextStyle(color: AppColors.textLight, fontSize: 11),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        comment.timeAgo,
+                                        style: TextStyle(color: AppColors.textLight, fontSize: 11),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      GestureDetector(
+                                        onTap: () => _setReplyingTo(comment),
+                                        child: Text(
+                                          'Reply',
+                                          style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -175,6 +228,24 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
           ),
           // Input
           const Divider(height: 1),
+          if (_replyingTo != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppColors.surface,
+              child: Row(
+                children: [
+                  Text(
+                    'Replying to @${_replyingTo!.userName}',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _cancelReply,
+                    child: const Icon(Icons.close, size: 16, color: AppColors.textLight),
+                  ),
+                ],
+              ),
+            ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),

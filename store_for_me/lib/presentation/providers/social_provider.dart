@@ -260,9 +260,9 @@ class SocialNotifier extends StateNotifier<SocialState> {
     }
   }
 
-  Future<bool> addComment(String postId, String text) async {
+  Future<bool> addComment(String postId, String text, {String? parentCommentId}) async {
     try {
-      final response = await _api.addComment(postId, text);
+      final response = await _api.addComment(postId, text, parentCommentId: parentCommentId);
       if (response.data['success'] == true) {
         // Optimistic: increment comment count locally
         final updatedFeed = state.feed.map((p) {

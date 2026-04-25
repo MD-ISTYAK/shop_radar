@@ -34,4 +34,41 @@ const storage = new CloudinaryStorage({
   },
 });
 
-module.exports = { cloudinary, storage };
+const optimizeMediaUrl = (url, type) => {
+  if (!url) return '';
+  if (!url.includes('res.cloudinary.com')) return url;
+  
+  const uploadIndex = url.indexOf('/upload/');
+  if (uploadIndex === -1) return url;
+  
+  const prefix = url.substring(0, uploadIndex + 8);
+  const suffix = url.substring(uploadIndex + 8);
+  
+  if (type === 'image') {
+    return `${prefix}f_auto,q_auto,w_500/${suffix}`;
+  } else if (type === 'video') {
+    return `${prefix}f_auto,q_auto/${suffix}`;
+  }
+  return url;
+};
+
+const getVideoThumbnail = (videoUrl) => {
+  if (!videoUrl) return '';
+  if (!videoUrl.includes('res.cloudinary.com')) return videoUrl;
+  
+  const uploadIndex = videoUrl.indexOf('/upload/');
+  if (uploadIndex === -1) return videoUrl;
+  
+  const prefix = videoUrl.substring(0, uploadIndex + 8);
+  let suffix = videoUrl.substring(uploadIndex + 8);
+  
+  // Replace extension with .jpg for thumbnail
+  const extIndex = suffix.lastIndexOf('.');
+  if (extIndex !== -1) {
+    suffix = suffix.substring(0, extIndex) + '.jpg';
+  }
+  
+  return `${prefix}f_auto,q_auto,w_500/${suffix}`;
+};
+
+module.exports = { cloudinary, storage, optimizeMediaUrl, getVideoThumbnail };

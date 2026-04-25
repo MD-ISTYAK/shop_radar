@@ -1,26 +1,5 @@
 const mongoose = require('mongoose');
 
-const commentSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  text: {
-    type: String,
-    required: true,
-    maxlength: 500,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  isHidden: {
-    type: Boolean,
-    default: false,
-  },
-});
-
 const postSchema = new mongoose.Schema(
   {
     // User-centric: the author of the post
@@ -39,52 +18,48 @@ const postSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
-    content: {
+    caption: {
       type: String,
       default: '',
       maxlength: 2200, // per spec
     },
-    mediaUrl: {
+    // Alias for backward compatibility
+    content: {
       type: String,
       default: '',
     },
-    mediaType: {
-      type: String,
-      enum: ['image', 'video'],
-      default: 'image',
-    },
-    images: {
-      type: [String],
-      default: [],
+    media: [
+      {
+        type: { type: String, enum: ['image', 'video'], required: true },
+        url: { type: String, required: true }, // Optimized Cloudinary URL
+        thumbnailUrl: { type: String, default: '' }, // For videos
+      },
+    ],
+    // Backward compat fields
+    mediaUrl: { type: String, default: '' },
+    mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
+    images: { type: [String], default: [] },
+    videoUrl: { type: String, default: '' },
+    thumbnailUrl: { type: String, default: '' },
+
+    // Denormalized user data for faster feed loading
+    userSnapshot: {
+      username: { type: String, default: '' },
+      avatarUrl: { type: String, default: '' },
     },
     type: {
       type: String,
       enum: ['post', 'reel'],
       default: 'post',
     },
-    videoUrl: {
-      type: String,
-      default: '',
-    },
-    thumbnailUrl: {
-      type: String,
-      default: '',
-    },
     hashTags: {
       type: [String],
       default: [],
     },
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-      },
-    ],
     likesCount: {
       type: Number,
       default: 0,
     },
-    comments: [commentSchema],
     commentsCount: {
       type: Number,
       default: 0,
@@ -114,6 +89,17 @@ const postSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-validate hook for backward compatibility
+postSchema.pre('validate', function (next) {
+  if (this.isModified('caption') && !this.isModified('content')) {
+    this.content = this.caption;
+  }
+  if (this.isModified('content') && !this.isModified('caption')) {
+    this.caption = this.content;
+  }
+  next();
+});
 
 // Indexes per tech spec
 postSchema.index({ userId: 1, createdAt: -1 });

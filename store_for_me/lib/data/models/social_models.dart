@@ -31,16 +31,19 @@ class UserProfileModel {
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
+    final profile = json['profile'] ?? {};
+    final stats = json['stats'] ?? {};
+    
     return UserProfileModel(
       id: json['_id'] ?? json['id'] ?? '',
-      username: json['username'] ?? json['name'] ?? '',
+      username: json['username'] ?? profile['name'] ?? json['name'] ?? '',
       email: json['email'] ?? '',
-      profilePic: json['profilePic'] ?? json['avatar'] ?? '',
-      bio: json['bio'] ?? '',
+      profilePic: profile['avatarUrl'] ?? json['profilePic'] ?? json['avatar'] ?? '',
+      bio: profile['bio'] ?? json['bio'] ?? '',
       accountType: json['accountType'] ?? 'user',
-      followersCount: json['followersCount'] ?? 0,
-      followingCount: json['followingCount'] ?? 0,
-      postsCount: json['postsCount'] ?? 0,
+      followersCount: stats['followersCount'] ?? json['followersCount'] ?? 0,
+      followingCount: stats['followingCount'] ?? json['followingCount'] ?? 0,
+      postsCount: stats['postsCount'] ?? json['postsCount'] ?? 0,
       isFollowing: json['isFollowing'] ?? false,
       isVerified: json['isVerified'] ?? false,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
@@ -188,6 +191,41 @@ class PostModel {
     if (profilePic.isEmpty) profilePic = shopLogo;
     if (userId.isEmpty) userId = ownerId.isNotEmpty ? ownerId : shopId;
 
+    final userSnapshot = json['userSnapshot'];
+    if (userSnapshot is Map) {
+      if (username.isEmpty) username = userSnapshot['username'] ?? '';
+      if (profilePic.isEmpty) profilePic = userSnapshot['avatarUrl'] ?? '';
+    }
+
+    // Parse new media array or fallback to old fields
+    List<String> imagesList = [];
+    String mUrl = json['mediaUrl'] ?? '';
+    String mType = json['mediaType'] ?? 'image';
+    String vUrl = json['videoUrl'] ?? '';
+    String tUrl = json['thumbnailUrl'] ?? '';
+
+    final mediaArray = json['media'] as List?;
+    if (mediaArray != null && mediaArray.isNotEmpty) {
+      for (var item in mediaArray) {
+        if (item['type'] == 'image') {
+          imagesList.add(item['url'] ?? '');
+          if (mUrl.isEmpty) {
+            mUrl = item['url'] ?? '';
+            mType = 'image';
+          }
+        } else if (item['type'] == 'video') {
+          vUrl = item['url'] ?? '';
+          tUrl = item['thumbnailUrl'] ?? '';
+          if (mUrl.isEmpty) {
+            mUrl = item['url'] ?? '';
+            mType = 'video';
+          }
+        }
+      }
+    } else {
+      imagesList = (json['images'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    }
+
     return PostModel(
       id: json['_id'] ?? json['id'] ?? '',
       shopId: shopId,
@@ -199,12 +237,12 @@ class PostModel {
       username: username,
       profilePic: profilePic,
       accountType: accountType,
-      content: json['content'] ?? json['caption'] ?? '',
-      images: (json['images'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      mediaUrl: json['mediaUrl'] ?? '',
-      mediaType: json['mediaType'] ?? 'image',
+      content: json['caption'] ?? json['content'] ?? '',
+      images: imagesList,
+      mediaUrl: mUrl,
+      mediaType: mType,
       type: json['type'] ?? 'post',
-      videoUrl: json['videoUrl'] ?? '',
+      videoUrl: vUrl,
       likes: (json['likes'] as List?)?.map((e) => e.toString()).toList() ?? [],
       likesCount: json['likesCount'] ?? (json['likes'] as List?)?.length ?? 0,
       comments: (json['comments'] as List?)?.map((e) => CommentModel.fromJson(e)).toList() ?? [],
@@ -274,6 +312,7 @@ class CommentModel {
   final String userName;
   final String userProfilePic;
   final String text;
+  final String? parentCommentId;
   final DateTime createdAt;
   final bool isHidden;
 
@@ -283,6 +322,7 @@ class CommentModel {
     this.userName = '',
     this.userProfilePic = '',
     required this.text,
+    this.parentCommentId,
     required this.createdAt,
     this.isHidden = false,
   });
@@ -301,12 +341,19 @@ class CommentModel {
       userId = userField;
     }
 
+    final userSnapshot = json['userSnapshot'];
+    if (userSnapshot is Map) {
+      if (userName.isEmpty) userName = userSnapshot['username'] ?? '';
+      if (userProfilePic.isEmpty) userProfilePic = userSnapshot['avatarUrl'] ?? '';
+    }
+
     return CommentModel(
       id: json['_id'] ?? '',
       userId: userId,
       userName: userName,
       userProfilePic: userProfilePic,
       text: json['text'] ?? '',
+      parentCommentId: json['parentCommentId'],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       isHidden: json['isHidden'] ?? false,
     );

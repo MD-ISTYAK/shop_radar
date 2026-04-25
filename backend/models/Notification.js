@@ -20,6 +20,15 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    // New fields for strict Social architecture
+    actorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+    },
     data: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
@@ -28,9 +37,25 @@ const notificationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Alias for strict schema
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
+
+// Pre-save hook to keep read and isRead synced
+notificationSchema.pre('save', function (next) {
+  if (this.isModified('isRead') && !this.isModified('read')) {
+    this.read = this.isRead;
+  }
+  if (this.isModified('read') && !this.isModified('isRead')) {
+    this.isRead = this.read;
+  }
+  next();
+});
 
 notificationSchema.index({ userId: 1, createdAt: -1 });
 

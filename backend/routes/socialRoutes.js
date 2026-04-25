@@ -1,10 +1,12 @@
 const express = require('express');
 const multer = require('multer');
+const compression = require('compression');
 const {
   createPost,
   getFeed,
   explorePosts,
   toggleLike,
+  getPostComments,
   addComment,
   savePost,
   unsavePost,
@@ -56,11 +58,12 @@ router.use(protect);
 
 // ===================== POSTS =====================
 router.post('/posts', postUpload, createPost);
-router.get('/feed', getFeed);
-router.get('/explore', explorePosts);
+router.get('/feed', compression(), getFeed);
+router.get('/explore', compression(), explorePosts);
 router.get('/my-posts', getMyPosts);
 router.post('/posts/:id/like', toggleLike);
 router.get('/posts/:id/likes', getPostLikes);
+router.get('/posts/:id/comments', getPostComments);
 router.post('/posts/:id/comment', addComment);
 router.post('/posts/:id/save', savePost);
 router.delete('/posts/:id/save', unsavePost);

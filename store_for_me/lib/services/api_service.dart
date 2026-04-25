@@ -216,8 +216,14 @@ class ApiService {
   Future<Response> toggleLike(String postId) =>
       _dio.post('/social/posts/$postId/like');
 
-  Future<Response> addComment(String postId, String text) =>
-      _dio.post('/social/posts/$postId/comment', data: {'text': text});
+  Future<Response> getPostComments(String postId) =>
+      _dio.get('/social/posts/$postId/comments');
+
+  Future<Response> addComment(String postId, String text, {String? parentCommentId}) {
+    final data = <String, dynamic>{'text': text};
+    if (parentCommentId != null) data['parentCommentId'] = parentCommentId;
+    return _dio.post('/social/posts/$postId/comment', data: data);
+  }
 
   Future<Response> updatePost(String postId, String content) =>
       _dio.put('/social/posts/$postId', data: {'content': content});

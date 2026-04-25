@@ -2,18 +2,20 @@ class AppConstants {
   AppConstants._();
 
   // API — Change this IP when switching devices
-  static const String _ip = '192.168.1.19';
+  static const String _ip = '192.168.1.17';
   static const bool useLocal = true; // Toggle this for local testing
 
-  static const String baseUrl = useLocal 
-      ? 'http://$_ip:5000/api' 
+  static const String baseUrl = useLocal
+      ? 'http://$_ip:5000/api'
       : 'https://shop-radar-z0xe.onrender.com/api';
 
   static const String wsUrl = useLocal
       ? 'http://$_ip:5000'
       : 'https://shop-radar-z0xe.onrender.com';
 
-  static const String uploadsUrl = ''; // Cloudinary URLs are absolute
+  static const String uploadsUrl = useLocal
+      ? 'http://$_ip:5000'
+      : ''; // Cloudinary URLs are absolute
 
   /// Helper to get full image URL, handles both local and Cloudinary paths
   static String getImageUrl(String? path) {
@@ -27,7 +29,8 @@ class AppConstants {
   static const String userKey = 'user_data';
 
   // Google Maps API Key
-  static const String googleMapsApiKey = 'AIzaSyDzCAoTb1j3706Uf-3G2gI1CrJmiMJxd7s';
+  static const String googleMapsApiKey =
+      'AIzaSyDzCAoTb1j3706Uf-3G2gI1CrJmiMJxd7s';
 
   // Razorpay Key
   static const String razorpayKey = 'rzp_test_your_key_here';
@@ -131,9 +134,9 @@ class AppConstants {
 
   // Shop status colors
   static const Map<String, int> statusColors = {
-    'open': 0xFF16A34A,          // Green
-    'busy': 0xFFF59E0B,          // Orange
-    'closed': 0xFF94A3B8,        // Grey
+    'open': 0xFF16A34A, // Green
+    'busy': 0xFFF59E0B, // Orange
+    'closed': 0xFF94A3B8, // Grey
     'temporarily_closed': 0xFFDC2626, // Red
   };
 }

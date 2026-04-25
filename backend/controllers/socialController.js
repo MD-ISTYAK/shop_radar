@@ -6,20 +6,32 @@ const User = require('../models/User');
 const Shop = require('../models/Shop');
 const Notification = require('../models/Notification');
 
+const Feed = require('../models/Feed');
+const Like = require('../models/Like');
+const Comment = require('../models/Comment');
+const { optimizeMediaUrl, getVideoThumbnail } = require('../config/cloudinary');
+
 // ===================== POSTS =====================
 
 // @desc    Create a post (any user or shop owner)
 // @route   POST /api/social/posts
 const createPost = async (req, res, next) => {
   try {
-    const { content, type } = req.body;
+    const { content, type, caption } = req.body;
     const userId = req.user._id;
+
+    const user = await User.findById(userId);
 
     const postData = {
       userId,
       ownerId: userId,
-      content: content || '',
+      caption: caption || content || '',
       type: type || 'post',
+      userSnapshot: {
+        username: user.username || user.name,
+        avatarUrl: user.profile?.avatarUrl || user.avatar || '',
+      },
+      media: [],
     };
 
     // If user is a shop owner, also link the shop
@@ -30,34 +42,59 @@ const createPost = async (req, res, next) => {
 
     // Handle image uploads
     if (req.files && req.files.images) {
-      postData.images = req.files.images.map((f) => f.path);
-      postData.mediaUrl = req.files.images[0].path;
-      postData.mediaType = 'image';
+      req.files.images.forEach((f) => {
+        postData.media.push({
+          type: 'image',
+          url: optimizeMediaUrl(f.path, 'image'),
+        });
+      });
     }
     // Handle video upload for reels
     if (req.files && req.files.video && req.files.video[0]) {
-      postData.videoUrl = req.files.video[0].path;
-      postData.mediaUrl = req.files.video[0].path;
-      postData.mediaType = 'video';
+      postData.media.push({
+        type: 'video',
+        url: optimizeMediaUrl(req.files.video[0].path, 'video'),
+        thumbnailUrl: getVideoThumbnail(req.files.video[0].path),
+      });
       postData.type = 'reel';
     }
 
     const post = await Post.create(postData);
+    
+    // Increment User postsCount
+    await User.findByIdAndUpdate(userId, { $inc: { 'stats.postsCount': 1 } });
 
-    // Notify followers
+    // Notify followers and Fan-out to Feed
     const followers = await Follow.find({ followingId: userId });
+    
+    // Add to my own feed
+    const feedEntries = [{ userId, postId: post._id }];
+
     if (followers.length > 0) {
-      const user = await User.findById(userId);
       const displayName = user.username || user.name;
-      const notifications = followers.map((f) => ({
-        userId: f.followerId,
-        type: 'new_post',
-        title: `${displayName} shared a new ${postData.type}`,
-        body: content ? content.substring(0, 100) : '',
-        data: { postId: post._id, userId },
-      }));
+      
+      const notifications = [];
+      followers.forEach((f) => {
+        // Feed Fan-out
+        feedEntries.push({ userId: f.followerId, postId: post._id });
+        
+        // Notifications
+        notifications.push({
+          userId: f.followerId,
+          type: 'new_post',
+          title: `${displayName} shared a new ${postData.type}`,
+          body: postData.caption ? postData.caption.substring(0, 100) : '',
+          actorId: userId,
+          postId: post._id,
+          data: { postId: post._id, userId },
+        });
+      });
+      
       await Notification.insertMany(notifications);
     }
+    
+    // Bulk insert into Feed
+    await Feed.insertMany(feedEntries);
 
     // Populate and return
     const populated = await Post.findById(post._id)
@@ -74,70 +111,64 @@ const createPost = async (req, res, next) => {
 // @route   GET /api/social/feed?limit=&cursor=
 const getFeed = async (req, res, next) => {
   try {
-    const { limit = 10, cursor, page = 1 } = req.query;
+    const { limit = 10, cursor } = req.query;
     const limitNum = parseInt(limit);
     const userId = req.user._id;
 
-    // Get followed user IDs
-    const follows = await Follow.find({ followerId: userId }).lean();
-    const followingIds = follows.map((f) => f.followingId);
-
-    // Also include backward compat: shop-based follows
-    const shopFollows = follows.filter((f) => f.shopId).map((f) => f.shopId);
-
-    // Build query
-    const query = {
-      isHidden: { $ne: true },
-      $or: [
-        { userId: userId },
-        { ownerId: userId },
-        { userId: { $in: followingIds } },
-        { ownerId: { $in: followingIds } },
-        { shopId: { $in: shopFollows } },
-      ],
-    };
-
-    // Optimized field selection for minimal payload
-    const selectFields = 'userId shopId ownerId content images videoUrl mediaUrl mediaType type likesCount commentsCount createdAt isHidden';
+    // Build Feed query
+    const feedQuery = { userId };
     
     if (cursor) {
-      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
-    } else if (page && parseInt(page) > 1) {
-      // Fallback offset pagination
-      const skip = (parseInt(page) - 1) * limitNum;
-      const posts = await Post.find(query)
-        .sort({ _id: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .select(selectFields)
-        .populate('userId', 'name username profilePic avatar accountType')
-        .populate('shopId', 'shopName logo')
-        .populate('ownerId', 'name avatar')
-        .lean();
-
-      _addLikeStatus(posts, userId);
-      return res.status(200).json({ success: true, data: posts });
+      feedQuery.createdAt = { $lt: new Date(cursor) };
     }
 
-    const posts = await Post.find(query)
-      .sort({ _id: -1 })
+    // Fetch Feed entries (already sorted by latest)
+    const feedEntries = await Feed.find(feedQuery)
+      .sort({ createdAt: -1 })
       .limit(limitNum)
-      .select(selectFields)
-      .populate('userId', 'name username profilePic avatar accountType')
-      .populate('shopId', 'shopName logo')
-      .populate('ownerId', 'name avatar')
       .lean();
 
-    // Add isLiked status for current user
-    _addLikeStatus(posts, userId);
+    if (feedEntries.length === 0) {
+      return res.status(200).json({ success: true, count: 0, nextCursor: null, data: [] });
+    }
 
-    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+    const postIds = feedEntries.map(f => f.postId);
+
+    // Optimized field selection for minimal payload
+    const selectFields = 'caption media userSnapshot likesCount commentsCount createdAt type';
+
+    // Fetch posts associated with those feed entries
+    const posts = await Post.find({
+      _id: { $in: postIds },
+      isHidden: { $ne: true },
+    })
+      .select(selectFields)
+      .lean();
+
+    // Reorder posts to match feedEntries order
+    const orderedPosts = feedEntries.map(f => {
+      const post = posts.find(p => p._id.toString() === f.postId.toString());
+      if (post) {
+        post.feedId = f._id; // Add feed ID just in case
+      }
+      return post;
+    }).filter(Boolean);
+
+    // Add isLiked status for current user (Query Like collection)
+    const likes = await Like.find({ userId, postId: { $in: postIds } }).lean();
+    const likedPostIds = new Set(likes.map(l => l.postId.toString()));
+    
+    orderedPosts.forEach(post => {
+      post.isLiked = likedPostIds.has(post._id.toString());
+    });
+
+    const nextCursor = feedEntries.length > 0 ? feedEntries[feedEntries.length - 1].createdAt : null;
 
     res.status(200).json({
       success: true,
-      count: posts.length,
+      count: orderedPosts.length,
       nextCursor,
-      data: posts,
+      data: orderedPosts,
     });
   } catch (error) {
     next(error);
@@ -181,14 +212,16 @@ const toggleLike = async (req, res, next) => {
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
     const userId = req.user._id;
-    const likeIndex = post.likes.findIndex((id) => id.toString() === userId.toString());
+    
+    // Check Like collection instead of post.likes array
+    const existingLike = await Like.findOne({ userId, postId: post._id });
 
-    if (likeIndex > -1) {
-      post.likes.splice(likeIndex, 1);
-      post.likesCount = Math.max(0, (post.likesCount || post.likes.length) - 1);
+    if (existingLike) {
+      await Like.findByIdAndDelete(existingLike._id);
+      post.likesCount = Math.max(0, (post.likesCount || 0) - 1);
     } else {
-      post.likes.push(userId);
-      post.likesCount = (post.likesCount || post.likes.length - 1) + 1;
+      await Like.create({ userId, postId: post._id });
+      post.likesCount = (post.likesCount || 0) + 1;
 
       // Notify post author (if not self)
       if (post.userId && post.userId.toString() !== userId.toString()) {
@@ -198,6 +231,8 @@ const toggleLike = async (req, res, next) => {
           type: 'like',
           title: 'New Like',
           body: `@${liker.username || liker.name} liked your post`,
+          actorId: userId,
+          postId: post._id,
           data: { postId: post._id, senderId: userId },
         });
       }
@@ -206,8 +241,26 @@ const toggleLike = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: likeIndex > -1 ? 'Unliked' : 'Liked',
-      data: { likesCount: post.likesCount, isLiked: likeIndex === -1 },
+      message: existingLike ? 'Unliked' : 'Liked',
+      data: { likesCount: post.likesCount, isLiked: !existingLike },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get comments for a post
+// @route   GET /api/social/posts/:id/comments
+const getPostComments = async (req, res, next) => {
+  try {
+    const comments = await Comment.find({ postId: req.params.id, isHidden: { $ne: true } })
+      .sort({ createdAt: -1 }) // or 1 for chronological
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: comments.length,
+      data: comments,
     });
   } catch (error) {
     next(error);
@@ -218,7 +271,7 @@ const toggleLike = async (req, res, next) => {
 // @route   POST /api/social/posts/:id/comment
 const addComment = async (req, res, next) => {
   try {
-    const { text } = req.body;
+    const { text, parentCommentId } = req.body;
     if (!text || !text.trim()) {
       return res.status(400).json({ success: false, message: 'Comment text is required' });
     }
@@ -226,20 +279,32 @@ const addComment = async (req, res, next) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    post.comments.push({ userId: req.user._id, text: text.trim() });
+    const user = await User.findById(req.user._id);
+
+    // Create comment in Comment collection
+    const comment = await Comment.create({
+      postId: post._id,
+      userId: req.user._id,
+      text: text.trim(),
+      parentCommentId: parentCommentId || null,
+      userSnapshot: {
+        username: user.username || user.name,
+        avatarUrl: user.profile?.avatarUrl || user.avatar || '',
+      },
+    });
+
     post.commentsCount = (post.commentsCount || 0) + 1;
     await post.save();
 
-    await post.populate('comments.userId', 'name username profilePic avatar');
-
     // Notify post author
     if (post.userId && post.userId.toString() !== req.user._id.toString()) {
-      const commenter = await User.findById(req.user._id);
       await Notification.create({
         userId: post.userId,
         type: 'comment',
         title: 'New Comment',
-        body: `@${commenter.username || commenter.name} commented: ${text.substring(0, 60)}`,
+        body: `@${user.username || user.name} commented: ${text.substring(0, 60)}`,
+        actorId: req.user._id,
+        postId: post._id,
         data: { postId: post._id, senderId: req.user._id },
       });
     }
@@ -247,7 +312,7 @@ const addComment = async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: 'Comment added',
-      data: post.comments[post.comments.length - 1],
+      data: comment,
     });
   } catch (error) {
     next(error);
@@ -693,8 +758,18 @@ const toggleFollow = async (req, res, next) => {
       // Unfollow
       await Follow.findByIdAndDelete(existing._id);
       // Atomic decrement
-      await User.findByIdAndUpdate(followingId, { $inc: { followersCount: -1 } });
-      await User.findByIdAndUpdate(followerId, { $inc: { followingCount: -1 } });
+      await User.findByIdAndUpdate(followingId, { $inc: { 'stats.followersCount': -1, followersCount: -1 } });
+      await User.findByIdAndUpdate(followerId, { $inc: { 'stats.followingCount': -1, followingCount: -1 } });
+      
+      // Optional: Clean up Feed entries (remove unfollowed user's posts from feed)
+      // This might be heavy, so we can do it asynchronously or limit it.
+      // But for strict clean feed, we should remove them.
+      const userPosts = await Post.find({ userId: followingId }).select('_id').lean();
+      const postIds = userPosts.map(p => p._id);
+      if (postIds.length > 0) {
+        await Feed.deleteMany({ userId: followerId, postId: { $in: postIds } });
+      }
+
       return res.status(200).json({ success: true, message: 'Unfollowed', data: { isFollowing: false } });
     }
 
@@ -709,8 +784,23 @@ const toggleFollow = async (req, res, next) => {
 
     await Follow.create(followData);
     // Atomic increment
-    await User.findByIdAndUpdate(followingId, { $inc: { followersCount: 1 } });
-    await User.findByIdAndUpdate(followerId, { $inc: { followingCount: 1 } });
+    await User.findByIdAndUpdate(followingId, { $inc: { 'stats.followersCount': 1, followersCount: 1 } });
+    await User.findByIdAndUpdate(followerId, { $inc: { 'stats.followingCount': 1, followingCount: 1 } });
+
+    // Fan-out recent posts into the new follower's Feed
+    const recentPosts = await Post.find({ userId: followingId, isHidden: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .select('_id')
+      .lean();
+      
+    if (recentPosts.length > 0) {
+      const feedEntries = recentPosts.map(p => ({
+        userId: followerId,
+        postId: p._id,
+      }));
+      await Feed.insertMany(feedEntries);
+    }
 
     // Notify
     const follower = await User.findById(followerId);
@@ -719,6 +809,7 @@ const toggleFollow = async (req, res, next) => {
       type: 'follow',
       title: 'New Follower',
       body: `@${follower.username || follower.name} started following you`,
+      actorId: followerId,
       data: { senderId: followerId },
     });
 
@@ -740,8 +831,14 @@ const unfollowUser = async (req, res, next) => {
 
     const existing = await Follow.findOneAndDelete({ followerId, followingId });
     if (existing) {
-      await User.updateOne({ _id: followingId }, { $inc: { followersCount: -1 } });
-      await User.updateOne({ _id: followerId }, { $inc: { followingCount: -1 } });
+      await User.updateOne({ _id: followingId }, { $inc: { 'stats.followersCount': -1, followersCount: -1 } });
+      await User.updateOne({ _id: followerId }, { $inc: { 'stats.followingCount': -1, followingCount: -1 } });
+      
+      const userPosts = await Post.find({ userId: followingId }).select('_id').lean();
+      const postIds = userPosts.map(p => p._id);
+      if (postIds.length > 0) {
+        await Feed.deleteMany({ userId: followerId, postId: { $in: postIds } });
+      }
     }
 
     res.status(200).json({ success: true, message: 'Unfollowed', data: { isFollowing: false } });
@@ -965,6 +1062,7 @@ module.exports = {
   getFeed,
   explorePosts,
   toggleLike,
+  getPostComments,
   addComment,
   savePost,
   unsavePost,

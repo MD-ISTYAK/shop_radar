@@ -3,14 +3,71 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
+    // New Social Media Schema
+    profile: {
+      name: {
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true,
+        minlength: 2,
+        maxlength: 50,
+      },
+      bio: {
+        type: String,
+        default: '',
+        maxlength: 150,
+      },
+      avatarUrl: {
+        type: String,
+        default: '',
+      },
+    },
+    stats: {
+      followersCount: {
+        type: Number,
+        default: 0,
+      },
+      followingCount: {
+        type: Number,
+        default: 0,
+      },
+      postsCount: {
+        type: Number,
+        default: 0,
+      },
+    },
+
+    // Backward compatibility aliases (Virtuals will be added for easier access)
+    // To not break existing code, we keep these flat fields for now and sync them or we just use them directly if the migration is too complex.
+    // Wait, since we must use `profile.name`, we should define them directly.
     name: {
       type: String,
-      required: [true, 'Name is required'],
       trim: true,
       minlength: 2,
       maxlength: 50,
     },
-    // Social: unique username for @mentions
+    bio: {
+      type: String,
+      default: '',
+      maxlength: 150,
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    profilePic: {
+      type: String,
+      default: '',
+    },
+    followersCount: {
+      type: Number,
+      default: 0,
+    },
+    followingCount: {
+      type: Number,
+      default: 0,
+    },
+
     username: {
       type: String,
       unique: true,
@@ -44,26 +101,10 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'owner', 'delivery_partner'],
       default: 'user',
     },
-    // Social: account type for dual-type UI (user vs shop profile)
     accountType: {
       type: String,
       enum: ['user', 'shop'],
       default: 'user',
-    },
-    avatar: {
-      type: String,
-      default: '',
-    },
-    // Social: dedicated profilePic (falls back to avatar)
-    profilePic: {
-      type: String,
-      default: '',
-    },
-    // Social: user bio
-    bio: {
-      type: String,
-      default: '',
-      maxlength: 150,
     },
     location: {
       type: {
@@ -72,7 +113,7 @@ const userSchema = new mongoose.Schema(
         default: 'Point',
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
+        type: [Number],
         default: [0, 0],
       },
     },
@@ -99,15 +140,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    // Social: atomic follow counters (maintained via $inc, never derived)
-    followersCount: {
-      type: Number,
-      default: 0,
-    },
-    followingCount: {
-      type: Number,
-      default: 0,
-    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -128,7 +160,6 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Realtime Presence Tracking
     isOnline: {
       type: Boolean,
       default: false,
@@ -137,7 +168,6 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    // Reference to shop document if accountType is 'shop'
     shopRef: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shop',
@@ -145,6 +175,50 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-validate hook to keep backward compatibility fields synced before validation
+userSchema.pre('validate', function (next) {
+  if (!this.profile) this.profile = {};
+  if (!this.stats) this.stats = {};
+
+  if (this.isModified('name') && !this.isModified('profile.name')) {
+    this.profile.name = this.name;
+  }
+  if (this.isModified('profile.name') && !this.isModified('name')) {
+    this.name = this.profile.name;
+  }
+  
+  if (this.isModified('bio') && !this.isModified('profile.bio')) {
+    this.profile.bio = this.bio;
+  }
+  if (this.isModified('profile.bio') && !this.isModified('bio')) {
+    this.bio = this.profile.bio;
+  }
+  
+  if (this.isModified('avatar') && !this.isModified('profile.avatarUrl')) {
+    this.profile.avatarUrl = this.avatar;
+  }
+  if (this.isModified('profile.avatarUrl') && !this.isModified('avatar')) {
+    this.avatar = this.profile.avatarUrl;
+    this.profilePic = this.profile.avatarUrl;
+  }
+
+  if (this.isModified('followersCount') && !this.isModified('stats.followersCount')) {
+    this.stats.followersCount = this.followersCount;
+  }
+  if (this.isModified('stats.followersCount') && !this.isModified('followersCount')) {
+    this.followersCount = this.stats.followersCount;
+  }
+
+  if (this.isModified('followingCount') && !this.isModified('stats.followingCount')) {
+    this.stats.followingCount = this.followingCount;
+  }
+  if (this.isModified('stats.followingCount') && !this.isModified('followingCount')) {
+    this.followingCount = this.stats.followingCount;
+  }
+
+  next();
+});
 
 // Indexes for social features
 userSchema.index({ username: 1 }, { unique: true, sparse: true });

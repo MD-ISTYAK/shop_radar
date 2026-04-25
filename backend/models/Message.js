@@ -3,9 +3,14 @@ const mongoose = require('mongoose');
 const messageSchema = new mongoose.Schema(
   {
     conversationId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Conversation',
       required: true,
       index: true,
+    },
+    // Backward compat string ID
+    legacyConversationId: {
+      type: String,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
