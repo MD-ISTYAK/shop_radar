@@ -54,6 +54,7 @@ import 'presentation/screens/start_business_screen.dart';
 import 'presentation/screens/my_businesses_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
+import 'presentation/screens/magico_files_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -185,6 +186,8 @@ class ShopRadarApp extends StatelessWidget {
             return _buildRoute(const StartBusinessScreen(), settings);
           case '/my-businesses':
             return _buildRoute(const MyBusinessesScreen(), settings);
+          case '/magico/files':
+            return _buildRoute(const MagicoFilesScreen(), settings);
           default:
             return _buildRoute(const SplashScreen(), settings);
         }

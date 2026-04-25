@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/chat_models.dart';
 import '../../services/api_service.dart';
@@ -167,9 +168,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
   }
 
-  Future<void> sendMessage(String receiverId, String? shopId, String text) async {
+  Future<void> sendMessage(String receiverId, String? shopId, String text, {File? mediaFile}) async {
     try {
-      final response = await _api.sendChatMessage(receiverId, shopId, text);
+      final response = await _api.sendChatMessage(receiverId, shopId, text, mediaFile: mediaFile);
       if (response.data['success'] == true) {
         final message = MessageModel.fromJson(response.data['data']);
         state = state.copyWith(messages: [...state.messages, message]);

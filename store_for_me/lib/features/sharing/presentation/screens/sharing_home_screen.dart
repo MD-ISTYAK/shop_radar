@@ -73,6 +73,15 @@ class SharingHomeScreen extends ConsumerWidget {
                   }
                 },
               ),
+              const SizedBox(height: 16),
+              _buildActionButton(
+                context,
+                title: 'My Received Files',
+                subtitle: 'View and manage files in Magico folder',
+                icon: Icons.folder_shared_rounded,
+                color: AppColors.primary,
+                onTap: () => Navigator.pushNamed(context, '/magico/files'),
+              ),
               if (sharingState.currentTransfer != null) ...[
                 const SizedBox(height: 32),
                 _buildTransferStatus(context, ref),

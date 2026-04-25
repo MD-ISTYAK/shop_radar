@@ -81,14 +81,16 @@ class ChatShopModel {
 
 class LastMessageModel {
   final String text;
+  final String? mediaType;
   final DateTime createdAt;
   final bool isMine;
 
-  LastMessageModel({this.text = '', required this.createdAt, this.isMine = false});
+  LastMessageModel({this.text = '', this.mediaType, required this.createdAt, this.isMine = false});
 
   factory LastMessageModel.fromJson(Map<String, dynamic> json) {
     return LastMessageModel(
       text: json['text'] ?? '',
+      mediaType: json['mediaType'],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       isMine: json['isMine'] ?? false,
     );
@@ -103,6 +105,8 @@ class MessageModel {
   final String receiverId;
   final String shopId;
   final String text;
+  final String mediaUrl;
+  final String mediaType;
   final bool read;
   final String status; // 'sent', 'delivered', 'seen'
   final DateTime createdAt;
@@ -115,6 +119,8 @@ class MessageModel {
     required this.receiverId,
     required this.shopId,
     required this.text,
+    this.mediaUrl = '',
+    this.mediaType = 'text',
     this.read = false,
     this.status = 'sent',
     required this.createdAt,
@@ -129,6 +135,8 @@ class MessageModel {
       receiverId: json['receiverId'] ?? '',
       shopId: json['shopId'] ?? '',
       text: json['text'] ?? '',
+      mediaUrl: json['mediaUrl'] ?? '',
+      mediaType: json['mediaType'] ?? 'text',
       read: json['read'] ?? false,
       status: json['status'] ?? 'sent',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
@@ -144,6 +152,8 @@ class MessageModel {
       receiverId: receiverId,
       shopId: shopId,
       text: text,
+      mediaUrl: mediaUrl,
+      mediaType: mediaType,
       read: read,
       status: status ?? this.status,
       createdAt: createdAt,

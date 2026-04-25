@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/utils/file_manager.dart';
+import '../../services/api_service.dart';
+import 'package:path/path.dart' as p;
 import '../../core/theme/app_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
@@ -30,6 +35,8 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedMedia;
   bool _isSending = false;
 
   @override
@@ -50,19 +57,71 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (image != null) {
+      setState(() => _selectedMedia = File(image.path));
+    }
+  }
+
+  Future<void> _downloadFile(String url, String fileName) async {
+    try {
+      final magicoPath = await FileManager.getMagicoPath();
+      final savePath = p.join(magicoPath, fileName);
+      
+      if (await File(savePath).exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File already exists in Magico folder')),
+          );
+        }
+        return;
+      }
+
+      await ApiService().downloadFile(url, savePath);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved to Magico folder: $fileName'),
+            backgroundColor: AppColors.success,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () => Navigator.pushNamed(context, '/magico/files'),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || _isSending) return;
+    if ((text.isEmpty && _selectedMedia == null) || _isSending) return;
 
     setState(() => _isSending = true);
     final originalText = _messageController.text;
+    final originalMedia = _selectedMedia;
+    
     _messageController.clear();
+    setState(() => _selectedMedia = null);
 
     try {
       await ref.read(chatProvider.notifier).sendMessage(
         widget.receiverId,
         widget.shopId,
         text,
+        mediaFile: originalMedia,
       );
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     } catch (e) {
@@ -226,13 +285,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               child: Column(
                                 crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    msg.text,
-                                    style: TextStyle(
-                                      color: isMine ? Colors.white : AppColors.textPrimary,
-                                      fontSize: 15,
+                                  if (msg.mediaUrl.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: CachedNetworkImage(
+                                              imageUrl: msg.mediaUrl,
+                                              placeholder: (context, url) => Container(
+                                                height: 200,
+                                                width: double.infinity,
+                                                color: AppColors.shimmerBase,
+                                                child: const Center(child: CircularProgressIndicator()),
+                                              ),
+                                              errorWidget: (context, url, error) => const Icon(Icons.error),
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 8,
+                                            right: 8,
+                                            child: GestureDetector(
+                                              onTap: () => _downloadFile(msg.mediaUrl, 'Magico_${msg.id}${p.extension(msg.mediaUrl).isEmpty ? ".jpg" : p.extension(msg.mediaUrl)}'),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black54,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(Icons.download_for_offline_rounded, color: Colors.white, size: 20),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                  if (msg.text.isNotEmpty)
+                                    Text(
+                                      msg.text,
+                                      style: TextStyle(
+                                        color: isMine ? Colors.white : AppColors.textPrimary,
+                                        fontSize: 15,
+                                      ),
+                                    ),
                                   const SizedBox(height: 4),
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -264,46 +361,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           // Input bar
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.card,
               boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, -2))],
             ),
             child: SafeArea(
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(24),
+                  if (_selectedMedia != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              _selectedMedia!,
+                              height: 100,
+                              width: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () => setState(() => _selectedMedia = null),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      child: TextField(
-                        controller: _messageController,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          hintStyle: TextStyle(color: AppColors.textLight),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: _sendMessage,
-                      icon: _isSending
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.send, color: Colors.white, size: 20),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: TextField(
+                              controller: _messageController,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message...',
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                hintStyle: TextStyle(color: AppColors.textLight),
+                              ),
+                              onSubmitted: (_) => _sendMessage(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            onPressed: _sendMessage,
+                            icon: _isSending
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.send, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

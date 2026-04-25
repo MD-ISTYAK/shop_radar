@@ -5,6 +5,7 @@ import '../../services/discovery_service.dart';
 import '../../services/connection_service.dart';
 import '../../services/transfer_service.dart';
 import '../../data/models/sharing_models.dart';
+import '../../../../core/utils/file_manager.dart';
 
 class SharingState {
   final List<PeerDevice> discoveredDevices;
@@ -73,8 +74,7 @@ class SharingNotifier extends StateNotifier<SharingState> {
       await _discoveryService.startBroadcasting(deviceName, 5555);
 
       _connectionService.onNewConnection.listen((socket) async {
-        final dir = await getApplicationDocumentsDirectory();
-        final savePath = '${dir.path}/received_files';
+        final savePath = await FileManager.getMagicoPath();
         
         _transferService.progressStream.listen((progress) {
           state = state.copyWith(currentTransfer: progress);

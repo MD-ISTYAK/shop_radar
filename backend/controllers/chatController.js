@@ -16,8 +16,22 @@ const sendMessage = async (req, res, next) => {
       if (myShop) shopId = myShop._id;
     }
 
-    if (!text || !text.trim()) {
-      return res.status(400).json({ success: false, message: 'Message text is required' });
+    let mediaUrl = '';
+    let mediaType = 'text';
+
+    if (req.file) {
+      mediaUrl = req.file.path;
+      if (req.file.mimetype.startsWith('video/')) {
+        mediaType = 'video';
+      } else if (req.file.mimetype.startsWith('audio/')) {
+        mediaType = 'audio';
+      } else {
+        mediaType = 'image';
+      }
+    }
+
+    if ((!text || !text.trim()) && !mediaUrl) {
+      return res.status(400).json({ success: false, message: 'Message text or media is required' });
     }
     if (!receiverId) {
       return res.status(400).json({ success: false, message: 'receiverId is required' });
@@ -30,7 +44,9 @@ const sendMessage = async (req, res, next) => {
       senderId,
       receiverId,
       shopId: shopId || null,
-      text: text.trim(),
+      text: text ? text.trim() : '',
+      mediaUrl,
+      mediaType,
     });
 
     await message.populate('senderId', 'name');
@@ -137,6 +153,7 @@ const getConversations = async (req, res, next) => {
           shop: shop ? { _id: shop._id, shopName: shop.shopName, logo: shop.logo, ownerId: shop.ownerId } : null,
           lastMessage: {
             text: msg.text,
+            mediaType: msg.mediaType,
             createdAt: msg.createdAt,
             isMine: msg.senderId.toString() === userId,
           },

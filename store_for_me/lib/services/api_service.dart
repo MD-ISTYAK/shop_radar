@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -516,7 +517,22 @@ class ApiService {
   }
 
   // ===================== CHAT =====================
-  Future<Response> sendChatMessage(String receiverId, String? shopId, String text) {
+  Future<Response> sendChatMessage(String receiverId, String? shopId, String text, {File? mediaFile}) async {
+    if (mediaFile != null) {
+      final formData = FormData.fromMap({
+        'receiverId': receiverId,
+        'text': text,
+        'media': await MultipartFile.fromFile(
+          mediaFile.path,
+          filename: mediaFile.path.split('/').last,
+        ),
+      });
+      if (shopId != null && shopId.isNotEmpty) {
+        formData.fields.add(MapEntry('shopId', shopId));
+      }
+      return _dio.post('/chat/send', data: formData);
+    }
+
     final data = {
       'receiverId': receiverId,
       'text': text,
@@ -553,4 +569,8 @@ class ApiService {
 
   Future<Response> linkShopToBusiness(String businessId, String shopId) =>
       _dio.post('/business/$businessId/link-shop', data: {'shopId': shopId});
+
+  Future<void> downloadFile(String url, String savePath) async {
+    await _dio.download(url, savePath);
+  }
 }
