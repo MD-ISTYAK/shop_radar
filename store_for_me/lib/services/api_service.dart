@@ -534,4 +534,23 @@ class ApiService {
 
   Future<Response> startChatConversation(String shopId) =>
       _dio.post('/chat/start', data: {'shopId': shopId});
+
+  // ===================== BUSINESS =====================
+  Future<Response> registerBusiness(Map<String, dynamic> data) =>
+      _dio.post('/business/register', data: data);
+
+  Future<Response> getMyBusinesses() =>
+      _dio.get('/business/my-businesses');
+
+  Future<Response> getBusinessById(String id) =>
+      _dio.get('/business/$id');
+
+  Future<Response> updateBusiness(String id, Map<String, dynamic> data) =>
+      _dio.put('/business/$id', data: data);
+
+  Future<Response> deleteBusiness(String id) =>
+      _dio.delete('/business/$id');
+
+  Future<Response> linkShopToBusiness(String businessId, String shopId) =>
+      _dio.post('/business/$businessId/link-shop', data: {'shopId': shopId});
 }

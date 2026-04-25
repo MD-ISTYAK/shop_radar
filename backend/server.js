@@ -36,6 +36,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const priceComparisonRoutes = require('./routes/priceComparisonRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const userRoutes = require('./routes/userRoutes');
+const businessRoutes = require('./routes/businessRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -94,6 +95,9 @@ app.use('/api/gamification', gamificationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/chat', chatRoutes);
+
+// API Routes — Business
+app.use('/api/business', businessRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

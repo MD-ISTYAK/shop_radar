@@ -17,6 +17,7 @@ class UserModel {
   final int totalOrders;
   final String username;
   final String bio;
+  final int businessCount;
 
   UserModel({
     required this.id,
@@ -37,6 +38,7 @@ class UserModel {
     this.totalOrders = 0,
     this.username = '',
     this.bio = '',
+    this.businessCount = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class UserModel {
       totalOrders: json['totalOrders'] ?? 0,
       username: json['username'] ?? '',
       bio: json['bio'] ?? profile['bio'] ?? '',
+      businessCount: json['businessCount'] ?? (json['businesses'] is List ? (json['businesses'] as List).length : 0),
     );
   }
 
@@ -80,8 +83,11 @@ class UserModel {
     'language': language,
     'username': username,
     'bio': bio,
+    'businessCount': businessCount,
   };
 
-  bool get isOwner => role == 'owner';
+  bool get isOwner => role == 'owner' || role == 'business_owner' || businessCount > 0;
   bool get isDeliveryPartner => role == 'delivery_partner';
+  bool get hasBusinessAccount => businessCount > 0;
 }
+

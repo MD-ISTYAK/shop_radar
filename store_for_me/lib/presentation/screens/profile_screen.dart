@@ -280,9 +280,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Column(
                 children: [
+                  _buildMenuItem(Icons.rocket_launch, 'Start Your Business', () => Navigator.pushNamed(context, '/start-business')),
+                  if (user?.hasBusinessAccount == true)
+                    _buildMenuItem(Icons.business_center, 'My Businesses', () => Navigator.pushNamed(context, '/my-businesses')),
                   if (user?.isOwner == true)
                     _buildMenuItem(Icons.dashboard, 'Owner Dashboard', () => Navigator.pushNamed(context, '/owner-dashboard')),
-                  _buildMenuItem(Icons.delivery_dining, 'Become Delivery Partner', () => Navigator.pushNamed(context, '/delivery-partner')),
+                  _buildMenuItem(Icons.delivery_dining, 'Delivery Partner', () => Navigator.pushNamed(context, '/delivery-partner')),
                   _buildMenuItem(Icons.favorite_outline, 'Followed Shops', () => Navigator.pushNamed(context, '/followed-shops')),
                   _buildMenuItem(Icons.shopping_bag_outlined, 'My Orders', () {}),
                   _buildMenuItem(Icons.rate_review_outlined, 'My Reviews', () {}),

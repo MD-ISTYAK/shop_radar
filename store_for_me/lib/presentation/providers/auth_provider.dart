@@ -61,7 +61,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String password,
     required String phone,
-    required String role,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
@@ -74,7 +73,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'email': email,
         'password': password,
         'phone': phone,
-        'role': role,
         if (position != null) 'lat': position.latitude,
         if (position != null) 'lng': position.longitude,
       });

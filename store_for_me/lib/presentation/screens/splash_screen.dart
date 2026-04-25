@@ -48,12 +48,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     }
 
     if (authState.status == AuthStatus.authenticated) {
-      final user = authState.user;
-      if (user != null && user.isOwner) {
-        Navigator.pushReplacementNamed(context, '/owner-dashboard');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
       Navigator.pushReplacementNamed(context, '/login');
     }

@@ -2,6 +2,7 @@ const DeliveryPartner = require('../models/DeliveryPartner');
 const DeliveryRequest = require('../models/DeliveryRequest');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Business = require('../models/Business');
 const { calculateDistance } = require('../utils/geoDistance');
 
 // Register as delivery partner
@@ -22,8 +23,22 @@ exports.registerAsPartner = async (req, res, next) => {
       licenseNumber: licenseNumber || '',
     });
 
-    // Update user role
-    await User.findByIdAndUpdate(userId, { role: 'delivery_partner' });
+    // Create a Business record instead of changing user role
+    const existingBiz = await Business.findOne({ userId, businessType: 'delivery_partner' });
+    if (!existingBiz) {
+      const business = await Business.create({
+        userId,
+        businessType: 'delivery_partner',
+        businessName: `${req.user.name}'s Delivery`,
+        description: 'Delivery Partner',
+        deliveryPartnerRef: partner._id,
+        contactPhone: req.user.phone || '',
+      });
+
+      await User.findByIdAndUpdate(userId, {
+        $addToSet: { businesses: business._id },
+      });
+    }
 
     res.status(201).json({ success: true, data: partner });
   } catch (error) {

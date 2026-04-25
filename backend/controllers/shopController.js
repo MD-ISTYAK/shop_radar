@@ -4,6 +4,8 @@ const Order = require('../models/Order');
 const Follow = require('../models/Follow');
 const CheckIn = require('../models/CheckIn');
 const DeliveryRequest = require('../models/DeliveryRequest');
+const Business = require('../models/Business');
+const User = require('../models/User');
 const { calculateDistance, formatDistance } = require('../utils/geoDistance');
 
 // @desc    Create a new shop
@@ -11,15 +13,6 @@ const { calculateDistance, formatDistance } = require('../utils/geoDistance');
 const createShop = async (req, res, next) => {
   try {
     const { shopName, category, description, address, longitude, latitude, openingTime, closingTime, phone } = req.body;
-
-    // Check if owner already has a shop
-    const existingShop = await Shop.findOne({ ownerId: req.user._id });
-    if (existingShop) {
-      return res.status(400).json({
-        success: false,
-        message: 'You already have a registered shop',
-      });
-    }
 
     const shopData = {
       shopName,
@@ -43,6 +36,41 @@ const createShop = async (req, res, next) => {
     }
 
     const shop = await Shop.create(shopData);
+
+    // Auto-create/update a Business record for this shop
+    let business = await Business.findOne({
+      userId: req.user._id,
+      businessType: 'shop',
+      shopRef: null, // Find an unlinked shop business
+    });
+
+    if (business) {
+      // Link existing unlinked business record to this shop
+      business.shopRef = shop._id;
+      business.businessName = shopName;
+      business.category = category;
+      await business.save();
+    } else {
+      // Create new business record
+      business = await Business.create({
+        userId: req.user._id,
+        businessType: 'shop',
+        businessName: shopName,
+        description: description || '',
+        category: category,
+        shopRef: shop._id,
+        contactPhone: phone,
+      });
+
+      await User.findByIdAndUpdate(req.user._id, {
+        $addToSet: { businesses: business._id },
+      });
+    }
+
+    // Update user role if they're still 'user' (backward compat)
+    if (req.user.role === 'user') {
+      await User.findByIdAndUpdate(req.user._id, { role: 'owner' });
+    }
 
     res.status(201).json({
       success: true,

@@ -19,7 +19,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
-  String _selectedRole = 'user';
 
   @override
   void dispose() {
@@ -38,15 +37,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
           phone: _phoneController.text.trim(),
-          role: _selectedRole,
         );
 
     if (success && mounted) {
-      if (_selectedRole == 'owner') {
-        Navigator.pushReplacementNamed(context, '/owner-dashboard');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
@@ -88,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 8),
                 Center(
                   child: Text(
-                    'Join the marketplace',
+                    'Join Shop Radar today',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -115,32 +109,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Role selector
-                Text('I am a', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, fontSize: 14)),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _RoleChip(
-                        label: 'Customer',
-                        icon: Icons.shopping_bag_outlined,
-                        isSelected: _selectedRole == 'user',
-                        onTap: () => setState(() => _selectedRole = 'user'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _RoleChip(
-                        label: 'Shop Owner',
-                        icon: Icons.store_outlined,
-                        isSelected: _selectedRole == 'owner',
-                        onTap: () => setState(() => _selectedRole = 'owner'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
 
                 CustomTextField(
                   controller: _nameController,
@@ -205,48 +173,3 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-class _RoleChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RoleChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.divider,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20, color: isSelected ? Colors.white : AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -34,12 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
 
     if (success && mounted) {
-      final user = ref.read(authProvider).user;
-      if (user != null && user.isOwner) {
-        Navigator.pushReplacementNamed(context, '/owner-dashboard');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 

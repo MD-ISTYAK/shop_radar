@@ -98,7 +98,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'owner', 'delivery_partner'],
+      enum: ['user', 'owner', 'delivery_partner', 'business_owner'],
       default: 'user',
     },
     accountType: {
@@ -172,6 +172,10 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shop',
     },
+    businesses: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Business',
+    }],
   },
   { timestamps: true }
 );

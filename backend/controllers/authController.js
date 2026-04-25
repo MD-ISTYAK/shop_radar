@@ -1,11 +1,12 @@
 const User = require('../models/User');
+const Business = require('../models/Business');
 const { generateToken } = require('../config/jwt');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -16,8 +17,8 @@ const register = async (req, res, next) => {
       });
     }
 
-    // Create user object
-    const userData = { name, email, password, phone, role: role || 'user' };
+    // Create user object — always register as 'user'
+    const userData = { name, email, password, phone, role: 'user' };
     
     // Add location if provided
     if (req.body.lat && req.body.lng) {
@@ -54,6 +55,7 @@ const register = async (req, res, next) => {
           bio: user.bio || '',
           followersCount: user.followersCount || 0,
           followingCount: user.followingCount || 0,
+          businessCount: 0,
         },
         token,
       },
@@ -92,6 +94,9 @@ const login = async (req, res, next) => {
     // Generate token
     const token = generateToken({ id: user._id, role: user.role });
 
+    // Count user's businesses
+    const businessCount = await Business.countDocuments({ userId: user._id, isActive: true });
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -109,6 +114,7 @@ const login = async (req, res, next) => {
           bio: user.bio || '',
           followersCount: user.followersCount || 0,
           followingCount: user.followingCount || 0,
+          businessCount: businessCount,
         },
         token,
       },
