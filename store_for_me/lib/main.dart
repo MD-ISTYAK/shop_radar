@@ -46,6 +46,7 @@ import 'presentation/screens/kyc_upload_screen.dart';
 import 'presentation/screens/delivery_order_details_screen.dart';
 import 'features/sharing/presentation/screens/sharing_home_screen.dart';
 import 'features/sharing/presentation/screens/device_discovery_screen.dart';
+import 'features/sharing/presentation/screens/file_selector_screen.dart';
 import 'features/sharing/presentation/screens/file_transfer_screen.dart';
 import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
@@ -174,10 +175,20 @@ class ShopRadarApp extends StatelessWidget {
           case '/sharing':
             return _buildRoute(const SharingHomeScreen(), settings);
           case '/sharing/discovery':
-            final file = settings.arguments as File;
-            return _buildRoute(DeviceDiscoveryScreen(fileToSend: file), settings);
+            return _buildRoute(const DeviceDiscoveryScreen(), settings);
+          case '/sharing/selector':
+            final args = settings.arguments as Map<String, dynamic>;
+            return _buildRoute(FileSelectorScreen(
+              targetDevice: args['device'],
+              myName: args['myName'],
+            ), settings);
           case '/sharing/transfer':
-            return _buildRoute(const FileTransferScreen(), settings);
+            final args = settings.arguments as Map<String, dynamic>?;
+            return _buildRoute(FileTransferScreen(
+              device: args?['device'],
+              files: args?['files'],
+              myName: args?['myName'],
+            ), settings);
           case '/reels':
             return _buildRoute(const ReelsScreen(), settings);
           case '/edit-profile':

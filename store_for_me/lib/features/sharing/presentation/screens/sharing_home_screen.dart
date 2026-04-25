@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/sharing_provider.dart';
+import '../../../../presentation/providers/auth_provider.dart';
 
 class SharingHomeScreen extends ConsumerWidget {
   const SharingHomeScreen({super.key});
@@ -48,14 +49,8 @@ class SharingHomeScreen extends ConsumerWidget {
                 subtitle: 'Discovery nearby devices and send',
                 icon: Icons.send_rounded,
                 color: AppColors.primary,
-                onTap: () async {
-                  FilePickerResult? result = await FilePicker.pickFiles();
-                  if (result != null && result.files.single.path != null) {
-                    final file = File(result.files.single.path!);
-                    if (context.mounted) {
-                      Navigator.pushNamed(context, '/sharing/discovery', arguments: file);
-                    }
-                  }
+                onTap: () {
+                  Navigator.pushNamed(context, '/sharing/discovery');
                 },
               ),
               const SizedBox(height: 16),
@@ -69,7 +64,9 @@ class SharingHomeScreen extends ConsumerWidget {
                 color: sharingState.isReceiving ? AppColors.success : AppColors.secondary,
                 onTap: () {
                   if (!sharingState.isReceiving) {
-                    ref.read(sharingProvider.notifier).startReceiveMode('Shop Radar User');
+                    final authState = ref.read(authProvider);
+                    final myName = authState.user?.name ?? 'Shop Radar User';
+                    ref.read(sharingProvider.notifier).startReceiveMode(myName);
                   }
                 },
               ),
@@ -82,7 +79,7 @@ class SharingHomeScreen extends ConsumerWidget {
                 color: AppColors.primary,
                 onTap: () => Navigator.pushNamed(context, '/magico/files'),
               ),
-              if (sharingState.currentTransfer != null) ...[
+              if (sharingState.activeTransfers.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 _buildTransferStatus(context, ref),
               ],
