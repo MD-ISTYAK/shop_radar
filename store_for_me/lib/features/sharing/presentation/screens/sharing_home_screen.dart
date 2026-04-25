@@ -63,11 +63,7 @@ class SharingHomeScreen extends ConsumerWidget {
                 icon: Icons.download_rounded,
                 color: sharingState.isReceiving ? AppColors.success : AppColors.secondary,
                 onTap: () {
-                  if (!sharingState.isReceiving) {
-                    final authState = ref.read(authProvider);
-                    final myName = authState.user?.name ?? 'Shop Radar User';
-                    ref.read(sharingProvider.notifier).startReceiveMode(myName);
-                  }
+                  Navigator.pushNamed(context, '/sharing/receive');
                 },
               ),
               const SizedBox(height: 16),
