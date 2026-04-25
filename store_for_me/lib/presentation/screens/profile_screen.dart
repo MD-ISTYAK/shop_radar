@@ -73,12 +73,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     user?.name ?? 'User',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
-                  if (user?.username != null && user!.username.isNotEmpty) ...[
+                   if (user?.username != null && user!.username.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text('@${user.username}', style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13, fontWeight: FontWeight.w500)),
                   ],
-                  const SizedBox(height: 4),
-                  Text(user?.email ?? '', style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 14)),
+                  if (user?.bio != null && user!.bio.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        user.bio, 
+                        style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () => Navigator.pushNamed(context, '/edit-profile'),

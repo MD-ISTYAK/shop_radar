@@ -160,7 +160,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
@@ -168,12 +168,19 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              profile.username,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                              profile.name.isNotEmpty ? profile.name : profile.username,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.5),
                             ),
                             if (profile.bio.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(profile.bio, style: const TextStyle(fontSize: 14)),
+                              const SizedBox(height: 6),
+                              Text(
+                                profile.bio, 
+                                style: TextStyle(
+                                  fontSize: 14, 
+                                  color: AppColors.textPrimary.withAlpha(180),
+                                  height: 1.4,
+                                )
+                              ),
                             ],
                           ],
                         ),
@@ -247,16 +254,31 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {},
-                            child: const Text('Edit profile', style: TextStyle(color: AppColors.textPrimary)),
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pushNamed(context, '/edit-profile'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size(0, 44),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Edit profile', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
-                            child: const Text('Share profile', style: TextStyle(color: AppColors.textPrimary)),
+                            onPressed: () {
+                              // Share logic
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: AppColors.divider.withAlpha(150)),
+                              foregroundColor: AppColors.textPrimary,
+                              minimumSize: const Size(0, 44),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Share profile', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],
