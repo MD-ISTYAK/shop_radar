@@ -146,10 +146,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes for social features
-userSchema.index({ username: 1 }, { unique: true, sparse: true });
-userSchema.index({ email: 1 }, { unique: true });
-
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
