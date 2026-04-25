@@ -4,6 +4,7 @@ import '../../core/constants/app_constants.dart';
 class UserProfileModel {
   final String id;
   final String username;
+  final String name;
   final String email;
   final String profilePic;
   final String bio;
@@ -18,6 +19,7 @@ class UserProfileModel {
   UserProfileModel({
     required this.id,
     required this.username,
+    this.name = '',
     this.email = '',
     this.profilePic = '',
     this.bio = '',
@@ -36,7 +38,8 @@ class UserProfileModel {
     
     return UserProfileModel(
       id: json['_id'] ?? json['id'] ?? '',
-      username: json['username'] ?? profile['name'] ?? json['name'] ?? '',
+      username: json['username'] ?? '',
+      name: json['name'] ?? profile['name'] ?? '',
       email: json['email'] ?? '',
       profilePic: profile['avatarUrl'] ?? json['profilePic'] ?? json['avatar'] ?? '',
       bio: profile['bio'] ?? json['bio'] ?? '',
@@ -56,6 +59,7 @@ class UserProfileModel {
   UserProfileModel copyWith({
     String? id,
     String? username,
+    String? name,
     String? email,
     String? profilePic,
     String? bio,
@@ -70,6 +74,7 @@ class UserProfileModel {
     return UserProfileModel(
       id: id ?? this.id,
       username: username ?? this.username,
+      name: name ?? this.name,
       email: email ?? this.email,
       profilePic: profilePic ?? this.profilePic,
       bio: bio ?? this.bio,
