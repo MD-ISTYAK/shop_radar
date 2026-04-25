@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/sharing_provider.dart';
+import '../../../../presentation/providers/auth_provider.dart';
 
 class DeviceDiscoveryScreen extends ConsumerStatefulWidget {
-  final File fileToSend;
-  const DeviceDiscoveryScreen({super.key, required this.fileToSend});
+  const DeviceDiscoveryScreen({super.key});
 
   @override
   ConsumerState<DeviceDiscoveryScreen> createState() => _DeviceDiscoveryScreenState();
@@ -76,10 +76,9 @@ class _DeviceDiscoveryScreenState extends ConsumerState<DeviceDiscoveryScreen> {
                   'Searching for nearby devices...',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
-                Text(
-                  'Sharing: ${widget.fileToSend.path.split(Platform.pathSeparator).last}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
+                const Text(
+                  'Make sure the receiver is in "Receive Mode"',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -108,10 +107,15 @@ class _DeviceDiscoveryScreenState extends ConsumerState<DeviceDiscoveryScreen> {
   }
 
   Widget _buildDeviceTile(BuildContext context, device) {
+    final authState = ref.read(authProvider);
+    final myName = authState.user?.name ?? 'Shop Radar User';
+
     return InkWell(
       onTap: () {
-        ref.read(sharingProvider.notifier).sendFileToDevice(device, widget.fileToSend);
-        Navigator.pushReplacementNamed(context, '/sharing/transfer');
+        Navigator.pushNamed(context, '/sharing/selector', arguments: {
+          'device': device,
+          'myName': myName,
+        });
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(

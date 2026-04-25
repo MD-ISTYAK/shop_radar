@@ -9,14 +9,14 @@ import '../../../../core/utils/file_manager.dart';
 
 class SharingState {
   final List<PeerDevice> discoveredDevices;
-  final TransferProgress? currentTransfer;
+  final Map<String, TransferProgress> activeTransfers;
   final bool isReceiving;
   final bool isSending;
   final String? error;
 
   SharingState({
     this.discoveredDevices = const [],
-    this.currentTransfer,
+    this.activeTransfers = const {},
     this.isReceiving = false,
     this.isSending = false,
     this.error,
@@ -24,14 +24,14 @@ class SharingState {
 
   SharingState copyWith({
     List<PeerDevice>? discoveredDevices,
-    TransferProgress? currentTransfer,
+    Map<String, TransferProgress>? activeTransfers,
     bool? isReceiving,
     bool? isSending,
     String? error,
   }) {
     return SharingState(
       discoveredDevices: discoveredDevices ?? this.discoveredDevices,
-      currentTransfer: currentTransfer ?? this.currentTransfer,
+      activeTransfers: activeTransfers ?? this.activeTransfers,
       isReceiving: isReceiving ?? this.isReceiving,
       isSending: isSending ?? this.isSending,
       error: error ?? this.error,
@@ -68,7 +68,7 @@ class SharingNotifier extends StateNotifier<SharingState> {
   }
 
   Future<void> startReceiveMode(String deviceName) async {
-    state = state.copyWith(isReceiving: true, error: null);
+    state = state.copyWith(isReceiving: true, error: null, activeTransfers: {});
     try {
       await _connectionService.startServer(5555);
       await _discoveryService.startBroadcasting(deviceName, 5555);
@@ -77,11 +77,16 @@ class SharingNotifier extends StateNotifier<SharingState> {
         final savePath = await FileManager.getMagicoPath();
         
         _transferService.progressStream.listen((progress) {
-          state = state.copyWith(currentTransfer: progress);
+          state = state.copyWith(
+            activeTransfers: {
+              ...state.activeTransfers,
+              progress.id: progress,
+            },
+          );
         });
 
-        await _transferService.receiveFile(socket, savePath);
-        socket.close();
+        await _transferService.receiveFiles(socket, savePath, deviceName);
+        socket.destroy();
       });
     } catch (e) {
       state = state.copyWith(isReceiving: false, error: e.toString());
@@ -94,17 +99,23 @@ class SharingNotifier extends StateNotifier<SharingState> {
     state = state.copyWith(isReceiving: false);
   }
 
-  Future<void> sendFileToDevice(PeerDevice device, File file) async {
-    state = state.copyWith(isSending: true, error: null);
+  Future<void> sendFilesToDevice(PeerDevice device, List<File> files, String myName) async {
+    state = state.copyWith(isSending: true, error: null, activeTransfers: {});
     try {
       final socket = await _connectionService.connectToPeer(device.ip, device.port);
       
       _transferService.progressStream.listen((progress) {
-        state = state.copyWith(currentTransfer: progress);
+        state = state.copyWith(
+          activeTransfers: {
+            ...state.activeTransfers,
+            progress.id: progress,
+          },
+        );
       });
 
-      await _transferService.sendFile(socket, file);
-      socket.close();
+      await _transferService.sendFiles(socket, files, myName);
+      await socket.flush();
+      socket.destroy();
       state = state.copyWith(isSending: false);
     } catch (e) {
       state = state.copyWith(isSending: false, error: e.toString());
@@ -112,7 +123,7 @@ class SharingNotifier extends StateNotifier<SharingState> {
   }
 
   void resetTransfer() {
-    state = state.copyWith(currentTransfer: null);
+    state = state.copyWith(activeTransfers: {});
   }
 }
 
