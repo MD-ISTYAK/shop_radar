@@ -31,7 +31,9 @@ const initSocket = (server) => {
     console.log(`🔌 User connected: ${socket.userId}`);
 
     // Join user-specific room
-    socket.join(`user:${socket.userId}`);
+    const userRoom = `user:${socket.userId}`;
+    socket.join(userRoom);
+    console.log(`👤 User ${socket.userId} joined room: ${userRoom}`);
     connectedUsers.set(socket.userId, socket.id);
 
     // Update user online status
@@ -171,7 +173,11 @@ const getIO = () => {
 // Helper to send notification to a specific user
 const sendToUser = (userId, event, data) => {
   if (io) {
-    io.to(`user:${userId}`).emit(event, data);
+    const userRoom = `user:${userId}`;
+    console.log(`📡 Emitting event "${event}" to room "${userRoom}"`);
+    io.to(userRoom).emit(event, data);
+  } else {
+    console.log(`❌ Cannot emit event "${event}": IO not initialized`);
   }
 };
 

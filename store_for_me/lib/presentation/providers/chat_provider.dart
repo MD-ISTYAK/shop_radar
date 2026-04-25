@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/chat_models.dart';
 import '../../services/api_service.dart';
@@ -42,38 +43,47 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   void _initSocketListeners() {
     _socket.onNewMessage((data) {
-      final message = MessageModel.fromJson(data);
-      
-      // If we are currently in this conversation, add it to the message list
-      if (state.currentConversationId == message.conversationId) {
-        state = state.copyWith(messages: [...state.messages, message]);
-        // Notify sender that we received it
-        _socket.emitMessageReceived(message.id, message.senderId);
-      }
-      
-      // Update the last message in the conversation list
-      final updatedConversations = state.conversations.map((conv) {
-        if (conv.conversationId == message.conversationId) {
-          return ConversationModel(
-            conversationId: conv.conversationId,
-            otherUser: conv.otherUser,
-            shop: conv.shop,
-            unreadCount: (state.currentConversationId == message.conversationId) 
-              ? conv.unreadCount : conv.unreadCount + 1,
-            lastMessage: LastMessageModel(
-              text: message.text,
-              createdAt: message.createdAt,
-              isMine: false,
-            ),
-          );
+      debugPrint('📨 ChatNotifier: Received message:new event');
+      try {
+        final message = MessageModel.fromJson(data);
+        debugPrint('📨 Message ID: ${message.id}, Conv ID: ${message.conversationId}');
+        debugPrint('📨 Current Conv ID: ${state.currentConversationId}');
+        
+        // If we are currently in this conversation, add it to the message list
+        if (state.currentConversationId == message.conversationId) {
+          debugPrint('📨 Adding message to current conversation list');
+          state = state.copyWith(messages: [...state.messages, message]);
+          // Notify sender that we received it
+          _socket.emitMessageReceived(message.id, message.senderId);
         }
-        return conv;
-      }).toList();
-      
-      state = state.copyWith(conversations: updatedConversations);
+        
+        // Update the last message in the conversation list
+        final updatedConversations = state.conversations.map((conv) {
+          if (conv.conversationId == message.conversationId) {
+            return ConversationModel(
+              conversationId: conv.conversationId,
+              otherUser: conv.otherUser,
+              shop: conv.shop,
+              unreadCount: (state.currentConversationId == message.conversationId) 
+                ? conv.unreadCount : conv.unreadCount + 1,
+              lastMessage: LastMessageModel(
+                text: message.text,
+                createdAt: message.createdAt,
+                isMine: false,
+              ),
+            );
+          }
+          return conv;
+        }).toList();
+        
+        state = state.copyWith(conversations: updatedConversations);
+      } catch (e) {
+        debugPrint('❌ Error processing new message: $e');
+      }
     });
 
     _socket.onMessageStatusUpdate((data) {
+      debugPrint('📩 ChatNotifier: Received message:statusUpdate event: $data');
       // data: { messageId, status, conversationId }
       final messageId = data['messageId'];
       final conversationId = data['conversationId'];
@@ -82,7 +92,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (conversationId != null && status == 'seen') {
         // Mark all messages in this conversation as seen
         final updatedMessages = state.messages.map((m) {
-          if (m.senderId != null && m.status != 'seen') { // usually only our own messages are updated here
+          if (m.senderId != null && m.status != 'seen') {
              return m.copyWith(status: 'seen');
           }
           return m;
@@ -158,8 +168,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
         // Emit seen event if there are messages from other user
         if (messages.isNotEmpty) {
            final lastMsg = messages.last;
-           // If last message is from other participant and not seen yet
-           // (Simple logic: mark entire conversation as seen when opened)
            _socket.emitMessageSeen(conversationId, lastMsg.senderId);
         }
       }

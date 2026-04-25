@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../core/constants/app_constants.dart';
 import 'api_service.dart';
@@ -9,6 +10,8 @@ class SocketService {
 
   io.Socket? _socket;
   bool _isConnected = false;
+  bool _isConnecting = false;
+
   final _messageController = StreamController<dynamic>.broadcast();
   final _statusController = StreamController<dynamic>.broadcast();
   final _userStatusController = StreamController<dynamic>.broadcast();
@@ -23,56 +26,82 @@ class SocketService {
   Stream<dynamic> get notificationStream => _notificationController.stream;
 
   Future<void> connect() async {
-    final token = await ApiService().getToken();
-    if (token == null) return;
-
-    if (_socket != null) {
-      _socket!.disconnect();
-      _socket!.dispose();
+    if (_isConnecting || (_socket != null && _socket!.connected)) {
+       debugPrint('🔌 Socket already connecting or connected');
+       return;
     }
 
-    _socket = io.io(
-      AppConstants.wsUrl,
-      io.OptionBuilder()
-          .setTransports(['websocket'])
-          .setAuth({'token': token})
-          .setQuery({'token': token})
-          .disableAutoConnect()
-          .enableReconnection()
-          .build(),
-    );
+    final token = await ApiService().getToken();
+    if (token == null) {
+      debugPrint('🔌 Socket connect failed: No token found');
+      return;
+    }
 
-    _socket!.onConnect((_) {
-      print('🔌 Socket connected: ${AppConstants.wsUrl}');
-      _isConnected = true;
-      _registerListeners();
-    });
+    _isConnecting = true;
+    debugPrint('🔌 Attempting to connect to socket at ${AppConstants.wsUrl}');
 
-    _socket!.onDisconnect((_) {
-      print('🔌 Socket disconnected');
-      _isConnected = false;
-    });
+    try {
+      if (_socket != null) {
+        _socket!.dispose();
+      }
 
-    _socket!.onError((error) {
-      print('🔌 Socket error: $error');
-      _isConnected = false;
-    });
+      _socket = io.io(
+        AppConstants.wsUrl,
+        io.OptionBuilder()
+            .setTransports(['websocket', 'polling']) // Allow polling fallback
+            .setAuth({'token': token})
+            .setQuery({'token': token})
+            .enableAutoConnect()
+            .enableReconnection()
+            .setReconnectionAttempts(10)
+            .setReconnectionDelay(2000)
+            .build(),
+      );
 
-    _socket!.connect();
+      _socket!.onConnect((_) {
+        debugPrint('🔌 Socket Connected Successfully');
+        _isConnected = true;
+        _isConnecting = false;
+        _registerListeners();
+      });
+
+      _socket!.onConnectError((data) {
+        debugPrint('🔌 Socket Connect Error: $data');
+        _isConnected = false;
+        _isConnecting = false;
+      });
+
+      _socket!.onDisconnect((_) {
+        debugPrint('🔌 Socket Disconnected');
+        _isConnected = false;
+        _isConnecting = false;
+      });
+
+      _socket!.onReconnect((_) => debugPrint('🔌 Socket Reconnected'));
+      _socket!.onReconnectAttempt((_) => debugPrint('🔌 Socket Reconnecting...'));
+
+      _socket!.connect();
+    } catch (e) {
+      debugPrint('🔌 Socket Exception: $e');
+      _isConnecting = false;
+    }
   }
 
   void _registerListeners() {
-    // Clear existing listeners to avoid duplicates on reconnect
+    debugPrint('🔌 Registering Socket Listeners');
+    // Clear existing to avoid duplicates
     _socket?.off('message:new');
     _socket?.off('message:statusUpdate');
     _socket?.off('user:statusChange');
     _socket?.off('notification:new');
 
     _socket?.on('message:new', (data) {
+      debugPrint('📩 Socket: New Message Received');
       _messageController.add(data);
     });
 
     _socket?.on('message:statusUpdate', (data) {
+      debugPrint('📩 Socket: Message Status Update');
       _statusController.add(data);
     });
 
@@ -81,6 +110,7 @@ class SocketService {
     });
 
     _socket?.on('notification:new', (data) {
+      debugPrint('🔔 Socket: New Notification Received');
       _notificationController.add(data);
     });
   }
@@ -90,6 +120,7 @@ class SocketService {
     _socket?.dispose();
     _socket = null;
     _isConnected = false;
+    _isConnecting = false;
   }
 
   // Helper methods to subscribe
@@ -98,11 +129,10 @@ class SocketService {
   void onUserStatusChange(Function(dynamic) callback) => userStatusStream.listen(callback);
   void onNotification(Function(dynamic) callback) => notificationStream.listen(callback);
 
-  // Join methods
+  // Emit methods
   void joinShopRoom(String shopId) => _socket?.emit('join:shop', shopId);
   void joinDeliveryRoom(String deliveryId) => _socket?.emit('join:delivery', deliveryId);
 
-  // Emit methods
   void emitMessageReceived(String messageId, String senderId) {
     _socket?.emit('message:received', {'messageId': messageId, 'senderId': senderId});
   }
@@ -119,7 +149,7 @@ class SocketService {
     });
   }
 
-  // Other listeners
+  // Other listeners with direct socket access for legacy compatibility if needed
   void onQueueUpdate(Function(dynamic) callback) => _socket?.on('queue:update', callback);
   void onShopStatusUpdate(Function(dynamic) callback) => _socket?.on('shop:statusUpdate', callback);
   void onDeliveryLocationUpdate(Function(dynamic) callback) => _socket?.on('delivery:locationUpdate', callback);
