@@ -120,77 +120,139 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
     );
   }
 
+  Widget _buildPostCard(PostModel post, String currentUserId) {
+    return PostCard(
+      post: post,
+      currentUserId: currentUserId,
+      onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
+      onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
+      onComment: () => _showComments(post),
+      onShare: () => _handleSharePost(post),
+      onDelete: () => _handleDeletePost(post),
+      onEdit: (content) => _handleEditPost(post, content),
+      onProfileTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PublicProfileScreen(userId: post.userId),
+          ),
+        );
+      },
+      onVideoTap: () {
+        ref.read(socialProvider.notifier).setTargetReelId(post.id);
+        _tabController.animateTo(1);
+      },
+    );
+  }
+
   Widget _buildFeedTab() {
     final social = ref.watch(socialProvider);
     final auth = ref.watch(authProvider);
     final currentUserId = auth.user?.id ?? '';
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.wait([
-          ref.read(socialProvider.notifier).fetchFeed(),
-          ref.read(socialProvider.notifier).fetchStories(),
-        ]);
-      },
-      child: social.isLoading
-          ? _buildShimmerFeed()
-          : CustomScrollView(
-              controller: _feedScrollController,
-              slivers: [
-                // ─── Stories Bar ───
-                SliverToBoxAdapter(
-                  child: _buildStoriesBar(social.stories),
-                ),
-                // ─── Divider ───
-                SliverToBoxAdapter(
-                  child: Divider(height: 1, color: Theme.of(context).dividerColor),
-                ),
-                // ─── Feed ───
-                if (social.feed.isEmpty)
-                  SliverFillRemaining(
-                    child: _buildEmptyFeed(),
-                  )
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index == social.feed.length) {
-                          return social.isLoadingMore
-                              ? const Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                )
-                              : const SizedBox(height: 80);
-                        }
-                        final post = social.feed[index];
-                        return PostCard(
-                          post: post,
-                          currentUserId: currentUserId,
-                          onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
-                          onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
-                          onComment: () => _showComments(post),
-                          onShare: () => _handleSharePost(post),
-                          onDelete: () => _handleDeletePost(post),
-                          onEdit: (content) => _handleEditPost(post, content),
-                          onProfileTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PublicProfileScreen(userId: post.userId),
-                              ),
-                            );
-                          },
-                          onVideoTap: () {
-                            ref.read(socialProvider.notifier).setTargetReelId(post.id);
-                            _tabController.animateTo(1);
-                          },
-                        );
-                      },
-                      childCount: social.feed.length + 1,
-                    ),
-                  ),
-              ],
+    return DefaultTabController(
+      length: 4,
+      child: NestedScrollView(
+        controller: _feedScrollController,
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverToBoxAdapter(
+              child: _buildStoriesBar(social.stories),
             ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _SliverAppBarDelegate(
+                TabBar(
+                  isScrollable: true,
+                  indicatorColor: AppColors.primary,
+                  labelColor: Theme.of(context).textTheme.bodyLarge?.color,
+                  unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
+                  tabAlignment: TabAlignment.start,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  tabs: const [
+                    Tab(text: 'Following'),
+                    Tab(text: 'Trending'),
+                    Tab(text: 'Explore'),
+                    Tab(text: 'Categories'),
+                  ],
+                ),
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
+          children: [
+            // Tab 1: Following Feed
+            RefreshIndicator(
+              onRefresh: () async {
+                await Future.wait([
+                  ref.read(socialProvider.notifier).fetchFeed(),
+                  ref.read(socialProvider.notifier).fetchStories(),
+                ]);
+              },
+              child: social.isLoading
+                  ? _buildShimmerFeed()
+                  : (social.feed.isEmpty
+                      ? _buildEmptyFeed()
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 8),
+                          itemCount: social.feed.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == social.feed.length) {
+                              return social.isLoadingMore
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                    )
+                                  : const SizedBox(height: 80);
+                            }
+                            return _buildPostCard(social.feed[index], currentUserId);
+                          },
+                        )),
+            ),
+            // Tab 2: Trending Feed (List View)
+            RefreshIndicator(
+              onRefresh: () => ref.read(socialProvider.notifier).fetchExplore(),
+              child: social.explore.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(top: 8),
+                      itemCount: social.explore.length,
+                      itemBuilder: (context, index) {
+                        return _buildPostCard(social.explore[index], currentUserId);
+                      },
+                    ),
+            ),
+            // Tab 3: Explore (Grid View)
+            _buildExploreTab(),
+            // Tab 4: Categories
+            _buildCategoriesPlaceholder(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.category_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
+          const SizedBox(height: 12),
+          const Text('Categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          Text(
+            'Discover posts by topics (Comedy, Tech, etc.)',
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton(
+            onPressed: () {},
+            child: const Text('Coming Soon in Phase 2'),
+          )
+        ],
+      ),
     );
   }
 
@@ -512,9 +574,25 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   }
 }
 
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar _tabBar;
+  _SliverAppBarDelegate(this._tabBar);
 
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
 
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _tabBar,
+    );
+  }
 
-
-
-
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
+  }
+}
