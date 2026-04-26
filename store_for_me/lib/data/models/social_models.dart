@@ -279,7 +279,13 @@ class PostModel {
     return 'now';
   }
 
-  PostModel copyWith({int? likesCount, bool? isLikedByMe, int? commentsCount, bool? isSavedByMe}) {
+  PostModel copyWith({
+    int? likesCount,
+    bool? isLikedByMe,
+    int? commentsCount,
+    bool? isSavedByMe,
+    String? content,
+  }) {
     return PostModel(
       id: id,
       shopId: shopId,
@@ -291,7 +297,7 @@ class PostModel {
       username: username,
       profilePic: profilePic,
       accountType: accountType,
-      content: content,
+      content: content ?? this.content,
       images: images,
       mediaUrl: mediaUrl,
       mediaType: mediaType,

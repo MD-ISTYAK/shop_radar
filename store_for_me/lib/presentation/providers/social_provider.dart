@@ -318,6 +318,67 @@ class SocialNotifier extends StateNotifier<SocialState> {
     return false;
   }
 
+  Future<bool> updatePost(String postId, String content) async {
+    // Optimistic update
+    final List<PostModel> updatedFeed = state.feed.map((p) {
+      if (p.id == postId) {
+        return p.copyWith(content: content);
+      }
+      return p;
+    }).toList();
+
+    final List<PostModel> updatedExplore = state.explore.map((p) {
+      if (p.id == postId) {
+        return p.copyWith(content: content);
+      }
+      return p;
+    }).toList();
+
+    final List<PostModel> updatedProfilePosts = state.profilePosts.map((p) {
+      if (p.id == postId) {
+        return p.copyWith(content: content);
+      }
+      return p;
+    }).toList();
+
+    state = state.copyWith(
+      feed: updatedFeed,
+      explore: updatedExplore,
+      profilePosts: updatedProfilePosts,
+    );
+
+    try {
+      final response = await _api.updatePost(postId, content);
+      return response.data['success'] == true;
+    } catch (e) {
+      // Revert if needed or refresh
+      await fetchFeed();
+      return false;
+    }
+  }
+
+  Future<bool> deletePost(String postId) async {
+    // Optimistic update
+    final List<PostModel> updatedFeed = state.feed.where((p) => p.id != postId).toList();
+    final List<PostModel> updatedExplore = state.explore.where((p) => p.id != postId).toList();
+    final List<PostModel> updatedProfilePosts = state.profilePosts.where((p) => p.id != postId).toList();
+
+    state = state.copyWith(
+      feed: updatedFeed,
+      explore: updatedExplore,
+      profilePosts: updatedProfilePosts,
+    );
+
+    try {
+      final response = await _api.deletePost(postId);
+      return response.data['success'] == true;
+    } catch (e) {
+      // Revert or refresh
+      await fetchFeed();
+      return false;
+    }
+  }
+
   Future<bool> createStory(FormData data) async {
     try {
       final response = await _api.createStory(data);

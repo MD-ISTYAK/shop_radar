@@ -17,6 +17,8 @@ class PostCard extends ConsumerStatefulWidget {
   final VoidCallback? onShare;
   final VoidCallback? onProfileTap;
   final VoidCallback? onVideoTap;
+  final VoidCallback? onDelete;
+  final Function(String)? onEdit;
 
   const PostCard({
     super.key,
@@ -28,6 +30,8 @@ class PostCard extends ConsumerStatefulWidget {
     this.onShare,
     this.onProfileTap,
     this.onVideoTap,
+    this.onDelete,
+    this.onEdit,
   });
 
   @override
@@ -243,7 +247,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
           ),
           IconButton(
             icon: const Icon(Icons.more_horiz, size: 20),
-            onPressed: () {},
+            onPressed: () => _showPostOptions(context, post),
           ),
         ],
       ),
@@ -431,6 +435,102 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
           ),
         ],
       ),
+    );
+  }
+
+  void _showPostOptions(BuildContext context, PostModel post) {
+    final isOwner = post.userId == widget.currentUserId;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            if (isOwner) ...[
+              _buildOptionItem(
+                icon: Icons.edit_outlined,
+                title: 'Edit Post',
+                onTap: () {
+                  Navigator.pop(context);
+                  if (widget.onEdit != null) widget.onEdit!(post.content);
+                },
+              ),
+              _buildOptionItem(
+                icon: Icons.delete_outline,
+                title: 'Delete Post',
+                color: AppColors.error,
+                onTap: () {
+                  Navigator.pop(context);
+                  if (widget.onDelete != null) widget.onDelete!();
+                },
+              ),
+            ] else ...[
+              _buildOptionItem(
+                icon: Icons.report_gmailerrorred_outlined,
+                title: 'Report Post',
+                color: AppColors.error,
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post reported')),
+                  );
+                },
+              ),
+              _buildOptionItem(
+                icon: Icons.visibility_off_outlined,
+                title: 'Not Interested',
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+            _buildOptionItem(
+              icon: Icons.copy_outlined,
+              title: 'Copy Link',
+              onTap: () => Navigator.pop(context),
+            ),
+            _buildOptionItem(
+              icon: Icons.share_outlined,
+              title: 'Share to...',
+              onTap: () {
+                Navigator.pop(context);
+                if (widget.onShare != null) widget.onShare!();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? Theme.of(context).iconTheme.color),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: color ?? Theme.of(context).textTheme.bodyLarge?.color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

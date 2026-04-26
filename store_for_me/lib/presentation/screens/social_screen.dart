@@ -14,6 +14,7 @@ import 'story_viewer_screen.dart';
 import 'reels_screen.dart';
 import 'search_users_screen.dart';
 import 'public_profile_screen.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
@@ -73,6 +74,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
         ),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt_outlined, size: 26),
+            onPressed: () => Navigator.pushNamed(context, '/snap-camera'),
+          ),
           IconButton(
             icon: const Icon(Icons.search, size: 26),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchUsersScreen())),
@@ -164,6 +169,9 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
                           onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
                           onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
                           onComment: () => _showComments(post),
+                          onShare: () => _handleSharePost(post),
+                          onDelete: () => _handleDeletePost(post),
+                          onEdit: (content) => _handleEditPost(post, content),
                           onProfileTap: () {
                             Navigator.push(
                               context,
@@ -236,6 +244,112 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
       builder: (_) => CommentSheet(
         postId: post.id,
         initialComments: post.comments,
+      ),
+    );
+  }
+
+  void _handleSharePost(PostModel post) {
+    final String shareText = 'Check out this post on Shop Radar by ${post.username}:\n\n${post.content}\n\nDownload Shop Radar for more!';
+    Share.share(shareText);
+  }
+
+  void _handleDeletePost(PostModel post) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await ref.read(socialProvider.notifier).deletePost(post.id);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(success ? 'Post deleted' : 'Failed to delete post')),
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleEditPost(PostModel post, String currentContent) {
+    final TextEditingController controller = TextEditingController(text: currentContent);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 20,
+          right: 20,
+          top: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Edit Caption',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Write something...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final newContent = controller.text.trim();
+                if (newContent == currentContent) {
+                  Navigator.pop(context);
+                  return;
+                }
+                Navigator.pop(context);
+                final success = await ref.read(socialProvider.notifier).updatePost(post.id, newContent);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(success ? 'Post updated' : 'Failed to update post')),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Update Post'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
