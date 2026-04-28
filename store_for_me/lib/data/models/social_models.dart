@@ -121,6 +121,8 @@ class PostModel {
   // Meta
   final DateTime createdAt;
   final bool isHidden;
+  final List<InteractiveElement> interactiveElements;
+  final PostMusic? music;
 
   PostModel({
     required this.id,
@@ -148,6 +150,8 @@ class PostModel {
     this.isSavedByMe = false,
     required this.createdAt,
     this.isHidden = false,
+    this.interactiveElements = const [],
+    this.music,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
@@ -253,10 +257,14 @@ class PostModel {
       comments: (json['comments'] as List?)?.map((e) => CommentModel.fromJson(e)).toList() ?? [],
       commentsCount: json['commentsCount'] ?? (json['comments'] as List?)?.length ?? 0,
       savedBy: (json['savedBy'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      isLikedByMe: json['isLiked'] ?? json['isLikedByMe'] ?? false,
-      isSavedByMe: json['isSaved'] ?? json['isSavedByMe'] ?? false,
+      isLikedByMe: json['isLikedByMe'] ?? json['isLiked'] ?? false,
+      isSavedByMe: json['isSavedByMe'] ?? false,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       isHidden: json['isHidden'] ?? false,
+      interactiveElements: (json['interactiveElements'] as List<dynamic>?)
+          ?.map((e) => InteractiveElement.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
+      music: json['music'] != null ? PostMusic.fromJson(json['music']) : null,
     );
   }
 
@@ -312,7 +320,90 @@ class PostModel {
       isSavedByMe: isSavedByMe ?? this.isSavedByMe,
       createdAt: createdAt,
       isHidden: isHidden,
+      interactiveElements: interactiveElements,
+      music: music,
     );
+  }
+}
+
+// ===================== INTERACTIVE ELEMENT & MUSIC =====================
+class InteractiveElement {
+  final String type;
+  final double x;
+  final double y;
+  final double scale;
+  final double rotation;
+  final Map<String, dynamic> data;
+
+  InteractiveElement({
+    required this.type,
+    required this.x,
+    required this.y,
+    required this.scale,
+    required this.rotation,
+    required this.data,
+  });
+
+  factory InteractiveElement.fromJson(Map<String, dynamic> json) {
+    return InteractiveElement(
+      type: json['type'] ?? '',
+      x: (json['x'] ?? 0.0).toDouble(),
+      y: (json['y'] ?? 0.0).toDouble(),
+      scale: (json['scale'] ?? 1.0).toDouble(),
+      rotation: (json['rotation'] ?? 0.0).toDouble(),
+      data: json['data'] ?? {},
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'x': x,
+      'y': y,
+      'scale': scale,
+      'rotation': rotation,
+      'data': data,
+    };
+  }
+}
+
+class PostMusic {
+  final String songId;
+  final String url;
+  final String title;
+  final String artist;
+  final int duration;
+  final int startTime;
+
+  PostMusic({
+    required this.songId,
+    required this.url,
+    required this.title,
+    required this.artist,
+    required this.duration,
+    this.startTime = 0,
+  });
+
+  factory PostMusic.fromJson(Map<String, dynamic> json) {
+    return PostMusic(
+      songId: json['songId']?.toString() ?? '',
+      url: json['url'] ?? '',
+      title: json['title'] ?? '',
+      artist: json['artist'] ?? '',
+      duration: json['duration'] ?? 0,
+      startTime: json['startTime'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'songId': songId,
+      'url': url,
+      'title': title,
+      'artist': artist,
+      'duration': duration,
+      'startTime': startTime,
+    };
   }
 }
 
@@ -528,6 +619,7 @@ class StoryModel {
   final DateTime createdAt;
   final DateTime expiresAt;
   final bool isHidden;
+  final List<InteractiveElement> interactiveElements;
 
   // Backward compat
   String get shopId => userId;
@@ -543,6 +635,7 @@ class StoryModel {
     required this.createdAt,
     required this.expiresAt,
     this.isHidden = false,
+    this.interactiveElements = const [],
   });
 
   factory StoryModel.fromJson(Map<String, dynamic> json) {
@@ -556,6 +649,9 @@ class StoryModel {
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt']) : DateTime.now().add(const Duration(hours: 24)),
       isHidden: json['isHidden'] ?? false,
+      interactiveElements: (json['interactiveElements'] as List<dynamic>?)
+          ?.map((e) => InteractiveElement.fromJson(e as Map<String, dynamic>))
+          .toList() ?? [],
     );
   }
 

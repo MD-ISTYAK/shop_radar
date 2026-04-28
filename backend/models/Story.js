@@ -36,6 +36,26 @@ const storySchema = new mongoose.Schema(
       default: '',
       maxlength: 200,
     },
+    // Interactive Elements (Polls, Links, Mentions, Questions, etc.)
+    interactiveElements: [
+      {
+        type: { type: String }, // 'poll', 'mention', 'link', 'question', 'location', 'countdown', 'hashtag'
+        x: { type: Number },
+        y: { type: Number },
+        scale: { type: Number, default: 1 },
+        rotation: { type: Number, default: 0 },
+        data: { type: mongoose.Schema.Types.Mixed }, // Custom data per sticker
+      }
+    ],
+    // Background Music
+    music: {
+      songId: { type: String },
+      url: { type: String },
+      title: { type: String },
+      artist: { type: String },
+      duration: { type: Number },
+      startTime: { type: Number, default: 0 },
+    },
     viewers: [
       {
         type: mongoose.Schema.Types.ObjectId,

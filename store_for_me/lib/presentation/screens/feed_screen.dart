@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../widgets/post_card.dart';
 import '../widgets/story_bubble.dart';
 import '../widgets/comment_sheet.dart';
+import '../widgets/share_to_dm_sheet.dart';
 import 'story_viewer_screen.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
@@ -134,6 +135,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                             onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
                             onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
                             onComment: () => _showComments(post),
+                            onShare: () => _showShareToDM(post),
+                            onDelete: () => ref.read(socialProvider.notifier).deletePost(post.id),
                           );
                         },
                         childCount: social.feed.length + 1,
@@ -170,6 +173,15 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
         postId: post.id,
         initialComments: post.comments,
       ),
+    );
+  }
+
+  void _showShareToDM(PostModel post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareToDMSheet(post: post),
     );
   }
 

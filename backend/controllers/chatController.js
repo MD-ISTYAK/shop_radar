@@ -7,7 +7,7 @@ const { sendToUser } = require('../config/socketManager');
 // @route   POST /api/chat/send
 const sendMessage = async (req, res, next) => {
   try {
-    let { receiverId, shopId, text } = req.body;
+    let { receiverId, shopId, text, sharedPostId, sharedStoryId } = req.body;
     const senderId = req.user._id;
 
     // Fallback: If shopId is missing but user is a shop, find their shop
@@ -47,6 +47,8 @@ const sendMessage = async (req, res, next) => {
       text: text ? text.trim() : '',
       mediaUrl,
       mediaType,
+      sharedPostId: sharedPostId || null,
+      sharedStoryId: sharedStoryId || null,
     });
 
     await message.populate('senderId', 'name');
@@ -180,7 +182,9 @@ const getMessages = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('senderId', 'name username profilePic avatar');
+      .populate('senderId', 'name username profilePic avatar')
+      .populate('sharedPostId', 'media videoUrl type content caption')
+      .populate('sharedStoryId', 'mediaUrl mediaType caption');
 
     // Mark received messages as read
     await Message.updateMany(

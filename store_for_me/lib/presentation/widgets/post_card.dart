@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:video_player/video_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
@@ -44,7 +45,9 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
   bool _showHeart = false;
   final PageController _imagePageController = PageController();
   VideoPlayerController? _videoController;
+  AudioPlayer? _audioPlayer;
   bool _isMuted = true;
+  bool _isMusicPlaying = false;
 
   @override
   void initState() {
@@ -62,6 +65,23 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
 
     if (widget.post.isReel && widget.post.videoUrl.isNotEmpty) {
       _initVideo();
+    }
+
+    // Initialize AudioPlayer if post has music
+    final music = widget.post.interactiveElements.firstWhere(
+      (e) => e.type == 'music',
+      orElse: () => InteractiveElement(type: '', x: 0, y: 0, scale: 0, rotation: 0, data: {}),
+    );
+
+    if (music.type == 'music') {
+      _audioPlayer = AudioPlayer();
+      final url = music.data['url']?.toString();
+      if (url != null && url.isNotEmpty) {
+        _audioPlayer?.setSourceUrl(url);
+        _audioPlayer?.onPlayerComplete.listen((event) {
+          if (mounted) setState(() => _isMusicPlaying = false);
+        });
+      }
     }
   }
 
@@ -97,6 +117,7 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
   @override
   void dispose() {
     _videoController?.dispose();
+    _audioPlayer?.dispose();
     _heartAnimController.dispose();
     _imagePageController.dispose();
     super.dispose();
@@ -254,6 +275,59 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
     );
   }
 
+  Widget _buildInteractiveSticker(InteractiveElement element) {
+    IconData icon;
+    Color color;
+    switch (element.type) {
+      case 'poll':
+        icon = Icons.poll;
+        color = Colors.cyan;
+        break;
+      case 'question':
+        icon = Icons.help_outline;
+        color = Colors.purple;
+        break;
+      case 'link':
+        icon = Icons.link;
+        color = Colors.blueAccent;
+        break;
+      default:
+        icon = Icons.star;
+        color = Colors.amber;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (element.type == 'mention') {
+          final username = element.data['text']?.toString().replaceAll('@', '') ?? '';
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Navigate to profile: $username')));
+          return;
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Interacted with ${element.type}')));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              element.type.toUpperCase(),
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMedia(PostModel post) {
     final isDataSaver = ref.watch(dataSaverProvider);
 
@@ -284,14 +358,12 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                     ? CachedNetworkImage(imageUrl: _getOptimizedUrl(post.images[0], isDataSaver), fit: BoxFit.cover)
                     : Container(color: Theme.of(context).dividerColor.withAlpha(30))),
             ),
-            // Play overlay if not playing
             if (!isPlaying)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
                 child: Icon(Icons.play_arrow, color: Colors.white, size: 32),
               ),
-            // Mute/Unmute
             if (isPlaying)
               Positioned(
                 bottom: 12,
@@ -310,7 +382,6 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                   ),
                 ),
               ),
-            // Heart animation
             if (_showHeart)
               AnimatedBuilder(
                 animation: _heartAnim,
@@ -320,6 +391,28 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                     child: const Icon(Icons.favorite, size: 80, color: Colors.white),
                   );
                 },
+              ),
+            if (post.interactiveElements.isNotEmpty)
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
+                      children: post.interactiveElements.map((element) {
+                        return Positioned(
+                          left: (element.x * constraints.maxWidth) - 50,
+                          top: (element.y * constraints.maxHeight) - 20,
+                          child: Transform.rotate(
+                            angle: element.rotation,
+                            child: Transform.scale(
+                              scale: element.scale,
+                              child: _buildInteractiveSticker(element),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
               ),
           ],
         ),
@@ -332,6 +425,25 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
 
     return GestureDetector(
       onDoubleTap: _onDoubleTap,
+      onTap: () {
+        if (_audioPlayer != null) {
+          final url = widget.post.music?.url;
+          if (url == null || url.isEmpty) return;
+
+          setState(() {
+            _isMusicPlaying = !_isMusicPlaying;
+            if (_isMusicPlaying) {
+              if (_audioPlayer!.state == PlayerState.paused) {
+                _audioPlayer?.resume();
+              } else {
+                _audioPlayer?.play(UrlSource(url));
+              }
+            } else {
+              _audioPlayer?.pause();
+            }
+          });
+        }
+      },
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -380,7 +492,6 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                     ],
                   ),
           ),
-          // Heart animation overlay
           if (_showHeart)
             AnimatedBuilder(
               animation: _heartAnim,
@@ -390,6 +501,38 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                   child: const Icon(Icons.favorite, size: 80, color: Colors.white),
                 );
               },
+            ),
+          if (_audioPlayer != null)
+            Positioned(
+              bottom: 12,
+              right: 12,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                child: Icon(_isMusicPlaying ? Icons.music_note : Icons.music_off, color: Colors.white, size: 18),
+              ),
+            ),
+          if (post.interactiveElements.isNotEmpty)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    children: post.interactiveElements.map((element) {
+                      return Positioned(
+                        left: (element.x * constraints.maxWidth) - 50,
+                        top: (element.y * constraints.maxHeight) - 20,
+                        child: Transform.rotate(
+                          angle: element.rotation,
+                          child: Transform.scale(
+                            scale: element.scale,
+                            child: _buildInteractiveSticker(element),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
             ),
         ],
       ),
@@ -439,7 +582,9 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
   }
 
   void _showPostOptions(BuildContext context, PostModel post) {
-    final isOwner = post.userId == widget.currentUserId;
+    final isOwner = post.userId == widget.currentUserId ||
+                    post.ownerId == widget.currentUserId ||
+                    post.shopId == widget.currentUserId;
 
     showModalBottomSheet(
       context: context,
@@ -475,7 +620,26 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 color: AppColors.error,
                 onTap: () {
                   Navigator.pop(context);
-                  if (widget.onDelete != null) widget.onDelete!();
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Post'),
+                      content: const Text('Are you sure you want to delete this post?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            if (widget.onDelete != null) widget.onDelete!();
+                          },
+                          child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
             ] else ...[

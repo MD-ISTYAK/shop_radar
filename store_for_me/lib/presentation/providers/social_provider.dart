@@ -392,6 +392,19 @@ class SocialNotifier extends StateNotifier<SocialState> {
     return false;
   }
 
+  Future<bool> deleteStory(String storyId) async {
+    try {
+      final response = await _api.deleteStory(storyId);
+      if (response.data['success'] == true) {
+        await fetchStories();
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  }
+
   // ===================== FOLLOW =====================
   Future<bool> toggleFollow(String targetUserId, String currentUserId) async {
     // 1. Identify current follow state for target user

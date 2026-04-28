@@ -32,6 +32,8 @@ const createPost = async (req, res, next) => {
         avatarUrl: user.profile?.avatarUrl || user.avatar || '',
       },
       media: [],
+      interactiveElements: req.body.interactiveElements ? JSON.parse(req.body.interactiveElements) : [],
+      music: req.body.music ? JSON.parse(req.body.music) : null,
     };
 
     // If user is a shop owner, also link the shop
@@ -432,6 +434,12 @@ const deletePost = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    // Clean up associated data
+    await Comment.deleteMany({ postId: post._id });
+    await Like.deleteMany({ postId: post._id });
+    await Feed.deleteMany({ postId: post._id });
+    await Notification.deleteMany({ postId: post._id });
+
     await Post.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: 'Post deleted' });
   } catch (error) {
@@ -553,6 +561,8 @@ const createStory = async (req, res, next) => {
       imageUrl: req.file.path, // backward compat
       mediaType: req.file.mimetype?.startsWith('video') ? 'video' : 'image',
       caption: req.body.caption || '',
+      interactiveElements: req.body.interactiveElements ? JSON.parse(req.body.interactiveElements) : [],
+      music: req.body.music ? JSON.parse(req.body.music) : null,
     };
 
     // If shop owner, also link the shop
@@ -1062,6 +1072,94 @@ function _addLikeStatus(posts, userId) {
   });
 }
 
+// ===================== INTERACTIVE ELEMENTS =====================
+
+// @desc    Vote on a poll in a post or story
+// @route   POST /api/social/posts/:id/poll/vote
+const votePoll = async (req, res, next) => {
+  try {
+    const { optionIndex } = req.body;
+    let post = await Post.findById(req.params.id);
+    let isStory = false;
+    if (!post) {
+      post = await Story.findById(req.params.id);
+      isStory = true;
+    }
+    
+    if (!post) return res.status(404).json({ success: false, message: 'Content not found' });
+
+    let pollElement = post.interactiveElements.find(e => e.type === 'poll');
+    if (!pollElement) return res.status(400).json({ success: false, message: 'No poll found' });
+
+    if (!pollElement.data.votes) pollElement.data.votes = [];
+    
+    // Check if user already voted
+    const existingVoteIndex = pollElement.data.votes.findIndex(v => v.userId === req.user._id.toString());
+    if (existingVoteIndex > -1) {
+      pollElement.data.votes[existingVoteIndex].optionIndex = optionIndex;
+    } else {
+      pollElement.data.votes.push({ userId: req.user._id.toString(), optionIndex });
+    }
+
+    // Save changes
+    post.markModified('interactiveElements');
+    await post.save();
+
+    res.status(200).json({ success: true, message: 'Vote recorded', data: pollElement.data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Answer a question sticker
+// @route   POST /api/social/posts/:id/question/answer
+const answerQuestion = async (req, res, next) => {
+  try {
+    const { answer } = req.body;
+    let post = await Post.findById(req.params.id);
+    let isStory = false;
+    if (!post) {
+      post = await Story.findById(req.params.id);
+      isStory = true;
+    }
+    
+    if (!post) return res.status(404).json({ success: false, message: 'Content not found' });
+
+    let questionElement = post.interactiveElements.find(e => e.type === 'question');
+    if (!questionElement) return res.status(400).json({ success: false, message: 'No question found' });
+
+    if (!questionElement.data.answers) questionElement.data.answers = [];
+    
+    questionElement.data.answers.push({ 
+      userId: req.user._id.toString(), 
+      answer,
+      createdAt: new Date()
+    });
+
+    post.markModified('interactiveElements');
+    await post.save();
+
+    // Notify owner
+    const ownerId = post.userId || post.ownerId;
+    if (ownerId && ownerId.toString() !== req.user._id.toString()) {
+      const user = await User.findById(req.user._id);
+      await Notification.create({
+        userId: ownerId,
+        type: 'question_answer',
+        title: 'New Response',
+        body: `@${user.username || user.name} answered your question.`,
+        actorId: req.user._id,
+        postId: isStory ? null : post._id,
+        data: { postId: post._id, senderId: req.user._id },
+      });
+    }
+
+    res.status(200).json({ success: true, message: 'Answer submitted' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ===================== EXPORTS =====================
 
 module.exports = {
@@ -1099,4 +1197,6 @@ module.exports = {
   getUserProfile,
   searchUsers,
   getSuggestedUsers,
+  votePoll,
+  answerQuestion,
 };

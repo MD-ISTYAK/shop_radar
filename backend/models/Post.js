@@ -42,6 +42,27 @@ const postSchema = new mongoose.Schema(
     videoUrl: { type: String, default: '' },
     thumbnailUrl: { type: String, default: '' },
 
+    // Interactive Elements (Polls, Links, Mentions, Questions, etc.)
+    interactiveElements: [
+      {
+        type: { type: String }, // 'poll', 'mention', 'link', 'question', 'location', 'countdown', 'hashtag'
+        x: { type: Number },
+        y: { type: Number },
+        scale: { type: Number, default: 1 },
+        rotation: { type: Number, default: 0 },
+        data: { type: mongoose.Schema.Types.Mixed }, // Custom data per sticker
+      }
+    ],
+    // Background Music
+    music: {
+      songId: { type: String },
+      url: { type: String },
+      title: { type: String },
+      artist: { type: String },
+      duration: { type: Number },
+      startTime: { type: Number, default: 0 },
+    },
+
     // Denormalized user data for faster feed loading
     userSnapshot: {
       username: { type: String, default: '' },

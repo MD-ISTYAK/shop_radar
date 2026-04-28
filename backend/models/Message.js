@@ -41,6 +41,15 @@ const messageSchema = new mongoose.Schema(
       enum: ['text', 'image', 'video', 'audio'],
       default: 'text',
     },
+    // Shared Content
+    sharedPostId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+    },
+    sharedStoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Story',
+    },
     read: {
       type: Boolean,
       default: false,

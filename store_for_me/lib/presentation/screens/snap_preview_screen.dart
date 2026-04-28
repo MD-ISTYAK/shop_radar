@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -11,6 +12,10 @@ import 'package:pro_image_editor/pro_image_editor.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
 import 'package:dio/dio.dart';
+import '../widgets/stickers/sticker_tools_panel.dart';
+import '../widgets/stickers/interactive_sticker_canvas.dart';
+import '../widgets/stickers/music_picker_sheet.dart';
+import '../../data/models/social_models.dart';
 
 class SnapPreviewScreen extends ConsumerStatefulWidget {
   final String mediaPath;
@@ -35,6 +40,10 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
   final GlobalKey _repaintKey = GlobalKey();
   VideoPlayerController? _videoController;
   bool _isSaving = false;
+  final GlobalKey<InteractiveStickerCanvasState> _canvasKey = GlobalKey();
+  List<StickerData> _stickers = [];
+  PostMusic? _music;
+  final editorKey = GlobalKey<ProImageEditorState>();
 
   @override
   void initState() {
@@ -75,11 +84,21 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
         debugPrint('Failed to save to gallery: $e');
       }
 
+      final screenSize = MediaQuery.of(context).size;
       final formData = FormData.fromMap({
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
         'images': [
           await MultipartFile.fromFile(imgFile.path, filename: 'snap.jpg'),
         ],
+        'interactiveElements': jsonEncode(_stickers.map((s) => {
+          'type': s.type,
+          'x': s.position.dx / screenSize.width,
+          'y': s.position.dy / screenSize.height,
+          'scale': s.scale,
+          'rotation': s.rotation,
+          'data': s.data,
+        }).toList()),
+        if (_music != null) 'music': jsonEncode(_music!.toJson()),
       });
 
       final success = await ref.read(socialProvider.notifier).createPost(formData);
@@ -112,14 +131,62 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     }
   }
 
+  void _postToStoryDirectly() async {
+    setState(() => _isSaving = true);
+    try {
+      final screenSize = MediaQuery.of(context).size;
+      final formData = FormData.fromMap({
+        'caption': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
+        if (widget.isVideo) 'video': [
+          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
+        ] else 'images': [
+          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.jpg'),
+        ],
+        'interactiveElements': jsonEncode(_stickers.map((s) => {
+          'type': s.type,
+          'x': s.position.dx / screenSize.width,
+          'y': s.position.dy / screenSize.height,
+          'scale': s.scale,
+          'rotation': s.rotation,
+          'data': s.data,
+        }).toList()),
+        if (_music != null) 'music': jsonEncode(_music!.toJson()),
+      });
+
+      final success = await ref.read(socialProvider.notifier).createStory(formData);
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to Your Story!')));
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to add to story')));
+        }
+      }
+    } catch (e) {
+      debugPrint('Story error: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   void _postVideoDirectly() async {
     setState(() => _isSaving = true);
     try {
+      final screenSize = MediaQuery.of(context).size;
       final formData = FormData.fromMap({
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
         'video': [
           await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
         ],
+        'interactiveElements': jsonEncode(_stickers.map((s) => {
+          'type': s.type,
+          'x': s.position.dx / screenSize.width,
+          'y': s.position.dy / screenSize.height,
+          'scale': s.scale,
+          'rotation': s.rotation,
+          'data': s.data,
+        }).toList()),
+        if (_music != null) 'music': jsonEncode(_music!.toJson()),
       });
 
       final success = await ref.read(socialProvider.notifier).createPost(formData);
@@ -138,68 +205,243 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     }
   }
 
+  void _showStickerPanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: StickerToolsPanel(
+            onStickerSelected: (type) {
+              Navigator.pop(context);
+              _handleStickerSelection(type);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleStickerSelection(String type) async {
+    if (type == 'music') {
+      final PostMusic? selectedMusic = await showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => const MusicPickerSheet(),
+      );
+      if (selectedMusic != null) {
+        _music = selectedMusic;
+        _canvasKey.currentState?.addSticker(type, {
+          'title': selectedMusic.title,
+          'artist': selectedMusic.artist,
+          'url': selectedMusic.url,
+        });
+      }
+      return;
+    }
+
+    if (['mention', 'location', 'hashtag', 'text', 'poll'].contains(type)) {
+      String hint = 'Enter text';
+      String prefix = '';
+      if (type == 'mention') prefix = '@';
+      if (type == 'hashtag') prefix = '#';
+      if (type == 'location') hint = 'Enter location name';
+      if (type == 'poll') hint = 'Ask a question...';
+
+      final TextEditingController _textCtrl = TextEditingController(text: prefix);
+      
+      final result = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: Text('Add $type', style: const TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: _textCtrl,
+            style: const TextStyle(color: Colors.white),
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: Colors.white54),
+              enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, _textCtrl.text),
+              child: const Text('Add', style: TextStyle(color: Colors.blueAccent)),
+            ),
+          ],
+        ),
+      );
+
+      if (result != null && result.isNotEmpty && result != prefix) {
+        _canvasKey.currentState?.addSticker(type, {'text': result});
+      }
+      return;
+    }
+
+    _canvasKey.currentState?.addSticker(type, {'text': 'Custom $type'});
+  }
+
+  void _showTextEditor(StickerData sticker) {
+    if (sticker.type != 'text') return;
+    
+    final TextEditingController _controller = TextEditingController(text: sticker.data['text'] ?? '');
+    
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                style: const TextStyle(color: Colors.black, fontSize: 20),
+                decoration: const InputDecoration(border: InputBorder.none, hintText: 'Enter text...'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  _canvasKey.currentState?.updateStickerData(sticker.id, {'text': _controller.text});
+                  Navigator.pop(context);
+                },
+                child: const Text('Done'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStickerContent(BuildContext context, StickerData sticker) {
+    IconData icon;
+    Color color;
+    switch (sticker.type) {
+      case 'poll':
+        icon = Icons.poll;
+        color = Colors.cyan;
+        break;
+      case 'question':
+        icon = Icons.help_outline;
+        color = Colors.purple;
+        break;
+      case 'music':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.music_note, color: Colors.pinkAccent),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(sticker.data['title'] ?? 'Song', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  Text(sticker.data['artist'] ?? 'Artist', style: const TextStyle(color: Colors.black54, fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
+        );
+      case 'mention':
+        icon = Icons.alternate_email;
+        color = Colors.orange;
+        break;
+      case 'location':
+        icon = Icons.location_on;
+        color = Colors.purpleAccent;
+        break;
+      case 'text':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+          child: Text(
+            sticker.data['text']?.isEmpty ?? true ? 'Double tap to edit' : sticker.data['text'],
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+        );
+      default:
+        icon = Icons.star;
+        color = Colors.amber;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 8),
+          Text(
+            sticker.type.toUpperCase(),
+            style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    Widget editorArea;
     if (!widget.isVideo) {
       // ─── FULL FEATURED IMAGE EDITOR ───
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: ProImageEditor.file(
-          File(widget.mediaPath),
-          callbacks: ProImageEditorCallbacks(
-            onImageEditingComplete: (Uint8List bytes) async {
-              await _postEditedImage(bytes);
-            },
-            onCloseEditor: (mode, [p1]) => Navigator.pop(context),
-          ),
-          configs: const ProImageEditorConfigs(
-            designMode: ImageEditorDesignMode.material,
-            i18n: I18n(
-              doneLoadingMsg: 'Preparing Post...',
-            ),
+      editorArea = ProImageEditor.file(
+        File(widget.mediaPath),
+        key: editorKey,
+        callbacks: ProImageEditorCallbacks(
+          onImageEditingComplete: (Uint8List bytes) async {
+            await _postEditedImage(bytes);
+          },
+          onCloseEditor: (mode, [p1]) => Navigator.pop(context),
+        ),
+        configs: const ProImageEditorConfigs(
+          designMode: ImageEditorDesignMode.material,
+          i18n: I18n(
+            doneLoadingMsg: 'Preparing Post...',
           ),
         ),
       );
-    }
-
-    // ─── BASIC VIDEO PREVIEW ───
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+    } else {
+      // ─── BASIC VIDEO PREVIEW ───
+      editorArea = Stack(
         fit: StackFit.expand,
         children: [
           RepaintBoundary(
             key: _repaintKey,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(
-                  child: ColorFiltered(
-                    colorFilter: ColorFilter.matrix(widget.filter),
-                    child: (_videoController != null && _videoController!.value.isInitialized)
-                        ? FittedBox(
-                            fit: BoxFit.cover,
-                            child: SizedBox(
-                              width: _videoController!.value.size.width,
-                              height: _videoController!.value.size.height,
-                              child: VideoPlayer(_videoController!),
-                            ),
-                          )
-                        : const Center(child: CircularProgressIndicator()),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 50,
-            left: 20,
-            right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildCircularButton(Icons.arrow_back, () => Navigator.pop(context)),
-              ],
+            child: ColorFiltered(
+              colorFilter: ColorFilter.matrix(widget.filter),
+              child: (_videoController != null && _videoController!.value.isInitialized)
+                  ? FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: _videoController!.value.size.width,
+                        height: _videoController!.value.size.height,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                    )
+                  : const Center(child: CircularProgressIndicator()),
             ),
           ),
           Positioned(
@@ -210,11 +452,11 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _saveVideoToGallery,
+                    onPressed: _isSaving ? null : _postToStoryDirectly,
                     icon: _isSaving 
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.download),
-                    label: const Text('Save Video'),
+                      : const Icon(Icons.add_circle_outline),
+                    label: const Text('Your Story'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white24,
                       foregroundColor: Colors.white,
@@ -228,7 +470,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _isSaving ? null : _postVideoDirectly,
                     icon: const Icon(Icons.send),
-                    label: const Text('Post Video'),
+                    label: const Text('Feed Post'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -236,6 +478,46 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          InteractiveStickerCanvas(
+            key: _canvasKey,
+            onStickersUpdated: (stickers) {
+              _stickers = stickers;
+            },
+            stickerBuilder: _buildStickerContent,
+            onStickerDoubleTapped: _showTextEditor,
+            child: editorArea,
+          ),
+          
+          // Custom Top Bar overlay to hold Sticker Panel button and Undo/Redo
+          Positioned(
+            top: 50,
+            left: 20,
+            right: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildCircularButton(Icons.arrow_back, () => Navigator.pop(context)),
+                Row(
+                  children: [
+                    _buildCircularButton(Icons.undo, () => _canvasKey.currentState?.undo()),
+                    const SizedBox(width: 12),
+                    _buildCircularButton(Icons.redo, () => _canvasKey.currentState?.redo()),
+                    const SizedBox(width: 12),
+                    _buildCircularButton(Icons.add_reaction_outlined, _showStickerPanel),
+                  ],
                 ),
               ],
             ),

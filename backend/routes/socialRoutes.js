@@ -36,6 +36,8 @@ const {
   getUserProfile,
   searchUsers,
   getSuggestedUsers,
+  votePoll,
+  answerQuestion,
 } = require('../controllers/socialController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -72,6 +74,12 @@ router.delete('/posts/:id', deletePost);
 router.patch('/posts/:id/hide', toggleHidePost);
 router.delete('/posts/:postId/comments/:commentId', deleteComment);
 router.patch('/posts/:postId/comments/:commentId/hide', toggleHideComment);
+
+// ===================== INTERACTIVE ELEMENTS =====================
+router.post('/posts/:id/poll/vote', votePoll);
+router.post('/posts/:id/question/answer', answerQuestion);
+router.post('/stories/:id/poll/vote', votePoll);
+router.post('/stories/:id/question/answer', answerQuestion);
 
 // ===================== USER POSTS =====================
 router.get('/users/suggested', protect, getSuggestedUsers);
