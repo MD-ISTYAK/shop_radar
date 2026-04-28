@@ -423,13 +423,27 @@ class ReelModel {
       userId = userField;
     }
 
+    String vUrl = json['videoUrl'] ?? json['mediaUrl'] ?? '';
+    String tUrl = json['thumbnailUrl'] ?? '';
+
+    final mediaArray = json['media'] as List?;
+    if (mediaArray != null && mediaArray.isNotEmpty) {
+      for (var item in mediaArray) {
+        if (item['type'] == 'video') {
+          vUrl = item['url'] ?? vUrl;
+          tUrl = item['thumbnailUrl'] ?? tUrl;
+          break;
+        }
+      }
+    }
+
     return ReelModel(
       id: json['_id'] ?? json['id'] ?? '',
       userId: userId,
       username: username,
       profilePic: profilePic,
-      videoUrl: json['videoUrl'] ?? json['mediaUrl'] ?? '',
-      thumbnailUrl: json['thumbnailUrl'] ?? '',
+      videoUrl: vUrl,
+      thumbnailUrl: tUrl,
       caption: json['caption'] ?? json['content'] ?? '',
       likesCount: json['likesCount'] ?? 0,
       commentsCount: json['commentsCount'] ?? 0,

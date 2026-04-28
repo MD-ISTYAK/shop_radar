@@ -105,6 +105,7 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
   }
 
   int _currentCount = 0;
+  bool _isRecording = false;
 
   void _takePicture() async {
     try {
@@ -114,7 +115,8 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => SnapPreviewScreen(
-              imagePath: image.path,
+              mediaPath: image.path,
+              isVideo: false,
               filter: SnapFilters.allFilters[_selectedFilterName]!,
               filterName: _selectedFilterName,
             ),
@@ -123,6 +125,40 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
       }
     } catch (e) {
       debugPrint('Error taking picture: $e');
+    }
+  }
+
+  void _startVideoRecording() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_controller!.value.isRecordingVideo) return;
+    try {
+      await _controller!.startVideoRecording();
+      setState(() => _isRecording = true);
+    } catch (e) {
+      debugPrint('Error starting video recording: $e');
+    }
+  }
+
+  void _stopVideoRecording() async {
+    if (_controller == null || !_controller!.value.isRecordingVideo) return;
+    try {
+      final video = await _controller!.stopVideoRecording();
+      setState(() => _isRecording = false);
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SnapPreviewScreen(
+              mediaPath: video.path,
+              isVideo: true,
+              filter: SnapFilters.allFilters[_selectedFilterName]!,
+              filterName: _selectedFilterName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error stopping video recording: $e');
     }
   }
 
@@ -218,7 +254,17 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
               children: [
                 // Filter Selector
                 _buildFilterSelector(),
-                const SizedBox(height: 30),
+                const SizedBox(height: 15),
+                const Text(
+                  'Tap for photo, hold for video',
+                  style: TextStyle(
+                    color: Colors.white70, 
+                    fontSize: 13, 
+                    fontWeight: FontWeight.w500,
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
+                  ),
+                ),
+                const SizedBox(height: 15),
                 // Main Buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -276,12 +322,17 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: 26),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3), 
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
-          if (label != null)
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 10)),
+          if (label != null) ...[
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
         ],
       ),
     );
@@ -290,24 +341,38 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
   Widget _buildCaptureButton() {
     return GestureDetector(
       onTap: _capturePhoto,
-      child: Container(
-        height: 80,
-        width: 80,
+      onLongPress: _startVideoRecording,
+      onLongPressEnd: (details) => _stopVideoRecording(),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: _isRecording ? 95 : 85,
+        width: _isRecording ? 95 : 85,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 5),
+          border: Border.all(color: _isRecording ? Colors.redAccent : Colors.white, width: _isRecording ? 6 : 4),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ],
         ),
-        padding: const EdgeInsets.all(5),
-        child: Container(
-          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        padding: const EdgeInsets.all(4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: _isRecording ? Colors.red : Colors.white, 
+            shape: BoxShape.circle
+          ),
         ),
-      ).animate(target: _currentCount > 0 ? 1 : 0).scale(duration: 200.ms),
+      ),
     );
   }
 
   Widget _buildFilterSelector() {
     return SizedBox(
-      height: 90,
+      height: 110,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -320,10 +385,12 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
             child: Container(
               margin: const EdgeInsets.only(right: 15),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 60,
-                    height: 60,
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: isSelected ? 72 : 60,
+                    height: isSelected ? 72 : 60,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: _getFilterGradient(name),
@@ -332,20 +399,21 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
                         width: isSelected ? 3 : 1,
                       ),
                       boxShadow: isSelected ? [
-                        BoxShadow(color: Colors.white.withAlpha(80), blurRadius: 10, spreadRadius: 2)
+                        BoxShadow(color: Colors.white.withOpacity(0.5), blurRadius: 15, spreadRadius: 2)
                       ] : null,
                     ),
                     child: isSelected 
-                      ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      ? const Icon(Icons.check, color: Colors.white, size: 26)
                       : null,
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 8),
                   Text(
                     name,
                     style: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.white,
-                      fontSize: 11,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
                     ),
                   ),
                 ],

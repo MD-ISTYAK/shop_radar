@@ -51,11 +51,15 @@ const createPost = async (req, res, next) => {
     }
     // Handle video upload for reels
     if (req.files && req.files.video && req.files.video[0]) {
+      const vUrl = optimizeMediaUrl(req.files.video[0].path, 'video');
+      const tUrl = getVideoThumbnail(req.files.video[0].path);
       postData.media.push({
         type: 'video',
-        url: optimizeMediaUrl(req.files.video[0].path, 'video'),
-        thumbnailUrl: getVideoThumbnail(req.files.video[0].path),
+        url: vUrl,
+        thumbnailUrl: tUrl,
       });
+      postData.videoUrl = vUrl;
+      postData.thumbnailUrl = tUrl;
       postData.type = 'reel';
     }
 
@@ -184,7 +188,7 @@ const explorePosts = async (req, res, next) => {
     const userId = req.user._id;
 
     // Optimized field selection
-    const selectFields = 'userId shopId ownerId content images videoUrl mediaUrl mediaType type likesCount commentsCount createdAt isHidden';
+    const selectFields = 'userId shopId ownerId content images videoUrl media mediaUrl mediaType type likesCount commentsCount createdAt isHidden';
 
     const posts = await Post.find({ type: 'post', isHidden: { $ne: true } })
       .sort({ likesCount: -1, createdAt: -1 })
@@ -698,11 +702,14 @@ const getReels = async (req, res, next) => {
     const userId = req.user._id;
 
     // Optimized field selection
-    const selectFields = 'userId shopId ownerId content caption videoUrl mediaUrl thumbnailUrl mediaType type likesCount commentsCount createdAt duration isHidden';
+    const selectFields = 'userId shopId ownerId content caption videoUrl media mediaUrl thumbnailUrl mediaType type likesCount commentsCount createdAt duration isHidden';
 
     const reels = await Post.find({
       type: 'reel',
-      videoUrl: { $ne: '' },
+      $or: [
+        { videoUrl: { $ne: '' } },
+        { 'media.type': 'video' }
+      ],
       isHidden: { $ne: true },
     })
       .sort({ createdAt: -1 })

@@ -1,19 +1,27 @@
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:gal/gal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
+import 'package:pro_image_editor/pro_image_editor.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
 import 'package:dio/dio.dart';
 
 class SnapPreviewScreen extends ConsumerStatefulWidget {
-  final String imagePath;
+  final String mediaPath;
+  final bool isVideo;
   final List<double> filter;
   final String filterName;
 
   const SnapPreviewScreen({
     super.key,
-    required this.imagePath,
+    required this.mediaPath,
+    required this.isVideo,
     required this.filter,
     required this.filterName,
   });
@@ -24,63 +32,93 @@ class SnapPreviewScreen extends ConsumerStatefulWidget {
 
 class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
   final List<OverlayText> _overlays = [];
+  final GlobalKey _repaintKey = GlobalKey();
+  VideoPlayerController? _videoController;
   bool _isSaving = false;
 
-  void _saveToGallery() async {
-    setState(() => _isSaving = true);
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isVideo) {
+      _videoController = VideoPlayerController.file(File(widget.mediaPath))
+        ..initialize().then((_) {
+          _videoController!.setLooping(true);
+          _videoController!.play();
+          setState(() {});
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _postEditedImage(Uint8List bytes) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+    );
+
     try {
-      await Gal.putImage(widget.imagePath);
+      final directory = await getTemporaryDirectory();
+      final editedPath = '${directory.path}/edited_snap_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      File imgFile = File(editedPath);
+      await imgFile.writeAsBytes(bytes);
+
+      // Automatically save to gallery
+      try {
+        await Gal.putImage(imgFile.path);
+      } catch (e) {
+        debugPrint('Failed to save to gallery: $e');
+      }
+
+      final formData = FormData.fromMap({
+        'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
+        'images': [
+          await MultipartFile.fromFile(imgFile.path, filename: 'snap.jpg'),
+        ],
+      });
+
+      final success = await ref.read(socialProvider.notifier).createPost(formData);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved to Gallery!')),
-        );
+        Navigator.pop(context); // Close loading dialog
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Posted to Feed!')));
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to post')));
+        }
       }
     } catch (e) {
-      debugPrint('Save error: $e');
+      if (mounted) Navigator.pop(context); // Close loading dialog
+      debugPrint('Post error: $e');
+    }
+  }
+
+  void _saveVideoToGallery() async {
+    setState(() => _isSaving = true);
+    try {
+      await Gal.putVideo(widget.mediaPath);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Gallery!')));
       }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  void _addText() {
-    String text = '';
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Text'),
-        content: TextField(
-          autofocus: true,
-          onChanged: (v) => text = v,
-          decoration: const InputDecoration(hintText: 'Enter text...'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              if (text.isNotEmpty) {
-                setState(() => _overlays.add(OverlayText(text: text, offset: const Offset(100, 100))));
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _postDirectly() async {
+  void _postVideoDirectly() async {
     setState(() => _isSaving = true);
     try {
       final formData = FormData.fromMap({
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
-        'images': [
-          await MultipartFile.fromFile(widget.imagePath, filename: 'snap.jpg'),
+        'video': [
+          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
         ],
       });
 
@@ -102,45 +140,57 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isVideo) {
+      // ─── FULL FEATURED IMAGE EDITOR ───
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: ProImageEditor.file(
+          File(widget.mediaPath),
+          callbacks: ProImageEditorCallbacks(
+            onImageEditingComplete: (Uint8List bytes) async {
+              await _postEditedImage(bytes);
+            },
+            onCloseEditor: (mode, [p1]) => Navigator.pop(context),
+          ),
+          configs: const ProImageEditorConfigs(
+            designMode: ImageEditorDesignMode.material,
+            i18n: I18n(
+              doneLoadingMsg: 'Preparing Post...',
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ─── BASIC VIDEO PREVIEW ───
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ─── Image with Filter ───
-          Positioned.fill(
-            child: ColorFiltered(
-              colorFilter: ColorFilter.matrix(widget.filter),
-              child: Image.file(File(widget.imagePath), fit: BoxFit.cover),
-            ),
-          ),
-
-          // ─── Overlays ───
-          for (var overlay in _overlays)
-            Positioned(
-              left: overlay.offset.dx,
-              top: overlay.offset.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    overlay.offset += details.delta;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    overlay.text,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          RepaintBoundary(
+            key: _repaintKey,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.matrix(widget.filter),
+                    child: (_videoController != null && _videoController!.value.isInitialized)
+                        ? FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: _videoController!.value.size.width,
+                              height: _videoController!.value.size.height,
+                              child: VideoPlayer(_videoController!),
+                            ),
+                          )
+                        : const Center(child: CircularProgressIndicator()),
                   ),
                 ),
-              ),
+              ],
             ),
-
-          // ─── Top Bar ───
+          ),
           Positioned(
             top: 50,
             left: 20,
@@ -149,18 +199,9 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildCircularButton(Icons.arrow_back, () => Navigator.pop(context)),
-                Row(
-                  children: [
-                    _buildCircularButton(Icons.text_fields, _addText),
-                    const SizedBox(width: 15),
-                    _buildCircularButton(Icons.emoji_emotions_outlined, () {}),
-                  ],
-                ),
               ],
             ),
           ),
-
-          // ─── Bottom Actions ───
           Positioned(
             bottom: 40,
             left: 20,
@@ -169,11 +210,11 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _saveToGallery,
+                    onPressed: _isSaving ? null : _saveVideoToGallery,
                     icon: _isSaving 
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.download),
-                    label: const Text('Save'),
+                    label: const Text('Save Video'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white24,
                       foregroundColor: Colors.white,
@@ -185,9 +226,9 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
                 const SizedBox(width: 15),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isSaving ? null : _postDirectly,
+                    onPressed: _isSaving ? null : _postVideoDirectly,
                     icon: const Icon(Icons.send),
-                    label: const Text('Post'),
+                    label: const Text('Post Video'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -219,6 +260,5 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
 class OverlayText {
   final String text;
   Offset offset;
-
   OverlayText({required this.text, required this.offset});
 }
