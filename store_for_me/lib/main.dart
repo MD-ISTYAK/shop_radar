@@ -49,6 +49,10 @@ import 'features/sharing/presentation/screens/device_discovery_screen.dart';
 import 'features/sharing/presentation/screens/file_selector_screen.dart';
 import 'features/sharing/presentation/screens/file_transfer_screen.dart';
 import 'features/sharing/presentation/screens/receive_screen.dart';
+import 'features/sharing/presentation/screens/send_screen.dart';
+import 'features/sharing/presentation/screens/history_screen.dart';
+import 'features/sharing/presentation/screens/web_share_screen.dart';
+import 'features/sharing/presentation/screens/permissions_screen.dart';
 import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
 import 'presentation/screens/edit_profile_screen.dart';
@@ -198,6 +202,14 @@ class ShopRadarApp extends ConsumerWidget {
             ), settings);
           case '/sharing/receive':
             return _buildRoute(const ReceiveScreen(), settings);
+          case '/sharing/send':
+            return _buildRoute(const SendScreen(), settings);
+          case '/sharing/history':
+            return _buildRoute(const HistoryScreen(), settings);
+          case '/sharing/web_share':
+            return _buildRoute(const WebShareScreen(), settings);
+          case '/sharing/permissions':
+            return _buildRoute(const PermissionsScreen(), settings);
           case '/reels':
             return _buildRoute(const ReelsScreen(), settings);
           case '/edit-profile':
