@@ -161,4 +161,7 @@ class SocketService {
 
   void offEvent(String event) => _socket?.off(event);
   void offAll() => _socket?.clearListeners();
+
+  /// Generic event listener for any socket event
+  void onEvent(String event, Function(dynamic) callback) => _socket?.on(event, callback);
 }

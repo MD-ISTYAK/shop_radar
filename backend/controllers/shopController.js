@@ -7,12 +7,41 @@ const DeliveryRequest = require('../models/DeliveryRequest');
 const Business = require('../models/Business');
 const User = require('../models/User');
 const { calculateDistance, formatDistance } = require('../utils/geoDistance');
+const logger = require('../config/logger');
 
 // @desc    Create a new shop
 // @route   POST /api/shops
 const createShop = async (req, res, next) => {
   try {
     const { shopName, category, description, address, longitude, latitude, openingTime, closingTime, phone } = req.body;
+
+    // --- Subscription Limit Check ---
+    const user = await User.findById(req.user._id);
+    const existingBusinessesCount = await Business.countDocuments({
+      userId: req.user._id,
+      businessType: { $ne: 'delivery_partner' }, // Delivery Partner doesn't count against limits
+    });
+
+    const plan = user.subscription?.plan || 'free';
+    
+    // Free: max 1
+    if (plan === 'free' && existingBusinessesCount >= 1) {
+      return res.status(403).json({
+        success: false,
+        message: 'You have reached the limit for the Free plan. Upgrade to Pro or Ultra Pro to create more.',
+        requiresSubscription: true,
+      });
+    }
+
+    // Pro: max 3
+    if (plan === 'pro' && existingBusinessesCount >= 3) {
+      return res.status(403).json({
+        success: false,
+        message: 'You have reached the limit for the Pro plan. Upgrade to Ultra Pro to create unlimited shops/services.',
+        requiresSubscription: true,
+      });
+    }
+    // --------------------------------
 
     const shopData = {
       shopName,
@@ -88,8 +117,6 @@ const getNearbyShops = async (req, res, next) => {
   try {
     const { lat, lng, radius = 10, category, search } = req.query;
 
-    console.log(`\n🔍 [getNearbyShops] Query params: lat=${lat}, lng=${lng}, radius=${radius}, category=${category}, search=${search}`);
-
     let query = {};
 
     // Geospatial query if coordinates provided
@@ -100,12 +127,9 @@ const getNearbyShops = async (req, res, next) => {
             type: 'Point',
             coordinates: [parseFloat(lng), parseFloat(lat)],
           },
-          $maxDistance: parseFloat(radius) * 1000, // Convert km to meters
+          $maxDistance: parseFloat(radius) * 1000,
         },
       };
-      console.log(`📍 [getNearbyShops] Geo query: center=[${lng}, ${lat}], maxDistance=${parseFloat(radius) * 1000}m`);
-    } else {
-      console.log(`⚠️ [getNearbyShops] No valid coordinates provided, skipping geo filter`);
     }
 
     // Category filter
@@ -118,22 +142,7 @@ const getNearbyShops = async (req, res, next) => {
       query.shopName = { $regex: search, $options: 'i' };
     }
 
-    console.log(`📋 [getNearbyShops] Final query:`, JSON.stringify(query));
-
-    // First, let's see total shops in the DB regardless of filter
-    const totalShops = await Shop.countDocuments({});
-    console.log(`🏪 [getNearbyShops] Total shops in DB: ${totalShops}`);
-
-    // List all shops with their coordinates for debugging
-    if (totalShops > 0 && totalShops <= 50) {
-      const allShops = await Shop.find({}, 'shopName location category status');
-      allShops.forEach(s => {
-        console.log(`   -> ${s.shopName} | coords: [${s.location?.coordinates}] | category: ${s.category} | status: ${s.status}`);
-      });
-    }
-
     const shops = await Shop.find(query).populate('ownerId', 'name email');
-    console.log(`✅ [getNearbyShops] Shops found matching query: ${shops.length}`);
 
     // Calculate distance for each shop
     const shopsWithDistance = shops.map((shop) => {
@@ -157,7 +166,7 @@ const getNearbyShops = async (req, res, next) => {
       data: shopsWithDistance,
     });
   } catch (error) {
-    console.error(`❌ [getNearbyShops] Error:`, error.message);
+    logger.error('getNearbyShops error', { error: error.message, requestId: req.requestId });
     next(error);
   }
 };
@@ -318,22 +327,49 @@ const getOwnerShop = async (req, res, next) => {
       });
     }
 
-    // Get analytics
-    const totalProducts = await Product.countDocuments({ shopId: shop._id });
-    const orders = await Order.find({ shopId: shop._id });
-    const totalOrders = orders.length;
-    const totalEarnings = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-    const successfulOrders = orders.filter(o => o.status === 'delivered').length;
-    
-    const totalFollowers = await Follow.countDocuments({ shopId: shop._id });
-    const totalCheckIns = await CheckIn.countDocuments({ shopId: shop._id });
-    
-    const deliveries = await DeliveryRequest.find({ shopId: shop._id });
-    const deliveryStats = {
-      pending: deliveries.filter(d => ['pending', 'accepted', 'partner_assigned', 'picked_up'].includes(d.status)).length,
-      delivered: deliveries.filter(d => d.status === 'delivered').length,
-      total: deliveries.length
-    };
+    // Use aggregation for stats instead of loading all orders into memory
+    const [totalProducts, orderStats, totalFollowers, totalCheckIns, deliveryStats] = await Promise.all([
+      Product.countDocuments({ shopId: shop._id }),
+      Order.aggregate([
+        { $match: { shopId: shop._id } },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalEarnings: { $sum: '$totalAmount' },
+            successfulOrders: {
+              $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+      Follow.countDocuments({ shopId: shop._id }),
+      CheckIn.countDocuments({ shopId: shop._id }),
+      DeliveryRequest.aggregate([
+        { $match: { shopId: shop._id } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            delivered: {
+              $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] },
+            },
+            pending: {
+              $sum: {
+                $cond: [
+                  { $in: ['$status', ['pending', 'accepted', 'partner_assigned', 'picked_up']] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+
+    const stats = orderStats[0] || { totalOrders: 0, totalEarnings: 0, successfulOrders: 0 };
+    const delStats = deliveryStats[0] || { total: 0, delivered: 0, pending: 0 };
 
     res.status(200).json({
       success: true,
@@ -341,12 +377,16 @@ const getOwnerShop = async (req, res, next) => {
         shop,
         analytics: {
           totalProducts,
-          totalOrders,
-          totalEarnings,
-          successfulOrders,
+          totalOrders: stats.totalOrders,
+          totalEarnings: stats.totalEarnings,
+          successfulOrders: stats.successfulOrders,
           totalFollowers,
           totalCheckIns,
-          deliveryStats
+          deliveryStats: {
+            pending: delStats.pending,
+            delivered: delStats.delivered,
+            total: delStats.total,
+          },
         },
       },
     });

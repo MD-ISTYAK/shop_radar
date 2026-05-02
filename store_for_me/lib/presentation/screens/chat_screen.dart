@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
 import '../../data/models/chat_models.dart';
+import '../../core/utils/time_utils.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -218,7 +219,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       if (otherUser == null) return const SizedBox.shrink();
                       
                       return Text(
-                        otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${DateFormat.jm().format(otherUser.lastSeen!)}' : 'Offline'),
+                        otherUser.isOnline ? 'Online' : (otherUser.lastSeen != null ? 'Last seen ${TimeUtils.formatIST(otherUser.lastSeen!, pattern: 'h:mm a')}' : 'Offline'),
                         style: TextStyle(
                           fontSize: 11,
                           color: otherUser.isOnline ? Colors.green : Theme.of(context).textTheme.bodyMedium?.color,
@@ -364,7 +365,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              DateFormat('h:mm a').format(msg.createdAt),
+                                              TimeUtils.formatIST(msg.createdAt, pattern: 'h:mm a'),
                                               style: TextStyle(
                                                 fontSize: 10,
                                                   color: isMine ? Colors.white70 : Theme.of(context).textTheme.bodySmall?.color,

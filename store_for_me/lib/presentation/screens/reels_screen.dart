@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -6,6 +7,8 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
 import '../providers/data_saver_provider.dart';
+import '../widgets/report_dialog.dart';
+import '../../services/video_cache_manager.dart';
 
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
@@ -17,6 +20,7 @@ class ReelsScreen extends ConsumerStatefulWidget {
 class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAliveClientMixin {
   final PageController _pageController = PageController();
   final Map<int, VideoPlayerController> _controllers = {};
+  final VideoCacheManager _cacheManager = VideoCacheManager();
   int _currentPage = 0;
 
   @override
@@ -34,30 +38,50 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
     super.dispose();
   }
 
-  void _initController(int index, String url, {bool forceAutoplay = false}) {
+  /// Get the optimized remote URL for a reel video
+  String _getVideoUrl(String url) {
+    final fullUrl = url.startsWith('http') ? url : AppConstants.getImageUrl(url);
+    // Cloudinary optimization: lower quality & bitrate for bandwidth savings
+    return fullUrl.contains('cloudinary')
+        ? fullUrl.replaceFirst('/upload/', '/upload/q_auto:low,br_1.5m/')
+        : fullUrl;
+  }
+
+  /// Initialize a video controller for the given index.
+  /// First checks local cache, then downloads and caches if needed.
+  void _initController(int index, String rawUrl, String videoId, {bool forceAutoplay = false}) {
     if (_controllers.containsKey(index)) return;
-    if (url.isEmpty) return;
+    if (rawUrl.isEmpty) return;
 
     final isDataSaver = ref.read(dataSaverProvider);
-    final fullUrl = url.startsWith('http') ? url : AppConstants.getImageUrl(url);
-    
-    // Cloudinary optimization for reel: q_auto:low, br_1.5M (reels need slightly more bitrate than tiny feed videos)
-    final optimizedUrl = fullUrl.contains('cloudinary') 
-        ? fullUrl.replaceFirst('/upload/', '/upload/q_auto:low,br_1.5m/') 
-        : fullUrl;
+    final optimizedUrl = _getVideoUrl(rawUrl);
 
-    final controller = VideoPlayerController.networkUrl(Uri.parse(optimizedUrl));
-    _controllers[index] = controller;
+    // Try to use cached version first, fall back to network
+    _cacheManager.getCachedVideo(optimizedUrl, videoId).then((cachedPath) {
+      if (!mounted) return;
 
-    controller.initialize().then((_) {
-      if (mounted) {
-        controller.setLooping(true);
-        // Autoplay if it's the current page AND either Data Saver is OFF or it's forced
-        if (index == _currentPage && (!isDataSaver || forceAutoplay)) {
-          controller.play();
-        }
-        setState(() {});
+      VideoPlayerController controller;
+      if (cachedPath != null) {
+        // Play from local disk (zero network!)
+        controller = VideoPlayerController.file(
+          File(cachedPath),
+        );
+      } else {
+        // Fallback to network streaming
+        controller = VideoPlayerController.networkUrl(Uri.parse(optimizedUrl));
       }
+
+      _controllers[index] = controller;
+
+      controller.initialize().then((_) {
+        if (mounted) {
+          controller.setLooping(true);
+          if (index == _currentPage && (!isDataSaver || forceAutoplay)) {
+            controller.play();
+          }
+          setState(() {});
+        }
+      });
     });
   }
 
@@ -68,18 +92,29 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
     _currentPage = index;
 
     final isDataSaver = ref.read(dataSaverProvider);
-    // Play the new one only if Data Saver is OFF
     if (!isDataSaver) {
       _controllers[index]?.play();
     }
 
-    // Preload next
+    // Preload next reel
     final reels = ref.read(socialProvider).reels;
     if (index + 1 < reels.length) {
-      _initController(index + 1, reels[index + 1].videoUrl);
+      _initController(index + 1, reels[index + 1].videoUrl, reels[index + 1].id);
     }
 
-    // Dispose controllers 2+ pages away
+    // Prefetch next 2-3 videos into cache (background download)
+    final prefetchList = <MapEntry<String, String>>[];
+    for (int i = index + 2; i <= index + 4 && i < reels.length; i++) {
+      final url = _getVideoUrl(reels[i].videoUrl);
+      if (url.isNotEmpty) {
+        prefetchList.add(MapEntry(url, reels[i].id));
+      }
+    }
+    if (prefetchList.isNotEmpty) {
+      _cacheManager.prefetch(prefetchList);
+    }
+
+    // Dispose controllers 2+ pages away to save memory
     final keysToRemove = _controllers.keys
         .where((k) => (k - index).abs() > 2)
         .toList();
@@ -120,8 +155,8 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
     }
 
     // Init first and second controllers
-    if (reels.isNotEmpty) _initController(0, reels[0].videoUrl);
-    if (reels.length > 1) _initController(1, reels[1].videoUrl);
+    if (reels.isNotEmpty) _initController(0, reels[0].videoUrl, reels[0].id);
+    if (reels.length > 1) _initController(1, reels[1].videoUrl, reels[1].id);
 
     return PageView.builder(
       controller: _pageController,
@@ -168,6 +203,28 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                 child: Icon(Icons.play_arrow_rounded, size: 80, color: Colors.white54),
               ),
 
+            // ─── Cache indicator (subtle) ───
+            if (_cacheManager.isCached(_getVideoUrl(reel.videoUrl)))
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black38,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.download_done_rounded, size: 12, color: Colors.white60),
+                      SizedBox(width: 3),
+                      Text('Cached', style: TextStyle(color: Colors.white60, fontSize: 9)),
+                    ],
+                  ),
+                ),
+              ),
+
             // ─── Right side actions ───
             Positioned(
               right: 12,
@@ -208,6 +265,13 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                     icon: Icons.send_outlined,
                     label: 'Share',
                     onTap: () {},
+                  ),
+                  const SizedBox(height: 16),
+                  // Report / More
+                  _buildSideAction(
+                    icon: Icons.more_vert_rounded,
+                    label: 'More',
+                    onTap: () => _showReelOptions(context, ref, reel),
                   ),
                 ],
               ),
@@ -256,6 +320,109 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showReelOptions(BuildContext context, WidgetRef ref, dynamic reel) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withAlpha(20),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.flag_rounded, color: AppColors.error, size: 22),
+                  ),
+                  title: Text(
+                    'Report',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Report this reel for policy violation',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : AppColors.textLight,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ReportDialog.show(
+                      context,
+                      targetId: reel.id,
+                      targetType: 'reel',
+                      onReported: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Thanks for reporting. We\'ll review this content.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white10 : Colors.grey[100]!),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.visibility_off_outlined,
+                      color: isDark ? Colors.white54 : AppColors.textSecondary,
+                      size: 22,
+                    ),
+                  ),
+                  title: Text(
+                    'Not Interested',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'See fewer reels like this',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : AppColors.textLight,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(ctx),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -325,8 +492,3 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
     );
   }
 }
-
-
-
-
-

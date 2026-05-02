@@ -107,6 +107,41 @@ const postSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // ── Moderation & Risk Control ──
+    visibilityScore: {
+      type: Number,
+      default: 10,
+      min: 0,
+      max: 100,
+    },
+    distributionLevel: {
+      type: String,
+      enum: ['limited', 'standard', 'boosted', 'hidden'],
+      default: 'limited',
+    },
+    reportCount: {
+      type: Number,
+      default: 0,
+    },
+    moderationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'auto_hidden'],
+      default: 'pending',
+    },
+    videoHash: {
+      type: String,
+      default: '',
+    },
+    audioFingerprint: {
+      type: String,
+      default: '',
+    },
+    duplicateOf: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -127,5 +162,8 @@ postSchema.index({ userId: 1, createdAt: -1 });
 postSchema.index({ createdAt: -1 }); // discovery feed
 postSchema.index({ shopId: 1, createdAt: -1 }); // backward compat
 postSchema.index({ type: 1, createdAt: -1 });
+postSchema.index({ videoHash: 1 }); // duplicate detection
+postSchema.index({ moderationStatus: 1, reportCount: 1 }); // moderation queries
+postSchema.index({ type: 1, moderationStatus: 1, distributionLevel: 1, createdAt: -1 }); // safe feed
 
 module.exports = mongoose.model('Post', postSchema);

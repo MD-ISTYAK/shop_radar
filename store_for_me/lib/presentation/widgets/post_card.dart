@@ -8,6 +8,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/social_models.dart';
 import '../providers/data_saver_provider.dart';
+import '../widgets/report_dialog.dart';
 
 class PostCard extends ConsumerStatefulWidget {
   final PostModel post;
@@ -649,8 +650,18 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
                 color: AppColors.error,
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post reported')),
+                  ReportDialog.show(
+                    context,
+                    targetId: post.id,
+                    targetType: post.isReel ? 'reel' : 'post',
+                    onReported: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Thanks for reporting. We\'ll review this content.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
                   );
                 },
               ),

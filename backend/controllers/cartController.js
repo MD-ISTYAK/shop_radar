@@ -194,8 +194,8 @@ const checkout = async (req, res, next) => {
 
       if (deliveryType === 'home_delivery') {
         const distanceKm = calculateDistance(userLoc[1], userLoc[0], shopLoc[1], shopLoc[0]);
-        // 10 INR per 500 meters (0.5 km)
-        deliveryFee = Math.max(10, Math.ceil(distanceKm / 0.5) * 10);
+        // ₹5 per 500 meters (0.5 km), minimum ₹10
+        deliveryFee = Math.max(10, Math.ceil(distanceKm / 0.5) * 5);
       }
 
       const orderId = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -268,10 +268,59 @@ const checkout = async (req, res, next) => {
   }
 };
 
+// @desc    Estimate delivery fee without placing order
+// @route   POST /api/cart/estimate-delivery
+const estimateDelivery = async (req, res, next) => {
+  try {
+    const { lat, lng } = req.body;
+    const cart = await Cart.findOne({ userId: req.user._id }).populate('items.productId', 'shopId');
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cart is empty' });
+    }
+
+    const userLoc = [Number(lng), Number(lat)];
+
+    // Get unique shop IDs
+    const shopIds = [...new Set(cart.items.map(i => i.productId.shopId.toString()))];
+    let totalDeliveryFee = 0;
+    const breakdown = [];
+
+    for (const shopId of shopIds) {
+      const shop = await Shop.findById(shopId);
+      if (!shop) continue;
+
+      const shopLoc = shop.location?.coordinates || [0, 0];
+      const distanceKm = calculateDistance(userLoc[1], userLoc[0], shopLoc[1], shopLoc[0]);
+      // ₹5 per 500m, minimum ₹10
+      const fee = Math.max(10, Math.ceil(distanceKm / 0.5) * 5);
+
+      totalDeliveryFee += fee;
+      breakdown.push({
+        shopId,
+        shopName: shop.shopName,
+        distanceKm: parseFloat(distanceKm.toFixed(2)),
+        fee,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        totalDeliveryFee,
+        breakdown,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addToCart,
   getCart,
   updateCartItem,
   removeFromCart,
   checkout,
+  estimateDelivery,
 };

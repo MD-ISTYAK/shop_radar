@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/order_model.dart';
 import '../widgets/common_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/utils/time_utils.dart';
 
 class OrderDetailsScreen extends ConsumerWidget {
   final OrderModel order;
@@ -260,7 +261,7 @@ class OrderDetailsScreen extends ConsumerWidget {
     return Column(
       children: order.timeline.map((event) {
         final isActive = true; // Events recorded in the timeline are inherently completed
-        final time = '${event.timestamp.hour}:${event.timestamp.minute.toString().padLeft(2, '0')}';
+        final time = TimeUtils.formatIST(event.timestamp, pattern: 'hh:mm a');
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 20),

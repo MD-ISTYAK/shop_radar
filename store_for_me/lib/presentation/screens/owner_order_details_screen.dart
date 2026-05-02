@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/time_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -158,7 +159,7 @@ class _OwnerOrderDetailsScreenState extends ConsumerState<OwnerOrderDetailsScree
                   ),
                 ),
                 Text(
-                  DateFormat('hh:mm a  dd-MM-yyyy').format(order.createdAt.toLocal()), 
+                  TimeUtils.formatIST(order.createdAt, pattern: 'hh:mm a  dd-MM-yyyy'), 
                   style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12),
                 ),
               ],

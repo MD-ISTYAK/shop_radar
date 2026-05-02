@@ -16,6 +16,7 @@ import '../widgets/stickers/sticker_tools_panel.dart';
 import '../widgets/stickers/interactive_sticker_canvas.dart';
 import '../widgets/stickers/music_picker_sheet.dart';
 import '../../data/models/social_models.dart';
+import '../../services/video_compress_service.dart';
 
 class SnapPreviewScreen extends ConsumerStatefulWidget {
   final String mediaPath;
@@ -138,7 +139,10 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
       final formData = FormData.fromMap({
         'caption': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
         if (widget.isVideo) 'video': [
-          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
+          await MultipartFile.fromFile(
+            (await VideoCompressService().compressVideo(widget.mediaPath)).path,
+            filename: 'snap.mp4',
+          ),
         ] else 'images': [
           await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.jpg'),
         ],
@@ -173,10 +177,11 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     setState(() => _isSaving = true);
     try {
       final screenSize = MediaQuery.of(context).size;
+      final compressedFile = await VideoCompressService().compressVideo(widget.mediaPath);
       final formData = FormData.fromMap({
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
         'video': [
-          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
+          await MultipartFile.fromFile(compressedFile.path, filename: 'snap.mp4'),
         ],
         'interactiveElements': jsonEncode(_stickers.map((s) => {
           'type': s.type,

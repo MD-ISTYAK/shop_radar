@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Business = require('../models/Business');
-const { generateToken } = require('../config/jwt');
+const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../config/jwt');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -35,8 +35,9 @@ const register = async (req, res, next) => {
 
     const user = await User.create(userData);
 
-    // Generate token
+    // Generate tokens
     const token = generateToken({ id: user._id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user._id });
 
     res.status(201).json({
       success: true,
@@ -58,6 +59,7 @@ const register = async (req, res, next) => {
           businessCount: 0,
         },
         token,
+        refreshToken,
       },
     });
   } catch (error) {
@@ -91,8 +93,9 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Generate token
+    // Generate tokens
     const token = generateToken({ id: user._id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user._id });
 
     // Count user's businesses
     const businessCount = await Business.countDocuments({ userId: user._id, isActive: true });
@@ -117,6 +120,7 @@ const login = async (req, res, next) => {
           businessCount: businessCount,
         },
         token,
+        refreshToken,
       },
     });
   } catch (error) {
@@ -179,4 +183,31 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getProfile, updateProfile };
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh-token
+const refreshAccessToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, message: 'Refresh token is required' });
+    }
+
+    const decoded = verifyRefreshToken(refreshToken);
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found' });
+    }
+
+    const newToken = generateToken({ id: user._id, role: user.role });
+    const newRefreshToken = generateRefreshToken({ id: user._id });
+
+    res.status(200).json({
+      success: true,
+      data: { token: newToken, refreshToken: newRefreshToken },
+    });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+  }
+};
+
+module.exports = { register, login, getProfile, updateProfile, refreshAccessToken };

@@ -6,7 +6,7 @@ import '../providers/shop_provider.dart';
 import '../providers/product_provider.dart';
 import 'owner_dashboard_screen.dart';
 import 'owner_orders_screen.dart';
-import 'settings_screen.dart';
+// import 'settings_screen.dart'; // Removed from owner panel
 import '../widgets/owner_shop_content.dart';
 import '../widgets/owner_story_content.dart';
 
@@ -71,8 +71,6 @@ class _OwnerShellState extends ConsumerState<OwnerShell> with SingleTickerProvid
         return OwnerOrdersScreen(scrollController: _scrollController, isTab: true);
       case 3:
         return OwnerStoryContent(scrollController: _scrollController);
-      case 4:
-        return const SettingsScreen();
       default:
         return OwnerDashboardScreen(scrollController: _scrollController);
     }
@@ -220,7 +218,6 @@ class _OwnerShellState extends ConsumerState<OwnerShell> with SingleTickerProvid
                 _buildNavItem(1, Icons.storefront_outlined, Icons.storefront_rounded, 'Shop'),
                 _buildNavItem(2, Icons.shopping_bag_outlined, Icons.shopping_bag_rounded, 'Orders'),
                 _buildNavItem(3, Icons.auto_stories_outlined, Icons.auto_stories_rounded, 'Story'),
-                _buildNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
               ],
             ),
           ),

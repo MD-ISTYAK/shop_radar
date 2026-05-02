@@ -5,6 +5,7 @@ import '../providers/order_provider.dart';
 import '../providers/token_provider.dart';
 import '../../data/models/order_model.dart';
 import '../widgets/common_widgets.dart';
+import '../../core/utils/time_utils.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -119,7 +120,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                     Text('${items.length} items • ₹${total.toStringAsFixed(0)}', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                     const SizedBox(height: 4),
                     Text(
-                      '${createdAt.day}/${createdAt.month}/${createdAt.year} at ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
+                      TimeUtils.formatIST(createdAt, pattern: 'dd/MM/yyyy at hh:mm a'),
                       style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                     ),
                     const SizedBox(height: 12),

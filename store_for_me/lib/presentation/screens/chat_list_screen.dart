@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/time_utils.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/chat_provider.dart';
@@ -101,7 +102,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                 ),
                               ),
                               Text(
-                                DateFormat.MMMd().format(conv.lastMessage.createdAt),
+                                TimeUtils.formatIST(conv.lastMessage.createdAt, pattern: 'MMM dd'),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],

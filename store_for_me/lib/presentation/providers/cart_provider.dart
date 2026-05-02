@@ -7,15 +7,17 @@ class CartState {
   final bool isLoading;
   final String? error;
   final String? message;
+  final double? estimatedDeliveryFee;
 
-  const CartState({this.cart, this.isLoading = false, this.error, this.message});
+  const CartState({this.cart, this.isLoading = false, this.error, this.message, this.estimatedDeliveryFee});
 
-  CartState copyWith({CartModel? cart, bool? isLoading, String? error, String? message}) {
+  CartState copyWith({CartModel? cart, bool? isLoading, String? error, String? message, double? estimatedDeliveryFee}) {
     return CartState(
       cart: cart ?? this.cart,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       message: message,
+      estimatedDeliveryFee: estimatedDeliveryFee ?? this.estimatedDeliveryFee,
     );
   }
 
@@ -80,6 +82,23 @@ class CartNotifier extends StateNotifier<CartState> {
       }
     } catch (e) {
       state = state.copyWith(error: 'Failed to remove item');
+    }
+  }
+
+  Future<void> estimateDeliveryFee(double lat, double lng) async {
+    try {
+      final response = await _api.estimateDelivery({
+        'lat': lat,
+        'lng': lng,
+      });
+      if (response.data['success'] == true) {
+        state = state.copyWith(
+          estimatedDeliveryFee: (response.data['data']['totalDeliveryFee'] ?? 0).toDouble(),
+        );
+      }
+    } catch (e) {
+      // Don't show error, just keep it null
+      state = state.copyWith(estimatedDeliveryFee: null);
     }
   }
 

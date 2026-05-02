@@ -60,7 +60,7 @@ const deliveryRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'partner_assigned', 'picked_up', 'delivered', 'rejected'],
+      enum: ['pending', 'accepted', 'partner_assigned', 'picked_up', 'in_transit', 'delivered', 'rejected', 'cancelled'],
       default: 'pending',
     },
     deliveryFee: {
@@ -71,11 +71,43 @@ const deliveryRequestSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Assignment tracking
+    assignedAt: {
+      type: Date,
+      default: null,
+    },
+    pickedUpAt: {
+      type: Date,
+      default: null,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
+    reassignmentCount: {
+      type: Number,
+      default: 0,
+      max: 3,
+    },
+    previousPartners: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
+    cancellationReason: {
+      type: String,
+      default: '',
+    },
+    noPartnerAvailable: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
 
 deliveryRequestSchema.index({ userId: 1, createdAt: -1 });
 deliveryRequestSchema.index({ shopId: 1, status: 1 });
+deliveryRequestSchema.index({ deliveryPartnerId: 1, status: 1 });
+deliveryRequestSchema.index({ status: 1, deliveryPartnerId: 1 }); // For finding unassigned deliveries
 
 module.exports = mongoose.model('DeliveryRequest', deliveryRequestSchema);

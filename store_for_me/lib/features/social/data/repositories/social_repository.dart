@@ -1,23 +1,19 @@
 import 'package:dio/dio.dart';
-import '../../../../core/network/api_client.dart';
-import 'post_model.dart';
+import '../../../../services/api_service.dart';
+import '../../../../data/models/social_models.dart';
 
+/// Repository layer for social features (alternative architecture).
+/// This wraps ApiService for use in feature-based modules.
 class SocialRepository {
-  final ApiClient _apiClient;
+  final ApiService _api;
 
-  SocialRepository(this._apiClient);
+  SocialRepository([ApiService? api]) : _api = api ?? ApiService();
 
   Future<List<PostModel>> getFeed({String? cursor, int limit = 10}) async {
     try {
-      final response = await _apiClient.dio.get(
-        '/social/feed',
-        queryParameters: {
-          if (cursor != null) 'cursor': cursor,
-          'limit': limit,
-        },
-      );
+      final response = await _api.getFeedCursor(cursor: cursor, limit: limit);
 
-      if (response.data['success']) {
+      if (response.data['success'] == true) {
         return (response.data['data'] as List)
             .map((e) => PostModel.fromJson(e))
             .toList();
@@ -30,12 +26,9 @@ class SocialRepository {
 
   Future<List<PostModel>> getExplore({int page = 1, int limit = 20}) async {
     try {
-      final response = await _apiClient.dio.get(
-        '/social/explore',
-        queryParameters: {'page': page, 'limit': limit},
-      );
+      final response = await _api.explorePosts(page: page, limit: limit);
 
-      if (response.data['success']) {
+      if (response.data['success'] == true) {
         return (response.data['data'] as List)
             .map((e) => PostModel.fromJson(e))
             .toList();
@@ -48,8 +41,8 @@ class SocialRepository {
 
   Future<bool> toggleLike(String postId) async {
     try {
-      final response = await _apiClient.dio.post('/social/posts/$postId/like');
-      return response.data['success'];
+      final response = await _api.toggleLike(postId);
+      return response.data['success'] == true;
     } catch (e) {
       throw Exception('Failed to toggle like: $e');
     }
@@ -62,33 +55,24 @@ class SocialRepository {
     String? videoPath,
   }) async {
     try {
-      FormData formData = FormData.fromMap({
-        'caption': caption,
-        'type': type,
-      });
+      FormData formData = FormData.fromMap({'caption': caption, 'type': type});
 
       if (imagePaths != null && imagePaths.isNotEmpty) {
         for (var path in imagePaths) {
-          formData.files.add(MapEntry(
-            'images',
-            await MultipartFile.fromFile(path),
-          ));
+          formData.files.add(
+            MapEntry('images', await MultipartFile.fromFile(path)),
+          );
         }
       }
 
       if (videoPath != null) {
-        formData.files.add(MapEntry(
-          'video',
-          await MultipartFile.fromFile(videoPath),
-        ));
+        formData.files.add(
+          MapEntry('video', await MultipartFile.fromFile(videoPath)),
+        );
       }
 
-      final response = await _apiClient.dio.post(
-        '/social/posts',
-        data: formData,
-      );
-
-      return response.data['success'];
+      final response = await _api.createPost(formData);
+      return response.data['success'] == true;
     } catch (e) {
       throw Exception('Failed to create post: $e');
     }

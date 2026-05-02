@@ -82,12 +82,13 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Manage location permissions',
             onTap: () {},
           ),
-          _SettingsTile(
-            icon: Icons.share_outlined,
-            title: 'File Sharing',
-            subtitle: 'P2P offline file sharing',
-            onTap: () => Navigator.pushNamed(context, '/sharing'),
-          ),
+          // P2P Sharing - temporarily disabled
+          // _SettingsTile(
+          //   icon: Icons.share_outlined,
+          //   title: 'File Sharing',
+          //   subtitle: 'P2P offline file sharing',
+          //   onTap: () => Navigator.pushNamed(context, '/sharing'),
+          // ),
           const SizedBox(height: 16),
 
           // Support

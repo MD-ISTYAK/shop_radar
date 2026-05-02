@@ -11,6 +11,8 @@ import '../widgets/post_card.dart';
 import '../widgets/comment_sheet.dart';
 import '../widgets/discover_people_row.dart';
 import 'chat_screen.dart';
+import 'user_network_screen.dart';
+import 'user_posts_screen.dart';
 
 class PublicProfileScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -153,8 +155,14 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildStat(profile.postsCount.toString(), 'Posts'),
-                            _buildStat(profile.followersCount.toString(), 'Followers'),
-                            _buildStat(profile.followingCount.toString(), 'Following'),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserNetworkScreen(userId: profile.id, initialIndex: 0))),
+                              child: _buildStat(profile.followersCount.toString(), 'Followers'),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => UserNetworkScreen(userId: profile.id, initialIndex: 2))),
+                              child: _buildStat(profile.followingCount.toString(), 'Following'),
+                            ),
                           ],
                         ),
                       ),
@@ -346,7 +354,16 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         final imageUrl = post.images.isNotEmpty ? post.images.first : (post.mediaUrl.isNotEmpty ? post.mediaUrl : '');
         return GestureDetector(
           onTap: () {
-            // Can push a feed view zoomed into this post
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserPostsScreen(
+                  posts: gridPosts,
+                  initialIndex: index,
+                  title: post.isReel ? 'Reels' : 'Posts',
+                ),
+              ),
+            );
           },
           child: Stack(
             fit: StackFit.expand,

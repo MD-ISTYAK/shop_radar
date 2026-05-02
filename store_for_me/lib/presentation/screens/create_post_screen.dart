@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
+import '../../services/video_compress_service.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
@@ -18,6 +19,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final List<XFile> _selectedImages = [];
   XFile? _selectedVideo;
   bool _isSubmitting = false;
+  bool _isCompressing = false;
+  double _compressProgress = 0.0;
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
@@ -56,9 +59,20 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     formData.fields.add(const MapEntry('type', 'post'));
 
     if (_selectedVideo != null) {
+      // Compress the video before uploading
+      setState(() {
+        _isCompressing = true;
+        _compressProgress = 0.0;
+      });
+
+      final compressor = VideoCompressService();
+      final compressedFile = await compressor.compressVideo(_selectedVideo!.path);
+
+      setState(() => _isCompressing = false);
+
       formData.files.add(MapEntry(
         'video',
-        await MultipartFile.fromFile(_selectedVideo!.path, filename: _selectedVideo!.name),
+        await MultipartFile.fromFile(compressedFile.path, filename: compressedFile.path.split(Platform.pathSeparator).last),
       ));
     } else {
       for (var image in _selectedImages) {
@@ -74,6 +88,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     setState(() => _isSubmitting = false);
 
     if (success && mounted) {
+      // Clean up compression temp files
+      VideoCompressService().cleanUp();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Post created!'), backgroundColor: AppColors.success),
       );
@@ -101,13 +117,22 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitPost,
+              onPressed: (_isSubmitting || _isCompressing) ? null : _submitPost,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 minimumSize: const Size(0, 36),
               ),
-              child: _isSubmitting
-                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              child: (_isSubmitting || _isCompressing)
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                        if (_isCompressing) ...[
+                          const SizedBox(width: 8),
+                          const Text('Compressing...', style: TextStyle(fontSize: 12)),
+                        ],
+                      ],
+                    )
                   : const Text('Post'),
             ),
           ),

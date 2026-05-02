@@ -28,6 +28,10 @@ const commentSchema = new mongoose.Schema(
       username: { type: String, default: '' },
       avatarUrl: { type: String, default: '' },
     },
+    isHidden: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

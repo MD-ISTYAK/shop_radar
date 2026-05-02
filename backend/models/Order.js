@@ -54,8 +54,26 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'accepted', 'packed', 'ready', 'delivery_assigned', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'],
+      enum: ['pending', 'accepted', 'preparing', 'packed', 'ready', 'delivery_assigned', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'],
       default: 'pending',
+    },
+    orderType: {
+      type: String,
+      enum: ['cart', 'flexible'],
+      default: 'cart',
+    },
+    flexibleDescription: {
+      type: String,
+      default: '',
+      maxlength: 2000,
+    },
+    confirmedPrice: {
+      type: Number,
+      default: null,
+    },
+    priceConfirmedAt: {
+      type: Date,
+      default: null,
     },
     deliveryType: {
       type: String,
@@ -123,6 +141,11 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    paymentDetails: {
+      razorpayOrderId: { type: String, default: '' },
+      razorpayPaymentId: { type: String, default: '' },
+      razorpaySignature: { type: String, default: '' },
+    },
     estimatedDeliveryTime: {
       type: Date,
       default: null,
@@ -147,5 +170,6 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ shopId: 1, status: 1 });
 orderSchema.index({ deliveryPartnerId: 1, status: 1 });
+orderSchema.index({ orderId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Order', orderSchema);

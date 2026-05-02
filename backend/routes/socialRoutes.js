@@ -38,6 +38,9 @@ const {
   getSuggestedUsers,
   votePoll,
   answerQuestion,
+  createReport,
+  getSavedPosts,
+  getFriends,
 } = require('../controllers/socialController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -106,5 +109,13 @@ router.get('/follow/:userId/check', checkFollow);
 router.get('/follow/:userId/count', getFollowersCount);
 router.get('/followers/:userId', getFollowers);
 router.get('/following/:userId', getFollowing);
+router.get('/friends/:userId', getFriends);
+
+// ===================== PROFILE =====================
+router.get('/profile/:userId', getUserProfile);
+
+// ===================== REPORTS & SAVED =====================
+router.post('/report', createReport);
+router.get('/saved-posts', getSavedPosts);
 
 module.exports = router;

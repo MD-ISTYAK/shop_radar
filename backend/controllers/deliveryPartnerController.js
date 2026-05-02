@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const { calculateDistance } = require('../utils/geoDistance');
+const logger = require('../config/logger');
 
 // Register as delivery partner
 exports.registerAsPartner = async (req, res, next) => {
@@ -143,16 +144,18 @@ exports.acceptDelivery = async (req, res, next) => {
     const userId = req.user._id;
     const { deliveryId } = req.params;
 
-    // 1. Atomically assign partner if it is still null
-    // We only allow accepting if status is 'accepted' (meaning shop accepted it)
+    // 1. Atomically assign partner if it is still null (prevents double-assignment)
     const delivery = await DeliveryRequest.findOneAndUpdate(
       { _id: deliveryId, deliveryPartnerId: null, status: 'accepted' },
-      { deliveryPartnerId: userId, status: 'partner_assigned' },
+      {
+        deliveryPartnerId: userId,
+        status: 'partner_assigned',
+        assignedAt: new Date(),
+      },
       { new: true }
     ).populate('shopId', 'shopName address location phone').populate('userId', 'name phone address');
 
     if (!delivery) {
-      // Logic for "Missed Request" tracking
       await DeliveryPartner.findOneAndUpdate({ userId }, { $inc: { missedRequests: 1 } });
       return res.status(400).json({ 
         success: false, 
@@ -161,7 +164,7 @@ exports.acceptDelivery = async (req, res, next) => {
     }
 
     // 2. Update Partner stats and active deliveries
-    const partner = await DeliveryPartner.findOneAndUpdate(
+    await DeliveryPartner.findOneAndUpdate(
       { userId },
       { 
         $addToSet: { activeDeliveries: deliveryId },
@@ -180,11 +183,17 @@ exports.acceptDelivery = async (req, res, next) => {
     }
 
     // 4. Notify all online partners that it's claimed
-    const { getIO } = require('../config/socketManager');
     try {
+      const { getIO } = require('../config/socketManager');
       const io = getIO();
       io.emit('delivery:claimed', { deliveryId, claimerId: userId });
     } catch (e) {}
+
+    logger.info('Delivery accepted', {
+      requestId: req.requestId,
+      deliveryId,
+      partnerId: userId.toString(),
+    });
 
     res.json({ success: true, data: delivery });
   } catch (error) {
@@ -192,30 +201,163 @@ exports.acceptDelivery = async (req, res, next) => {
   }
 };
 
-// Notify nearby delivery partners helper
+// Reject a delivery explicitly
+exports.rejectDelivery = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { deliveryId } = req.params;
+
+    const delivery = await DeliveryRequest.findById(deliveryId);
+    if (!delivery) return res.status(404).json({ success: false, message: 'Delivery not found' });
+
+    // Only reject if it's assigned to this partner
+    if (delivery.deliveryPartnerId && delivery.deliveryPartnerId.toString() === userId.toString()) {
+      // Reassign
+      delivery.previousPartners.push(userId);
+      delivery.deliveryPartnerId = null;
+      delivery.status = 'accepted'; // Back to pool
+      delivery.reassignmentCount += 1;
+      delivery.assignedAt = null;
+      await delivery.save();
+
+      // Update partner stats
+      await DeliveryPartner.findOneAndUpdate(
+        { userId },
+        {
+          $pull: { activeDeliveries: deliveryId },
+          $inc: { rejectedDeliveries: 1 },
+        }
+      );
+
+      // Update order
+      const order = await Order.findById(delivery.orderId);
+      if (order) {
+        order.deliveryPartnerId = null;
+        order.status = 'ready'; // Back to ready for assignment
+        order.timeline.push({ status: 'partner_rejected', note: 'Delivery partner rejected, looking for another' });
+        await order.save();
+      }
+
+      // Re-notify nearby partners
+      exports.notifyNearbyPartners(delivery);
+    } else {
+      await DeliveryPartner.findOneAndUpdate({ userId }, { $inc: { rejectedDeliveries: 1 } });
+    }
+
+    res.json({ success: true, message: 'Delivery rejected' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Reassign delivery (admin or automatic)
+exports.reassignDelivery = async (req, res, next) => {
+  try {
+    const { deliveryId } = req.params;
+    const { newPartnerId } = req.body;
+
+    const delivery = await DeliveryRequest.findById(deliveryId);
+    if (!delivery) return res.status(404).json({ success: false, message: 'Delivery not found' });
+
+    if (delivery.reassignmentCount >= 3) {
+      return res.status(400).json({ success: false, message: 'Maximum reassignment limit reached (3)' });
+    }
+
+    // Release current partner
+    if (delivery.deliveryPartnerId) {
+      delivery.previousPartners.push(delivery.deliveryPartnerId);
+      await DeliveryPartner.findOneAndUpdate(
+        { userId: delivery.deliveryPartnerId },
+        { $pull: { activeDeliveries: deliveryId } }
+      );
+    }
+
+    if (newPartnerId) {
+      // Manual reassignment to specific partner
+      delivery.deliveryPartnerId = newPartnerId;
+      delivery.status = 'partner_assigned';
+      delivery.assignedAt = new Date();
+
+      await DeliveryPartner.findOneAndUpdate(
+        { userId: newPartnerId },
+        { $addToSet: { activeDeliveries: deliveryId } }
+      );
+    } else {
+      // Put back in pool
+      delivery.deliveryPartnerId = null;
+      delivery.status = 'accepted';
+      delivery.assignedAt = null;
+      exports.notifyNearbyPartners(delivery);
+    }
+
+    delivery.reassignmentCount += 1;
+    await delivery.save();
+
+    // Update order
+    const order = await Order.findById(delivery.orderId);
+    if (order) {
+      order.deliveryPartnerId = newPartnerId || null;
+      order.timeline.push({ status: 'reassigned', note: `Delivery reassigned (attempt ${delivery.reassignmentCount})` });
+      await order.save();
+    }
+
+    res.json({ success: true, data: delivery });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Notify nearby delivery partners helper (with radius fallback)
 exports.notifyNearbyPartners = async (deliveryRequest) => {
   try {
     const { getIO } = require('../config/socketManager');
     const io = getIO();
     const shopLoc = deliveryRequest.shopLocation.coordinates; // [lng, lat]
 
-    // Find verified online partners within 500m
-    const partners = await DeliveryPartner.find({
+    // Try 5km first, then 10km fallback
+    let partners = await DeliveryPartner.find({
       isOnline: true,
       kycStatus: 'verified',
+      userId: { $nin: deliveryRequest.previousPartners || [] }, // Exclude previously rejected partners
       currentLocation: {
         $near: {
           $geometry: { type: 'Point', coordinates: shopLoc },
-          $maxDistance: 500
+          $maxDistance: 5000, // 5km
         }
       }
     });
 
+    if (partners.length === 0) {
+      // Fallback to 10km radius
+      partners = await DeliveryPartner.find({
+        isOnline: true,
+        kycStatus: 'verified',
+        userId: { $nin: deliveryRequest.previousPartners || [] },
+        currentLocation: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: shopLoc },
+            $maxDistance: 10000, // 10km
+          }
+        }
+      });
+    }
+
+    if (partners.length === 0) {
+      // Mark as no partner available
+      await DeliveryRequest.findByIdAndUpdate(deliveryRequest._id, { noPartnerAvailable: true });
+      logger.warn('No delivery partners available', { deliveryId: deliveryRequest._id.toString() });
+      return;
+    }
+
     partners.forEach(partner => {
       io.to(`user:${partner.userId}`).emit('delivery:newRequest', deliveryRequest);
     });
+
+    logger.info(`Notified ${partners.length} nearby partners`, {
+      deliveryId: deliveryRequest._id.toString(),
+    });
   } catch (error) {
-    console.error('Notification Error:', error);
+    logger.error('Notification Error:', { error: error.message });
   }
 };
 
@@ -225,9 +367,13 @@ exports.completeDelivery = async (req, res, next) => {
     const userId = req.user._id;
     const { deliveryId } = req.params;
     const { otp } = req.body;
+    console.log(`[completeDelivery] userId: ${userId}, deliveryId: ${deliveryId}, otp: ${otp}`);
 
     const partner = await DeliveryPartner.findOne({ userId });
-    if (!partner) return res.status(404).json({ success: false, message: 'Not a partner' });
+    if (!partner) {
+      console.log(`[completeDelivery] Partner not found for userId: ${userId}`);
+      return res.status(404).json({ success: false, message: 'Not a partner' });
+    }
 
     const delivery = await DeliveryRequest.findById(deliveryId);
     if (!delivery || delivery.deliveryPartnerId.toString() !== userId.toString()) {
@@ -235,7 +381,10 @@ exports.completeDelivery = async (req, res, next) => {
     }
 
     const order = await Order.findById(delivery.orderId);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (!order) {
+      console.log(`[completeDelivery] Order not found for deliveryId: ${deliveryId}, orderId: ${delivery.orderId}`);
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
 
     if (order.userOtp !== otp) {
       return res.status(400).json({ success: false, message: 'Invalid OTP' });
@@ -256,6 +405,7 @@ exports.completeDelivery = async (req, res, next) => {
     await order.save();
 
     delivery.status = 'delivered';
+    delivery.deliveredAt = new Date();
     await delivery.save();
 
     // Calculate delivery time

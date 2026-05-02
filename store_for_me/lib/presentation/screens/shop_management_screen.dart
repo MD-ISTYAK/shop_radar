@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/time_utils.dart';
 import '../../data/models/social_models.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -91,7 +92,7 @@ class _PostsList extends ConsumerWidget {
                   child: Icon(post.isReel ? Icons.videocam : Icons.image, color: AppColors.primary),
                 ),
                 title: Text(post.isReel ? 'Reel' : 'Post'),
-                subtitle: Text(DateFormat.yMMMd().format(post.createdAt)),
+                subtitle: Text(TimeUtils.formatIST(post.createdAt, pattern: 'dd MMM yyyy')),
                 trailing: PopupMenuButton<String>(
                   onSelected: (value) => _handleAction(context, ref, value, post),
                   itemBuilder: (context) => [
@@ -298,7 +299,7 @@ class _StoriesList extends ConsumerWidget {
               ),
             ),
             title: Text(story.caption.isEmpty ? 'Story' : story.caption),
-            subtitle: Text('Expires: ${DateFormat.jm().format(story.expiresAt)}'),
+            subtitle: Text('Expires: ${TimeUtils.formatIST(story.expiresAt, pattern: 'hh:mm a')}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

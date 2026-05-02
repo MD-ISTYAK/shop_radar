@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/cart_provider.dart';
@@ -16,11 +17,37 @@ class CartScreen extends ConsumerStatefulWidget {
 
 class _CartScreenState extends ConsumerState<CartScreen> {
   String _deliveryType = 'home_delivery';
+  double? _userLat;
+  double? _userLng;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(cartProvider.notifier).fetchCart());
+    Future.microtask(() async {
+      await ref.read(cartProvider.notifier).fetchCart();
+      _fetchLocationAndEstimate();
+    });
+  }
+
+  Future<void> _fetchLocationAndEstimate() async {
+    if (_deliveryType != 'home_delivery') return;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition();
+      setState(() {
+        _userLat = pos.latitude;
+        _userLng = pos.longitude;
+      });
+      await ref.read(cartProvider.notifier).estimateDeliveryFee(pos.latitude, pos.longitude);
+    } catch (e) {
+      // Handle silently
+    }
   }
 
   @override
@@ -183,7 +210,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   title: const Text('Home Delivery', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                                   value: 'home_delivery',
                                   groupValue: _deliveryType,
-                                  onChanged: (val) => setState(() => _deliveryType = val!),
+                                  onChanged: (val) {
+                                    setState(() => _deliveryType = val!);
+                                    if (val == 'home_delivery' && _userLat == null) {
+                                      _fetchLocationAndEstimate();
+                                    }
+                                  },
                                   contentPadding: EdgeInsets.zero,
                                   activeColor: AppColors.primary,
                                 ),
@@ -217,10 +249,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             children: [
                               Text('Delivery', style: Theme.of(context).textTheme.bodyMedium),
                               Text(
-                                _deliveryType == 'shop_pickup' ? 'Free' : 'Calculated at checkout',
+                                _deliveryType == 'shop_pickup' 
+                                    ? 'Free' 
+                                    : cartState.estimatedDeliveryFee != null 
+                                        ? '₹${cartState.estimatedDeliveryFee!.toStringAsFixed(0)}'
+                                        : 'Calculating...',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600, 
-                                  color: _deliveryType == 'shop_pickup' ? AppColors.success : AppColors.textSecondary,
+                                  color: (_deliveryType == 'shop_pickup' || cartState.estimatedDeliveryFee != null) 
+                                      ? AppColors.success 
+                                      : AppColors.textSecondary,
                                   fontSize: 13,
                                 ),
                               ),
@@ -232,7 +270,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             children: [
                               Text('Total', style: Theme.of(context).textTheme.titleLarge),
                               Text(
-                                '₹${cartState.totalPrice.toStringAsFixed(0)}',
+                                '₹${(cartState.totalPrice + (_deliveryType == 'home_delivery' ? (cartState.estimatedDeliveryFee ?? 0) : 0)).toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
@@ -249,18 +287,22 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             onPressed: () async {
                               final success = await ref.read(cartProvider.notifier).checkout(
                                 deliveryType: _deliveryType,
-                                // TODO: Get actual location and address from user profile or map selection
-                                lat: 28.7041, 
-                                lng: 77.1025,
-                                deliveryAddress: 'Current Location',
+                                lat: _userLat, 
+                                lng: _userLng,
+                                deliveryAddress: _deliveryType == 'home_delivery' ? 'Current Location' : '',
                               );
                               if (success && context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: const Text('Order placed successfully! 🎉'),
+                                    content: const Text('🎉 Order placed successfully!'),
                                     backgroundColor: AppColors.success,
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    action: SnackBarAction(
+                                      label: 'View Orders',
+                                      textColor: Colors.white,
+                                      onPressed: () => Navigator.pushReplacementNamed(context, '/orders'),
+                                    ),
                                   ),
                                 );
                               }

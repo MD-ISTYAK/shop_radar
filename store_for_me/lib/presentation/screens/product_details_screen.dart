@@ -281,10 +281,15 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         if (added && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Added to cart!'),
+                              content: const Text('✅ Added to cart!'),
                               backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              action: SnackBarAction(
+                                label: 'View Cart',
+                                textColor: Colors.white,
+                                onPressed: () => Navigator.pushNamed(context, '/cart'),
+                              ),
                             ),
                           );
                         }

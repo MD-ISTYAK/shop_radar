@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../../services/api_service.dart';
 import '../../data/models/order_model.dart';
@@ -70,7 +69,10 @@ class OrderNotifier extends StateNotifier<OrderState> {
       await _api.updateOrderStatus(orderId, status);
       await fetchShopOrders();
       return true;
-    } catch (_) {
+    } catch (e) {
+      if (e is DioException && e.response?.data != null) {
+        state = state.copyWith(error: e.response?.data['message']);
+      }
       return false;
     }
   }
@@ -100,10 +102,6 @@ class OrderNotifier extends StateNotifier<OrderState> {
   }
 
   Future<String?> completeShopPickup(String id, String otp) async {
-    debugPrint('--- Handover Verification DEBUG (Provider) ---');
-    debugPrint('Order ID: $id');
-    debugPrint('Verification Code: $otp');
-    debugPrint('----------------------------------------');
     try {
       await _api.completeShopPickup(id, otp);
       await fetchShopOrders();
@@ -125,9 +123,111 @@ class OrderNotifier extends StateNotifier<OrderState> {
       return false;
     }
   }
+
+  // ===================== FLEXIBLE ORDERS =====================
+  Future<Map<String, dynamic>?> createFlexibleOrder({
+    required String shopId,
+    required String description,
+    String deliveryType = 'home_delivery',
+    String? deliveryAddress,
+    double? lat,
+    double? lng,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final res = await _api.createFlexibleOrder({
+        'shopId': shopId,
+        'description': description,
+        'deliveryType': deliveryType,
+        if (deliveryAddress != null) 'deliveryAddress': deliveryAddress,
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
+      });
+
+      state = state.copyWith(isLoading: false);
+      if (res.data['success'] == true) {
+        await fetchMyOrders();
+        return res.data['data'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: _extractError(e));
+      return null;
+    }
+  }
+
+  Future<bool> confirmOrderPrice(String orderId, double price) async {
+    try {
+      final res = await _api.confirmOrderPrice(orderId, price);
+      if (res.data['success'] == true) {
+        await fetchShopOrders();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: _extractError(e));
+      return false;
+    }
+  }
+
+  Future<bool> acceptOrderPrice(String orderId) async {
+    try {
+      final res = await _api.acceptOrderPrice(orderId);
+      if (res.data['success'] == true) {
+        await fetchMyOrders();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: _extractError(e));
+      return false;
+    }
+  }
+
+  // ===================== PAYMENTS =====================
+  Future<Map<String, dynamic>?> createPaymentOrder(String orderId) async {
+    try {
+      final res = await _api.createPaymentOrder(orderId);
+      if (res.data['success'] == true) {
+        return res.data['data'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      state = state.copyWith(error: _extractError(e));
+      return null;
+    }
+  }
+
+  Future<bool> verifyPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    required String orderId,
+  }) async {
+    try {
+      final res = await _api.verifyPayment({
+        'razorpayOrderId': razorpayOrderId,
+        'razorpayPaymentId': razorpayPaymentId,
+        'razorpaySignature': razorpaySignature,
+        'orderId': orderId,
+      });
+      if (res.data['success'] == true) {
+        await fetchMyOrders();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      state = state.copyWith(error: _extractError(e));
+      return false;
+    }
+  }
+
+  String _extractError(dynamic e) {
+    if (e is DioException && e.response?.data != null) {
+      return e.response?.data['message'] ?? 'Something went wrong';
+    }
+    return 'Connection error. Please try again.';
+  }
 }
 
 final orderProvider = StateNotifierProvider<OrderNotifier, OrderState>((ref) => OrderNotifier());
-
-
-

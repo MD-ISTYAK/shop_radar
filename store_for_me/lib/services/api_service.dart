@@ -10,6 +10,7 @@ class ApiService {
 
   late final Dio _dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  bool _isRefreshing = false;
 
   ApiService._internal() {
     _dio = Dio(
@@ -28,21 +29,41 @@ class ApiService {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          debugPrint('--------------------------------------------------');
-          debugPrint('[API REQ] ${options.method} ${options.uri}');
-          if (options.data != null) debugPrint('[API DATA] ${options.data}');
+          debugPrint('[API] ${options.method} ${options.path}');
           handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint('[API RES] ${response.statusCode} FROM ${response.requestOptions.path}');
-          debugPrint('[API BODY] ${response.data}');
-          debugPrint('--------------------------------------------------');
+          debugPrint('[API] ${response.statusCode} ${response.requestOptions.path}');
           handler.next(response);
         },
-        onError: (error, handler) {
-          debugPrint('[API ERR] ${error.response?.statusCode} ON ${error.requestOptions.path}');
-          debugPrint('[API DATA] ${error.response?.data}');
-          debugPrint('--------------------------------------------------');
+        onError: (error, handler) async {
+          // Auto-refresh token on 401
+          if (error.response?.statusCode == 401 && !_isRefreshing) {
+            _isRefreshing = true;
+            try {
+              final refreshToken = await _storage.read(key: AppConstants.refreshTokenKey);
+              if (refreshToken != null) {
+                final refreshResponse = await Dio(BaseOptions(baseUrl: AppConstants.baseUrl))
+                    .post('/auth/refresh-token', data: {'refreshToken': refreshToken});
+
+                if (refreshResponse.data['success'] == true) {
+                  final newToken = refreshResponse.data['data']['token'];
+                  final newRefresh = refreshResponse.data['data']['refreshToken'];
+                  await saveToken(newToken);
+                  await saveRefreshToken(newRefresh);
+
+                  // Retry the original request with new token
+                  error.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+                  final retryResponse = await _dio.fetch(error.requestOptions);
+                  _isRefreshing = false;
+                  return handler.resolve(retryResponse);
+                }
+              }
+            } catch (_) {}
+            _isRefreshing = false;
+          }
+          debugPrint('[API ERR] ${error.response?.statusCode} ${error.requestOptions.path}');
+          debugPrint('[API ERR RESPONSE] ${error.response?.data}');
           handler.next(error);
         },
       ),
@@ -58,6 +79,9 @@ class ApiService {
   Future<Response> login(Map<String, dynamic> data) =>
       _dio.post('/auth/login', data: data);
 
+  Future<Response> refreshAccessToken(String refreshToken) =>
+      _dio.post('/auth/refresh-token', data: {'refreshToken': refreshToken});
+
   Future<Response> getProfile() => _dio.get('/auth/profile');
   
   Future<Response> updateProfile(FormData data) =>
@@ -72,8 +96,13 @@ class ApiService {
     return await _storage.read(key: AppConstants.tokenKey);
   }
 
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: AppConstants.refreshTokenKey, value: token);
+  }
+
   Future<void> deleteToken() async {
     await _storage.delete(key: AppConstants.tokenKey);
+    await _storage.delete(key: AppConstants.refreshTokenKey);
   }
 
   // ===================== SHOPS =====================
@@ -165,6 +194,18 @@ class ApiService {
   Future<Response> checkout(Map<String, dynamic> data) =>
       _dio.post('/cart/checkout', data: data);
 
+  Future<Response> estimateDelivery(Map<String, dynamic> data) =>
+      _dio.post('/cart/estimate-delivery', data: data);
+
+  // ===================== SUBSCRIPTIONS =====================
+  Future<Response> getSubscriptionPlans() => _dio.get('/subscription/plans');
+
+  Future<Response> createSubscriptionOrder(String planId) =>
+      _dio.post('/subscription/order', data: {'planId': planId});
+
+  Future<Response> verifySubscriptionPayment(Map<String, dynamic> paymentData) =>
+      _dio.post('/subscription/verify', data: paymentData);
+
   // ===================== ORDERS =====================
   Future<Response> getMyOrders({String? status, int page = 1}) {
     final params = <String, dynamic>{'page': page};
@@ -193,16 +234,33 @@ class ApiService {
   Future<Response> verifyPickupCode(String id, String code) =>
       _dio.post('/orders/$id/verify-pickup', data: {'code': code});
 
-  Future<Response> completeShopPickup(String id, String otp) {
-    debugPrint('DIO POST: /orders/$id/complete-pickup');
-    debugPrint('PAYLOAD (Verification Code): {"otp": "$otp"}');
-    return _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
-  }
+  Future<Response> completeShopPickup(String id, String otp) =>
+      _dio.post('/orders/$id/complete-pickup', data: {'otp': otp});
 
   Future<Response> cancelOrder(String id, {String reason = ''}) =>
       _dio.patch('/orders/$id/cancel', data: {'reason': reason});
 
   Future<Response> getShopOrderStats() => _dio.get('/orders/shop-stats');
+
+  // Flexible orders
+  Future<Response> createFlexibleOrder(Map<String, dynamic> data) =>
+      _dio.post('/orders/flexible', data: data);
+
+  Future<Response> confirmOrderPrice(String orderId, double price) =>
+      _dio.patch('/orders/$orderId/confirm-price', data: {'price': price});
+
+  Future<Response> acceptOrderPrice(String orderId) =>
+      _dio.patch('/orders/$orderId/accept-price');
+
+  // ===================== PAYMENTS =====================
+  Future<Response> createPaymentOrder(String orderId) =>
+      _dio.post('/payments/create-order', data: {'orderId': orderId});
+
+  Future<Response> verifyPayment(Map<String, dynamic> data) =>
+      _dio.post('/payments/verify', data: data);
+
+  Future<Response> getPaymentStatus(String orderId) =>
+      _dio.get('/payments/$orderId/status');
 
   // ===================== SOCIAL =====================
   Future<Response> createPost(FormData data) =>
@@ -217,8 +275,11 @@ class ApiService {
   Future<Response> toggleLike(String postId) =>
       _dio.post('/social/posts/$postId/like');
 
-  Future<Response> getPostComments(String postId) =>
-      _dio.get('/social/posts/$postId/comments');
+  Future<Response> getPostComments(String postId, {String? cursor, int limit = 20}) {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    return _dio.get('/social/posts/$postId/comments', queryParameters: params);
+  }
 
   Future<Response> addComment(String postId, String text, {String? parentCommentId}) {
     final data = <String, dynamic>{'text': text};
@@ -244,7 +305,8 @@ class ApiService {
   Future<Response> getPostLikes(String postId) =>
       _dio.get('/social/posts/$postId/likes');
 
-  Future<Response> getMyPosts() => _dio.get('/social/my-posts');
+  Future<Response> getMyPosts({int page = 1, int limit = 20}) =>
+      _dio.get('/social/my-posts', queryParameters: {'page': page, 'limit': limit});
 
   Future<Response> createStory(FormData data) =>
       _dio.post('/social/stories', data: data);
@@ -279,14 +341,15 @@ class ApiService {
 
   Future<Response> getFollowing(String userId, {int page = 1}) =>
       _dio.get('/social/following/$userId', queryParameters: {'page': page});
+  
+  Future<Response> getFriends(String userId, {int page = 1}) =>
+      _dio.get('/social/friends/$userId', queryParameters: {'page': page});
 
   Future<Response> getFollowedShops() =>
       _dio.get('/social/follow/my-follows');
 
-  Future<Response> getUserProfile(String userId) {
-    debugPrint('[API] Requesting User Profile: /users/$userId');
-    return _dio.get('/users/$userId');
-  }
+  Future<Response> getUserProfile(String userId) =>
+      _dio.get('/social/profile/$userId');
 
   Future<Response> getUserPosts(String userId, {String? cursor, int limit = 12}) {
     final params = <String, dynamic>{'limit': limit};
@@ -317,6 +380,27 @@ class ApiService {
 
   Future<Response> getSuggestedUsers() =>
       _dio.get('/social/users/suggested');
+
+  // Report content
+  Future<Response> reportContent({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    String? description,
+  }) =>
+      _dio.post('/social/report', data: {
+        'targetType': targetType,
+        'targetId': targetId,
+        'reason': reason,
+        if (description != null) 'description': description,
+      });
+
+  // Saved posts
+  Future<Response> getSavedPosts({String? cursor, int limit = 20}) {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    return _dio.get('/social/saved-posts', queryParameters: params);
+  }
 
   // ===================== REVIEWS =====================
   Future<Response> createReview(Map<String, dynamic> data) =>
@@ -449,10 +533,13 @@ class ApiService {
       _dio.get('/delivery-partner/available');
 
   Future<Response> acceptDelivery(String deliveryId) =>
-      _dio.post('/delivery-partner/accept/$deliveryId');
+      _dio.post('/delivery-partner/$deliveryId/accept');
+
+  Future<Response> rejectDelivery(String deliveryId) =>
+      _dio.post('/delivery-partner/$deliveryId/reject');
 
   Future<Response> completeDelivery(String deliveryId, FormData data) =>
-      _dio.post('/delivery-partner/complete/$deliveryId', data: data);
+      _dio.post('/delivery-partner/$deliveryId/complete', data: data);
 
   Future<Response> getPartnerProfile() =>
       _dio.get('/delivery-partner/profile');

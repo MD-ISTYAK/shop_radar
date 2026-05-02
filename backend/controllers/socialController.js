@@ -10,15 +10,22 @@ const Feed = require('../models/Feed');
 const Like = require('../models/Like');
 const Comment = require('../models/Comment');
 const { optimizeMediaUrl, getVideoThumbnail } = require('../config/cloudinary');
+const moderationService = require('../services/moderationService');
 
 // ===================== POSTS =====================
 
-// @desc    Create a post (any user or shop owner)
+// @desc    Create a post (any user or shop owner) — with moderation pipeline for reels
 // @route   POST /api/social/posts
 const createPost = async (req, res, next) => {
   try {
     const { content, type, caption } = req.body;
     const userId = req.user._id;
+
+    // ── Step 0: Check upload eligibility (ban / cooldown) ──
+    const eligibility = await moderationService.checkUploadEligibility(userId);
+    if (!eligibility.allowed) {
+      return res.status(403).json({ success: false, message: eligibility.reason });
+    }
 
     const user = await User.findById(userId);
 
@@ -51,6 +58,10 @@ const createPost = async (req, res, next) => {
         });
       });
     }
+
+    let videoUrl = '';
+    let isReel = false;
+
     // Handle video upload for reels
     if (req.files && req.files.video && req.files.video[0]) {
       const vUrl = optimizeMediaUrl(req.files.video[0].path, 'video');
@@ -63,6 +74,63 @@ const createPost = async (req, res, next) => {
       postData.videoUrl = vUrl;
       postData.thumbnailUrl = tUrl;
       postData.type = 'reel';
+      videoUrl = vUrl;
+      isReel = true;
+    }
+
+    // ── Moderation Pipeline (for reels/video content) ──
+    if (isReel && videoUrl) {
+      // Step 1: Generate perceptual hash
+      const videoHash = await moderationService.generateVideoHash(videoUrl);
+      postData.videoHash = videoHash;
+
+      // Step 2: Check duplicate
+      if (videoHash) {
+        const dupCheck = await moderationService.checkDuplicate(videoHash);
+        if (dupCheck.isDuplicate) {
+          return res.status(409).json({
+            success: false,
+            message: 'This video appears to be a duplicate of existing content',
+            data: { similarity: dupCheck.similarity },
+          });
+        }
+      }
+
+      // Step 3: Check blocked hash list
+      const blockedCheck = await moderationService.checkBlockedHash(videoHash, '');
+      if (blockedCheck.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: `Upload blocked: ${blockedCheck.reason}`,
+        });
+      }
+
+      // Step 4: Generate audio fingerprint (async, non-blocking for UX)
+      moderationService.generateAudioFingerprint(videoUrl).then(async (audioFp) => {
+        if (audioFp) {
+          // Check audio blocklist
+          const audioBlocked = await moderationService.checkBlockedHash('', audioFp);
+          if (audioBlocked.isBlocked) {
+            // Auto-flag — reduce visibility instead of blocking
+            await Post.findOneAndUpdate(
+              { videoUrl },
+              { audioFingerprint: audioFp, visibilityScore: 5, distributionLevel: 'limited' }
+            );
+          } else {
+            await Post.findOneAndUpdate({ videoUrl }, { audioFingerprint: audioFp });
+          }
+        }
+      }).catch(() => {});
+
+      // Step 5: Calculate initial visibility from trust score
+      postData.visibilityScore = moderationService.calculateInitialVisibility(user.trustScore || 50);
+      postData.distributionLevel = 'limited';
+      postData.moderationStatus = 'pending';
+    } else {
+      // Regular image posts get standard visibility
+      postData.visibilityScore = 100;
+      postData.distributionLevel = 'standard';
+      postData.moderationStatus = 'approved';
     }
 
     const post = await Post.create(postData);
@@ -70,17 +138,30 @@ const createPost = async (req, res, next) => {
     // Increment User postsCount
     await User.findByIdAndUpdate(userId, { $inc: { 'stats.postsCount': 1 } });
 
+    // Award trust score for clean upload
+    moderationService.updateTrustScore(userId, 'clean_upload').catch(() => {});
+
     // Notify followers and Fan-out to Feed
     const followers = await Follow.find({ followingId: userId });
+    
+    // For limited-visibility reels, only fan-out to a percentage of followers
+    let targetFollowers = followers;
+    if (isReel && postData.distributionLevel === 'limited') {
+      const visibilityPct = postData.visibilityScore / 100;
+      const targetCount = Math.max(1, Math.ceil(followers.length * visibilityPct));
+      // Randomly select a subset of followers
+      const shuffled = [...followers].sort(() => Math.random() - 0.5);
+      targetFollowers = shuffled.slice(0, targetCount);
+    }
     
     // Add to my own feed
     const feedEntries = [{ userId, postId: post._id }];
 
-    if (followers.length > 0) {
+    if (targetFollowers.length > 0) {
       const displayName = user.username || user.name;
       
       const notifications = [];
-      followers.forEach((f) => {
+      targetFollowers.forEach((f) => {
         // Feed Fan-out
         feedEntries.push({ userId: f.followerId, postId: post._id });
         
@@ -255,17 +336,29 @@ const toggleLike = async (req, res, next) => {
   }
 };
 
-// @desc    Get comments for a post
-// @route   GET /api/social/posts/:id/comments
+// @desc    Get comments for a post (paginated)
+// @route   GET /api/social/posts/:id/comments?cursor=&limit=
 const getPostComments = async (req, res, next) => {
   try {
-    const comments = await Comment.find({ postId: req.params.id, isHidden: { $ne: true } })
-      .sort({ createdAt: -1 }) // or 1 for chronological
+    const { cursor, limit = 20 } = req.query;
+    const limitNum = parseInt(limit);
+    
+    const query = { postId: req.params.id, isHidden: { $ne: true } };
+    if (cursor) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
+
+    const comments = await Comment.find(query)
+      .sort({ _id: -1 })
+      .limit(limitNum)
       .lean();
+
+    const nextCursor = comments.length > 0 ? comments[comments.length - 1]._id : null;
 
     res.status(200).json({
       success: true,
       count: comments.length,
+      nextCursor,
       data: comments,
     });
   } catch (error) {
@@ -474,14 +567,19 @@ const deleteComment = async (req, res, next) => {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    const comment = post.comments.id(req.params.commentId);
+    const comment = await Comment.findById(req.params.commentId);
     if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
 
-    if (post.ownerId.toString() !== req.user._id.toString() && comment.userId.toString() !== req.user._id.toString()) {
+    // Only post owner or comment author can delete
+    const isPostOwner = (post.ownerId && post.ownerId.toString() === req.user._id.toString()) ||
+                        (post.userId && post.userId.toString() === req.user._id.toString());
+    const isCommentAuthor = comment.userId.toString() === req.user._id.toString();
+
+    if (!isPostOwner && !isCommentAuthor) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    comment.deleteOne();
+    await Comment.findByIdAndDelete(req.params.commentId);
     post.commentsCount = Math.max(0, (post.commentsCount || 1) - 1);
     await post.save();
     res.status(200).json({ success: true, message: 'Comment deleted' });
@@ -497,15 +595,17 @@ const toggleHideComment = async (req, res, next) => {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
 
-    if (post.ownerId.toString() !== req.user._id.toString()) {
+    const isPostOwner = (post.ownerId && post.ownerId.toString() === req.user._id.toString()) ||
+                        (post.userId && post.userId.toString() === req.user._id.toString());
+    if (!isPostOwner) {
       return res.status(403).json({ success: false, message: 'Only post owner can hide comments' });
     }
 
-    const comment = post.comments.id(req.params.commentId);
+    const comment = await Comment.findById(req.params.commentId);
     if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
 
     comment.isHidden = !comment.isHidden;
-    await post.save();
+    await comment.save();
     res.status(200).json({ success: true, data: comment });
   } catch (error) {
     next(error);
@@ -516,27 +616,50 @@ const toggleHideComment = async (req, res, next) => {
 // @route   GET /api/social/posts/:id/likes
 const getPostLikes = async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).populate('likes', 'name username profilePic avatar');
+    const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ success: false, message: 'Post not found' });
-    res.status(200).json({ success: true, count: post.likes.length, data: post.likes });
+
+    const likes = await Like.find({ postId: post._id })
+      .populate('userId', 'name username profilePic avatar')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    const users = likes.map(l => l.userId).filter(Boolean);
+    res.status(200).json({ success: true, count: users.length, data: users });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Get my posts
-// @route   GET /api/social/my-posts
+// @desc    Get my posts (paginated)
+// @route   GET /api/social/my-posts?page=&limit=
 const getMyPosts = async (req, res, next) => {
   try {
-    const posts = await Post.find({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = {
       $or: [{ userId: req.user._id }, { ownerId: req.user._id }],
-    })
+    };
+
+    const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
-      .populate('comments.userId', 'name username profilePic avatar')
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     _addLikeStatus(posts, req.user._id);
-    res.status(200).json({ success: true, count: posts.length, data: posts });
+
+    const total = await Post.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      count: posts.length,
+      data: posts,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     next(error);
   }
@@ -703,36 +826,91 @@ const getMyStories = async (req, res, next) => {
 
 // ===================== REELS =====================
 
-// @desc    Get reels feed (followed users first, then trending)
+// @desc    Get reels feed — safety-aware scoring algorithm
 // @route   GET /api/social/reels?page=&limit=
 const getReels = async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     const userId = req.user._id;
 
-    // Optimized field selection
-    const selectFields = 'userId shopId ownerId content caption videoUrl media mediaUrl thumbnailUrl mediaType type likesCount commentsCount createdAt duration isHidden';
+    // Optimized field selection including moderation fields
+    const selectFields = 'userId shopId ownerId content caption videoUrl media mediaUrl thumbnailUrl mediaType type likesCount commentsCount viewCount createdAt duration isHidden visibilityScore distributionLevel reportCount moderationStatus';
 
-    const reels = await Post.find({
+    // Base filters: exclude hidden, rejected, and hidden-distribution content
+    const baseFilter = {
       type: 'reel',
       $or: [
         { videoUrl: { $ne: '' } },
         { 'media.type': 'video' }
       ],
       isHidden: { $ne: true },
-    })
+      moderationStatus: { $nin: ['rejected', 'auto_hidden'] },
+      distributionLevel: { $ne: 'hidden' },
+    };
+
+    // Fetch a larger pool for scoring (3x the limit)
+    const poolSize = parseInt(limit) * 3;
+
+    const reels = await Post.find(baseFilter)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
+      .limit(poolSize)
       .select(selectFields)
-      .populate('userId', 'name username profilePic avatar accountType')
+      .populate('userId', 'name username profilePic avatar accountType trustScore')
       .populate('shopId', 'shopName logo')
       .lean();
 
-    _addLikeStatus(reels, userId);
+    // Apply visibility gate for limited-distribution reels
+    // Each user gets a deterministic seed so they see consistent results
+    const userSeed = userId.toString().split('').reduce((a, c) => a + c.charCodeAt(0), 0);
 
-    res.status(200).json({ success: true, count: reels.length, data: reels });
+    const visibleReels = reels.filter((reel) => {
+      // Approved and standard/boosted content always visible
+      if (reel.moderationStatus === 'approved' || reel.distributionLevel === 'standard' || reel.distributionLevel === 'boosted') {
+        return true;
+      }
+
+      // For limited reels, use visibility gate
+      if (reel.distributionLevel === 'limited') {
+        const reelSeed = reel._id.toString().split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const hash = (userSeed * 31 + reelSeed) % 100;
+        return hash < (reel.visibilityScore || 10);
+      }
+
+      return true;
+    });
+
+    // Score each reel for ranking
+    const now = Date.now();
+    const scoredReels = visibleReels.map((reel) => {
+      const daysSincePost = (now - new Date(reel.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+
+      // Engagement score
+      const engagement = (reel.likesCount || 0) * 2 + (reel.viewCount || 0) * 0.5 + (reel.commentsCount || 0) * 3;
+
+      // Recency bonus (7-day window)
+      const recencyBonus = Math.max(0, 7 - daysSincePost) * 10;
+
+      // Report penalty — NEVER boost reported content
+      const reportPenalty = (reel.reportCount || 0) * -50;
+
+      // Author trust bonus
+      const authorTrust = (reel.userId?.trustScore || 50) * 0.5;
+
+      reel._score = engagement + recencyBonus + reportPenalty + authorTrust;
+      return reel;
+    });
+
+    // Sort by score descending, then paginate
+    scoredReels.sort((a, b) => b._score - a._score);
+
+    const startIdx = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedReels = scoredReels.slice(startIdx, startIdx + parseInt(limit));
+
+    // Remove internal scoring field and add like status
+    paginatedReels.forEach((r) => delete r._score);
+    _addLikeStatus(paginatedReels, userId);
+
+    res.status(200).json({ success: true, count: paginatedReels.length, data: paginatedReels });
   } catch (error) {
     next(error);
   }
@@ -931,6 +1109,33 @@ const getFollowing = async (req, res, next) => {
       .populate('followingId', 'name username profilePic avatar accountType');
 
     const users = follows.filter((f) => f.followingId).map((f) => f.followingId);
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getFriends = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get IDs of people this user follows
+    const followingDocs = await Follow.find({ followerId: userId }).select('followingId');
+    const followingIds = followingDocs.map(f => f.followingId.toString());
+
+    // Get followers of this user who are ALSO in the following list
+    const follows = await Follow.find({ 
+      followingId: userId,
+      followerId: { $in: followingIds }
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('followerId', 'name username profilePic avatar accountType');
+
+    const users = follows.filter((f) => f.followerId).map((f) => f.followerId);
     res.status(200).json({ success: true, count: users.length, data: users });
   } catch (error) {
     next(error);
@@ -1160,6 +1365,88 @@ const answerQuestion = async (req, res, next) => {
   }
 };
 
+// ===================== REPORTS =====================
+
+const Report = require('../models/Report');
+
+// @desc    Report a post/user/comment — with auto-moderation
+// @route   POST /api/social/report
+const createReport = async (req, res, next) => {
+  try {
+    const { targetType, targetId, reason, description } = req.body;
+    const reporterId = req.user._id;
+
+    if (!targetType || !targetId || !reason) {
+      return res.status(400).json({ success: false, message: 'targetType, targetId, and reason are required' });
+    }
+
+    const report = await Report.create({
+      reporterId,
+      targetType,
+      targetId,
+      reason,
+      description: description || '',
+    });
+
+    // ── Auto-moderation pipeline ──
+    if (['post', 'reel'].includes(targetType)) {
+      // Increment report count on the post
+      await Post.findByIdAndUpdate(targetId, { $inc: { reportCount: 1 } });
+
+      // Run auto-moderation (checks threshold, auto-hides if needed)
+      const modResult = await moderationService.autoModerate(targetId);
+
+      // Decrease the content author's trust score
+      const post = await Post.findById(targetId).select('userId');
+      if (post?.userId && post.userId.toString() !== reporterId.toString()) {
+        moderationService.updateTrustScore(post.userId, 'report_received').catch(() => {});
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: modResult.hidden
+          ? 'Report submitted. Content has been auto-hidden for review.'
+          : 'Report submitted. Our team will review it shortly.',
+        data: report,
+      });
+    }
+
+    res.status(201).json({ success: true, message: 'Report submitted', data: report });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'You have already reported this content' });
+    }
+    next(error);
+  }
+};
+
+// @desc    Get user's saved posts
+// @route   GET /api/social/saved-posts?cursor=&limit=
+const getSavedPosts = async (req, res, next) => {
+  try {
+    const { cursor, limit = 20 } = req.query;
+    const userId = req.user._id;
+
+    const query = { savedBy: userId, isHidden: { $ne: true } };
+    if (cursor) {
+      query._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+    }
+
+    const posts = await Post.find(query)
+      .sort({ _id: -1 })
+      .limit(parseInt(limit))
+      .populate('userId', 'name username profilePic avatar accountType')
+      .lean();
+
+    _addLikeStatus(posts, userId);
+    const nextCursor = posts.length > 0 ? posts[posts.length - 1]._id : null;
+
+    res.status(200).json({ success: true, count: posts.length, nextCursor, data: posts });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ===================== EXPORTS =====================
 
 module.exports = {
@@ -1199,4 +1486,7 @@ module.exports = {
   getSuggestedUsers,
   votePoll,
   answerQuestion,
+  createReport,
+  getSavedPosts,
+  getFriends,
 };

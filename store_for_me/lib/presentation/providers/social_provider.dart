@@ -589,11 +589,42 @@ class SocialNotifier extends StateNotifier<SocialState> {
       isProfileLoading: false,
     );
   }
+
+  // ===================== REPORT =====================
+  Future<bool> reportContent({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    String? description,
+  }) async {
+    try {
+      final response = await _api.reportContent(
+        targetType: targetType,
+        targetId: targetId,
+        reason: reason,
+        description: description,
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ===================== SAVED POSTS =====================
+  Future<List<PostModel>> fetchSavedPosts({String? cursor, int limit = 20}) async {
+    try {
+      final response = await _api.getSavedPosts(cursor: cursor, limit: limit);
+      if (response.data['success'] == true) {
+        return (response.data['data'] as List)
+            .map((e) => PostModel.fromJson(e))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
 }
 
 final socialProvider = StateNotifierProvider<SocialNotifier, SocialState>((ref) {
   return SocialNotifier();
 });
-
-
-

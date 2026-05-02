@@ -98,7 +98,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'owner', 'delivery_partner', 'business_owner'],
+      enum: ['user', 'owner', 'delivery_partner', 'business_owner', 'admin'],
       default: 'user',
     },
     accountType: {
@@ -176,6 +176,46 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Business',
     }],
+
+    // ── Subscription System ──
+    subscription: {
+      plan: {
+        type: String,
+        enum: ['free', 'pro', 'ultra_pro'],
+        default: 'free',
+      },
+      expiresAt: {
+        type: Date,
+        default: null,
+      },
+      razorpaySubscriptionId: {
+        type: String,
+      },
+    },
+
+    // ── Moderation & Trust System ──
+    trustScore: {
+      type: Number,
+      default: 50,
+      min: 0,
+      max: 100,
+    },
+    strikeCount: {
+      type: Number,
+      default: 0,
+    },
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+    banReason: {
+      type: String,
+      default: '',
+    },
+    uploadCooldownUntil: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

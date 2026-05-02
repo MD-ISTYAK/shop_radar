@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
+import '../../services/video_compress_service.dart';
 
 class CreateStoryScreen extends ConsumerStatefulWidget {
   const CreateStoryScreen({super.key});
@@ -54,10 +55,24 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
 
     final formData = FormData();
     formData.fields.add(MapEntry('caption', _captionController.text.trim()));
-    formData.files.add(MapEntry(
-      'image',
-      await MultipartFile.fromFile(_selectedMedia!.path, filename: _selectedMedia!.name),
-    ));
+
+    // Check if it's a video and compress it first
+    final isVideo = _selectedMedia!.path.toLowerCase().endsWith('.mp4') ||
+                    _selectedMedia!.path.toLowerCase().endsWith('.mov') ||
+                    _selectedMedia!.name.toLowerCase().endsWith('.mp4');
+
+    if (isVideo) {
+      final compressedFile = await VideoCompressService().compressVideo(_selectedMedia!.path);
+      formData.files.add(MapEntry(
+        'image',
+        await MultipartFile.fromFile(compressedFile.path, filename: compressedFile.path.split(Platform.pathSeparator).last),
+      ));
+    } else {
+      formData.files.add(MapEntry(
+        'image',
+        await MultipartFile.fromFile(_selectedMedia!.path, filename: _selectedMedia!.name),
+      ));
+    }
 
     final success = await ref.read(socialProvider.notifier).createStory(formData);
 

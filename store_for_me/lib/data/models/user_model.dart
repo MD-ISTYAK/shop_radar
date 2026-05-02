@@ -18,6 +18,8 @@ class UserModel {
   final String username;
   final String bio;
   final int businessCount;
+  final String subscriptionPlan;
+  final DateTime? subscriptionExpiresAt;
 
   UserModel({
     required this.id,
@@ -39,11 +41,14 @@ class UserModel {
     this.username = '',
     this.bio = '',
     this.businessCount = 0,
+    this.subscriptionPlan = 'free',
+    this.subscriptionExpiresAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final loc = json['location'];
     final profile = json['profile'] ?? {};
+    final subscription = json['subscription'] ?? {};
     
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
@@ -68,6 +73,8 @@ class UserModel {
       username: json['username'] ?? '',
       bio: json['bio'] ?? profile['bio'] ?? '',
       businessCount: json['businessCount'] ?? (json['businesses'] is List ? (json['businesses'] as List).length : 0),
+      subscriptionPlan: subscription['plan'] ?? 'free',
+      subscriptionExpiresAt: subscription['expiresAt'] != null ? DateTime.tryParse(subscription['expiresAt']) : null,
     );
   }
 

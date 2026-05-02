@@ -5,6 +5,7 @@ import '../providers/order_provider.dart';
 import '../../data/models/order_model.dart';
 import '../widgets/common_widgets.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/time_utils.dart';
 
 class OwnerOrdersScreen extends ConsumerStatefulWidget {
   final ScrollController? scrollController;
@@ -247,7 +248,7 @@ class _OwnerOrdersScreenState extends ConsumerState<OwnerOrdersScreen> with Sing
                         Icon(Icons.access_time, size: 14, color: Theme.of(context).textTheme.bodySmall?.color),
                         const SizedBox(width: 4),
                         Text(
-                          DateFormat('hh:mm a  dd-MM-yyyy').format(order.createdAt.toLocal()), 
+                          TimeUtils.formatIST(order.createdAt, pattern: 'hh:mm a  dd-MM-yyyy'), 
                           style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12, fontWeight: FontWeight.w500)
                         ),
                       ],

@@ -283,14 +283,23 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                   ),
                   Switch(
                     value: partner.isOnline,
-                    onChanged: (val) {
+                    onChanged: (val) async {
                       if (!partner.isKYCVerified && val) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Complete KYC to go online')),
                         );
                         return;
                       }
-                      ref.read(deliveryPartnerProvider.notifier).toggleOnline();
+                      final error = await ref.read(deliveryPartnerProvider.notifier).toggleOnline();
+                      if (error != null && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                     activeColor: Colors.white,
                     activeTrackColor: Colors.white.withAlpha(100),
@@ -546,8 +555,8 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₹${delivery?['deliveryFee'] ?? 40}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
-                      Text('Fee', style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      Text('₹${((delivery?['deliveryFee'] ?? 40) * 0.85).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.success)),
+                      Text('You earn', style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodySmall?.color)),
                     ],
                   ),
               ],

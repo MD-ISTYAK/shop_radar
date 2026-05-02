@@ -1,4 +1,5 @@
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/time_utils.dart';
 
 // ===================== USER PROFILE =====================
 class UserProfileModel {
@@ -277,14 +278,7 @@ class PostModel {
   String get displayProfilePic => profilePic.isNotEmpty ? AppConstants.getImageUrl(profilePic) : '';
 
   String get timeAgo {
-    final diff = DateTime.now().difference(createdAt);
-    if (diff.inDays > 365) return '${diff.inDays ~/ 365}y';
-    if (diff.inDays > 30) return '${diff.inDays ~/ 30}mo';
-    if (diff.inDays > 7) return '${diff.inDays ~/ 7}w';
-    if (diff.inDays > 0) return '${diff.inDays}d';
-    if (diff.inHours > 0) return '${diff.inHours}h';
-    if (diff.inMinutes > 0) return '${diff.inMinutes}m';
-    return 'now';
+    return TimeUtils.timeAgoIST(createdAt);
   }
 
   PostModel copyWith({

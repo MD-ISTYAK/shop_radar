@@ -43,6 +43,17 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    category: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: 50,
+    },
+    unit: {
+      type: String,
+      enum: ['piece', 'kg', 'gram', 'litre', 'ml', 'pack', 'dozen', 'pair', 'set', 'other'],
+      default: 'piece',
+    },
   },
   { timestamps: true }
 );
@@ -57,5 +68,9 @@ productSchema.virtual('discountedPrice').get(function () {
 
 productSchema.set('toJSON', { virtuals: true });
 productSchema.set('toObject', { virtuals: true });
+
+// Indexes
+productSchema.index({ shopId: 1, isActive: 1 });
+productSchema.index({ shopId: 1, category: 1 });
 
 module.exports = mongoose.model('Product', productSchema);

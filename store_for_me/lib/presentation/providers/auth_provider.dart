@@ -79,10 +79,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (response.data['success'] == true) {
         final token = response.data['data']['token'];
+        final refreshToken = response.data['data']['refreshToken'];
         final user = UserModel.fromJson(response.data['data']['user']);
         await _authService.saveToken(token);
+        if (refreshToken != null) await _authService.saveRefreshToken(refreshToken);
         await _authService.saveUser(user);
         await _api.saveToken(token);
+        if (refreshToken != null) await _api.saveRefreshToken(refreshToken);
         state = AuthState(status: AuthStatus.authenticated, user: user);
         return true;
       } else {
@@ -109,10 +112,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (response.data['success'] == true) {
         final token = response.data['data']['token'];
+        final refreshToken = response.data['data']['refreshToken'];
         final user = UserModel.fromJson(response.data['data']['user']);
         await _authService.saveToken(token);
+        if (refreshToken != null) await _authService.saveRefreshToken(refreshToken);
         await _authService.saveUser(user);
         await _api.saveToken(token);
+        if (refreshToken != null) await _api.saveRefreshToken(refreshToken);
         state = AuthState(status: AuthStatus.authenticated, user: user);
         return true;
       } else {

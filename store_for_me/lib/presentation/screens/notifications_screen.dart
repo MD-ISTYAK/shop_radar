@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/time_utils.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/common_widgets.dart';
@@ -98,7 +99,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             children: [
                               if (n.body.isNotEmpty) Text(n.body, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12)),
                               SizedBox(height: 2),
-                              Text(DateFormat.yMMMd().add_jm().format(n.createdAt), style: Theme.of(context).textTheme.bodySmall),
+                              Text(TimeUtils.formatIST(n.createdAt, pattern: 'dd MMM yyyy, hh:mm a'), style: Theme.of(context).textTheme.bodySmall),
                             ],
                           ),
                           onTap: () {

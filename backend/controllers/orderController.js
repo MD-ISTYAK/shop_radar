@@ -1,6 +1,25 @@
 const Order = require('../models/Order');
 const Shop = require('../models/Shop');
 const User = require('../models/User');
+const logger = require('../config/logger');
+
+// ── Order Status Transition Machine ──
+const ORDER_TRANSITIONS = {
+  pending:            ['accepted', 'cancelled'],
+  accepted:           ['preparing', 'cancelled'],
+  preparing:          ['packed', 'cancelled'],
+  packed:             ['ready', 'cancelled'],
+  ready:              ['delivery_assigned', 'out_for_delivery', 'delivered'],
+  delivery_assigned:  ['picked_up', 'cancelled'],
+  picked_up:          ['out_for_delivery'],
+  out_for_delivery:   ['delivered'],
+  delivered:          [],
+  cancelled:          [],
+};
+
+const isValidTransition = (from, to) => {
+  return ORDER_TRANSITIONS[from]?.includes(to) || false;
+};
 
 // Get user's orders
 exports.getMyOrders = async (req, res, next) => {
@@ -86,7 +105,7 @@ exports.getShopOrders = async (req, res, next) => {
   }
 };
 
-// Update order status (Generic)
+// Update order status (with transition validation)
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -100,6 +119,14 @@ exports.updateOrderStatus = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    // Validate status transition
+    if (!isValidTransition(order.status, status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition: ${order.status} → ${status}. Allowed: ${ORDER_TRANSITIONS[order.status]?.join(', ') || 'none'}`,
+      });
+    }
+
     order.status = status;
     order.timeline.push({ status, note: `Status updated to ${status}` });
     
@@ -109,6 +136,13 @@ exports.updateOrderStatus = async (req, res, next) => {
       await Shop.findByIdAndUpdate(order.shopId._id, { $inc: { totalOrders: 1 } });
     }
     await order.save();
+
+    logger.info('Order status updated', {
+      requestId: req.requestId,
+      orderId: order._id.toString(),
+      from: order.status,
+      to: status,
+    });
 
     res.json({ success: true, data: order });
   } catch (error) {
@@ -125,6 +159,10 @@ exports.acceptOrder = async (req, res, next) => {
     const order = await Order.findById(id).populate('shopId');
     if (!order || order.shopId.ownerId.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized or not found' });
+    }
+
+    if (!isValidTransition(order.status, 'accepted')) {
+      return res.status(400).json({ success: false, message: `Cannot accept order in status: ${order.status}` });
     }
 
     order.status = 'accepted';
@@ -224,19 +262,9 @@ exports.completeShopPickup = async (req, res, next) => {
     }
 
     // Allow handover even if originally set to home_delivery (customer might be at the shop)
-    // But ensure the order is actually prepared
-    if (!['accepted', 'packed', 'ready', 'delivery_assigned'].includes(order.status)) {
-      return res.status(400).json({ success: false, message: `Order must be packed before handover. Current status: ${order.status}` });
+    if (!['accepted', 'preparing', 'packed', 'ready', 'delivery_assigned'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: `Order must be prepared before handover. Current status: ${order.status}` });
     }
-
-    console.log('--- Verification Code DEBUG ---');
-    console.log('Order ID (Internal):', id);
-    console.log('Order Reference:', order.orderId);
-    console.log('Expected Code (DB):', order.userOtp);
-    console.log('Received Code (Req):', otp);
-    console.log('Comparison Result:', order.userOtp === otp);
-    console.log('Order Status:', order.status);
-    console.log('------------------------------');
 
     if (order.userOtp !== otp) {
       return res.status(400).json({ success: false, message: 'Invalid verification code' });
@@ -276,9 +304,24 @@ exports.cancelOrder = async (req, res, next) => {
 
     order.status = 'cancelled';
     order.cancelReason = reason || '';
+    order.timeline.push({ status: 'cancelled', note: reason || 'Order cancelled by user' });
     await order.save();
 
-    // TODO: Refund to wallet if pre-paid
+    // Cancel associated delivery request
+    const DeliveryRequest = require('../models/DeliveryRequest');
+    await DeliveryRequest.findOneAndUpdate(
+      { orderId: order._id, status: { $nin: ['delivered'] } },
+      { status: 'cancelled', cancellationReason: reason || 'Order cancelled' }
+    );
+
+    // Notify delivery partner if assigned
+    if (order.deliveryPartnerId) {
+      const { sendToUser } = require('../config/socketManager');
+      sendToUser(order.deliveryPartnerId.toString(), 'order:cancelled', {
+        orderId: order._id,
+        message: 'Order has been cancelled',
+      });
+    }
 
     res.json({ success: true, data: order });
   } catch (error) {
@@ -286,7 +329,124 @@ exports.cancelOrder = async (req, res, next) => {
   }
 };
 
-// Get order stats for shop owner dashboard
+// Create flexible (text-based) order
+exports.createFlexibleOrder = async (req, res, next) => {
+  try {
+    const { shopId, description, deliveryType = 'home_delivery', deliveryAddress, lat, lng } = req.body;
+    const userId = req.user._id;
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ success: false, message: 'Order description is required' });
+    }
+
+    const shop = await Shop.findById(shopId);
+    if (!shop) return res.status(404).json({ success: false, message: 'Shop not found' });
+
+    const orderId = `ORD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const userOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    let userLoc = [0, 0];
+    if (lat && lng) userLoc = [Number(lng), Number(lat)];
+
+    const order = await Order.create({
+      orderId,
+      userId,
+      shopId,
+      orderType: 'flexible',
+      flexibleDescription: description.trim(),
+      items: [],
+      totalAmount: 0, // Will be set when shop confirms price
+      deliveryType,
+      deliveryAddress: deliveryAddress || '',
+      deliveryLocation: { type: 'Point', coordinates: userLoc },
+      userOtp,
+      pickupCode,
+      status: 'pending',
+      timeline: [{ status: 'pending', note: 'Flexible order placed — awaiting price confirmation' }],
+    });
+
+    // Notify shop owner
+    const { sendToUser } = require('../config/socketManager');
+    sendToUser(shop.ownerId.toString(), 'notification:new', {
+      type: 'order_request',
+      title: 'New Text Order!',
+      body: `New flexible order: "${description.substring(0, 80)}"`,
+      useCustomSound: true,
+      data: { orderId: order._id, status: 'pending' },
+    });
+
+    res.status(201).json({ success: true, message: 'Flexible order placed', data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Shop confirms price for flexible order
+exports.confirmPrice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { price } = req.body;
+    const userId = req.user._id;
+
+    if (!price || price <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid price is required' });
+    }
+
+    const order = await Order.findById(id).populate('shopId');
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.shopId.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (order.orderType !== 'flexible') {
+      return res.status(400).json({ success: false, message: 'Only flexible orders need price confirmation' });
+    }
+
+    order.confirmedPrice = price;
+    order.priceConfirmedAt = new Date();
+    order.timeline.push({ status: 'price_quoted', note: `Shop quoted ₹${price}` });
+    await order.save();
+
+    // Notify user
+    const { sendToUser } = require('../config/socketManager');
+    sendToUser(order.userId.toString(), 'order:priceConfirmed', {
+      orderId: order._id,
+      price,
+      message: `Shop has quoted ₹${price} for your order`,
+    });
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// User accepts quoted price
+exports.acceptPrice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (!order.confirmedPrice) {
+      return res.status(400).json({ success: false, message: 'No price has been quoted yet' });
+    }
+
+    order.totalAmount = order.confirmedPrice;
+    order.timeline.push({ status: 'price_accepted', note: `User accepted ₹${order.confirmedPrice}` });
+    await order.save();
+
+    res.json({ success: true, message: 'Price accepted', data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get order stats for shop owner dashboard (using aggregation, not memory load)
 exports.getShopOrderStats = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -303,7 +463,7 @@ exports.getShopOrderStats = async (req, res, next) => {
         { $match: { shopId: shop._id, createdAt: { $gte: today }, status: 'delivered' } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } },
       ]),
-      Order.countDocuments({ shopId: shop._id, status: { $in: ['pending', 'confirmed', 'preparing'] } }),
+      Order.countDocuments({ shopId: shop._id, status: { $in: ['pending', 'accepted', 'preparing'] } }),
     ]);
 
     res.json({

@@ -20,6 +20,9 @@ const {
   completeShopPickup,
   cancelOrder,
   getShopOrderStats,
+  createFlexibleOrder,
+  confirmPrice,
+  acceptPrice,
 } = require('../controllers/orderController');
 
 router.get('/my-orders', protect, getMyOrders);
@@ -32,5 +35,10 @@ router.patch('/:id/pack', protect, upload.array('images', 5), packOrder);
 router.post('/:id/verify-pickup', protect, verifyPickupCode);
 router.post('/:id/complete-pickup', protect, completeShopPickup);
 router.patch('/:id/cancel', protect, cancelOrder);
+
+// Flexible order endpoints
+router.post('/flexible', protect, createFlexibleOrder);
+router.patch('/:id/confirm-price', protect, confirmPrice);
+router.patch('/:id/accept-price', protect, acceptPrice);
 
 module.exports = router;

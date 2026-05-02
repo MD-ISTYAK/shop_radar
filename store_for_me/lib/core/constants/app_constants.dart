@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   // API — Change this IP when switching devices ss
-  static const String _ip = '192.168.1.9';
+  static const String _ip = '192.168.1.19';
   static const bool useLocal = false; // Toggle this for local testing
 
   static const String baseUrl = useLocal
@@ -26,6 +26,7 @@ class AppConstants {
 
   // Storage keys
   static const String tokenKey = 'auth_token';
+  static const String refreshTokenKey = 'refresh_token';
   static const String userKey = 'user_data';
 
   // Google Maps API Key
@@ -33,7 +34,7 @@ class AppConstants {
       'AIzaSyDzCAoTb1j3706Uf-3G2gI1CrJmiMJxd7s';
 
   // Razorpay Key
-  static const String razorpayKey = 'rzp_test_your_key_here';
+  static const String razorpayKey = 'rzp_test_SkCbaMDux0GpYx';
 
   // Agora App ID
   static const String agoraAppId = 'your_agora_app_id_here';
