@@ -4,10 +4,11 @@ import '../../core/theme/app_theme.dart';
 import '../../services/socket_service.dart';
 import 'home_screen.dart';
 import 'discover_screen.dart';
-import 'orders_screen.dart';
-import 'social_screen.dart';
+import 'chat_list_screen.dart';
 import 'profile_screen.dart';
+import 'create_post_screen.dart';
 import '../../services/notification_service.dart';
+import '../widgets/premium_widgets.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -19,20 +20,18 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    DiscoverScreen(),
-    OrdersScreen(),
-    SocialScreen(),
-    ProfileScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const DiscoverScreen(),
+    const SizedBox(), // Placeholder for Post (+) button action
+    const ChatListScreen(),
+    const ProfileScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
-    // Connect to Socket.io
     SocketService().connect().then((_) {
-      // Listen for socket notifications globally
       SocketService().onNotification((data) {
         final title = data['title'] ?? 'New Notification';
         final body = data['body'] ?? '';
@@ -53,84 +52,136 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
+  void _onTabTapped(int index) {
+    if (index == 2) {
+      // Show Post Creation Modal or Navigate
+      _showPostOptions();
+      return;
+    }
+    setState(() => _currentIndex = index);
+  }
+
+  void _showPostOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow.withAlpha(30),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-                _buildNavItem(1, Icons.explore_outlined, Icons.explore, 'Discover'),
-                _buildNavItem(2, Icons.shopping_bag_outlined, Icons.shopping_bag, 'Orders'),
-                _buildNavItem(3, Icons.people_outline, Icons.people, 'Social'),
-                _buildNavItem(4, Icons.person_outline, Icons.person, 'Profile'),
-              ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textLight.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+            const SizedBox(height: 24),
+            Text(
+              'Create New',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 24),
+            _buildPostOption(
+              icon: Icons.post_add_rounded,
+              title: 'Create Post',
+              subtitle: 'Share a photo or video to your feed',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen()));
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildPostOption(
+              icon: Icons.store_rounded,
+              title: 'List Product',
+              subtitle: 'Add a new product to your shop',
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to add product
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildPostOption(
+              icon: Icons.share_rounded,
+              title: 'Share File',
+              subtitle: 'Transfer files wirelessly with Magico',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/magico/files');
+              },
+            ),
+            const SizedBox(height: 32),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
-    final isActive = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 16 : 12,
-          vertical: 8,
-        ),
+  Widget _buildPostOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withAlpha(25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? AppColors.primary : AppColors.textLight,
-              size: 24,
-            ),
-            if (isActive) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-            ],
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
           ],
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBody: true,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _screens[_currentIndex],
+      ),
+      bottomNavigationBar: PremiumNavBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+      ),
+    );
+  }
 }
+
 
 
 

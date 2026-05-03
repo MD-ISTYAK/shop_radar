@@ -119,6 +119,8 @@ class PostModel {
   final bool isLikedByMe;
   final bool isSavedByMe;
   // Meta
+  final String location;
+  final List<String> taggedProducts;
   final DateTime createdAt;
   final bool isHidden;
   final List<InteractiveElement> interactiveElements;
@@ -148,6 +150,8 @@ class PostModel {
     this.savedBy = const [],
     this.isLikedByMe = false,
     this.isSavedByMe = false,
+    this.location = '',
+    this.taggedProducts = const [],
     required this.createdAt,
     this.isHidden = false,
     this.interactiveElements = const [],
@@ -259,6 +263,8 @@ class PostModel {
       savedBy: (json['savedBy'] as List?)?.map((e) => e.toString()).toList() ?? [],
       isLikedByMe: json['isLikedByMe'] ?? json['isLiked'] ?? false,
       isSavedByMe: json['isSavedByMe'] ?? false,
+      location: json['location'] ?? '',
+      taggedProducts: (json['taggedProducts'] as List?)?.map((e) => e.toString()).toList() ?? [],
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       isHidden: json['isHidden'] ?? false,
       interactiveElements: (json['interactiveElements'] as List<dynamic>?)

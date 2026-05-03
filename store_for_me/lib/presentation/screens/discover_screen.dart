@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../providers/shop_provider.dart';
-import '../widgets/common_widgets.dart';
+import '../widgets/premium_widgets.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
@@ -14,9 +17,7 @@ class DiscoverScreen extends ConsumerStatefulWidget {
 
 class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  double _selectedRadius = 3.0;
-  bool _openNowOnly = false;
-  bool _nightMode = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -28,326 +29,313 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final shopState = ref.watch(shopProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Discover', style: TextStyle(fontWeight: FontWeight.w700)),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: Icon(_nightMode ? Icons.nightlight_round : Icons.nightlight_outlined,
-              color: _nightMode ? AppColors.warning : null),
-            onPressed: () => setState(() => _nightMode = !_nightMode),
-            tooltip: 'Night Mode Shops',
-          ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterSheet,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Map View'),
-            Tab(text: 'Browse'),
-          ],
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Map View tab — placeholder (Google Maps needs platform setup)
-          _buildMapPlaceholder(shopState),
-          // Browse tab
-          _buildBrowseView(shopState),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMapPlaceholder(dynamic shopState) {
-    return RefreshIndicator(
-      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+      body: SafeArea(
         child: Column(
           children: [
-            // Radius selector
+            // === PREMIUM SEARCH HEADER ===
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Radius:', style: TextStyle(fontWeight: FontWeight.w600)),
-                  Expanded(
-                    child: Slider(
-                      value: _selectedRadius,
-                      min: 0.5,
-                      max: 10,
-                      divisions: 19,
-                      label: '${_selectedRadius.toStringAsFixed(1)} km',
-                      onChanged: (v) => setState(() => _selectedRadius = v),
-                      onChangeEnd: (v) {
-                        ref.read(shopProvider.notifier).fetchNearbyShops();
-                      },
+                  Text(
+                    'Discover',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  Text('${_selectedRadius.toStringAsFixed(1)} km',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const SizedBox(height: 16),
+                  PremiumTextField(
+                    controller: _searchController,
+                    hintText: 'Search shops, categories...',
+                    prefixIcon: Icons.search_rounded,
+                    onChanged: (v) => ref.read(shopProvider.notifier).setSearchQuery(v),
+                  ),
                 ],
               ),
             ),
-            // Legend
+
+            // === TABS ===
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  _buildLegendDot(Colors.green, 'Open'),
-                  SizedBox(width: 16),
-                  _buildLegendDot(Colors.orange, 'Busy'),
-                  const SizedBox(width: 16),
-                  _buildLegendDot(Colors.grey, 'Closed'),
-                  const SizedBox(width: 16),
-                  _buildLegendDot(Colors.red, 'Temp Closed'),
-                  const SizedBox(width: 16),
-                  _buildLegendDot(Colors.blue, '24×7'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Map placeholder
-            Container(
-              height: 400, // Fixed height for map placeholder in scrollable view
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Theme.of(context).dividerColor),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Google Maps View',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyMedium?.color),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${shopState.shops.length} shops found nearby',
-                      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      children: shopState.shops.take(5).map<Widget>((shop) {
-                        final color = _getStatusColor(shop.status);
-                        return Chip(
-                          avatar: CircleAvatar(backgroundColor: color, radius: 6),
-                          label: Text(shop.shopName, style: TextStyle(fontSize: 12)),
-                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                        );
-                      }).toList(),
-                    ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkCard : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  tabs: const [
+                    Tab(text: 'Explore'),
+                    Tab(text: 'Nearby Map'),
                   ],
                 ),
               ),
             ),
+
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildExploreView(shopState),
+                  _buildMapView(shopState),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBrowseView(dynamic shopState) {
-    return Column(
-      children: [
-        // Category grid
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: AppConstants.shopCategories.length.clamp(0, 12),
-            itemBuilder: (context, index) {
-              final cat = AppConstants.shopCategories[index];
-              final iconCode = AppConstants.categoryIcons[cat] ?? 0xe148;
-              final isSelected = shopState.selectedCategory == cat;
-              return GestureDetector(
-                onTap: () => ref.read(shopProvider.notifier).setCategory(cat),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withAlpha(25) : Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected ? AppColors.primary : Theme.of(context).dividerColor,
-                      width: isSelected ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(IconData(iconCode, fontFamily: 'MaterialIcons'),
-                        color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color, size: 28),
-                      SizedBox(height: 6),
-                      Text(cat, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-                        color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color),
-                        textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        // Shop list
-        Expanded(
-          child: shopState.isLoading
-              ? const LoadingIndicator(message: 'Searching...')
-              : shopState.shops.isEmpty
-                  ? RefreshIndicator(
-                      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
-                      child: ListView(
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
-                            child: const EmptyStateWidget(icon: Icons.store_outlined, title: 'No shops found', subtitle: 'Try another category'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: shopState.shops.length,
-                        itemBuilder: (context, index) {
-                          final shop = shopState.shops[index];
-                          return ListTile(
-                            leading: Container(
-                              width: 12, height: 12,
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(shop.status),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            title: Text(shop.shopName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            subtitle: Text('${shop.category} • ${shop.crowdLabel}'),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star, color: AppColors.warning, size: 16),
-                                    Text(' ${shop.rating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                  ],
-                                ),
-                                Text(shop.statusLabel, style: TextStyle(fontSize: 11, color: _getStatusColor(shop.status), fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
-                          );
-                        },
-                      ),
-                    ),
-        ),
-      ],
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'open': return Colors.green;
-      case 'busy': return Colors.orange;
-      case 'closed': return Colors.grey;
-      case 'temporarily_closed': return Colors.red;
-      default: return Colors.grey;
-    }
-  }
-
-  Widget _buildLegendDot(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 10)),
-      ],
-    );
-  }
-
-  void _showFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheetState) {
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildExploreView(dynamic shopState) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // Categories Header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Open Now Only'),
-                  value: _openNowOnly,
-                  onChanged: (v) => setSheetState(() => _openNowOnly = v),
-                  activeColor: AppColors.primary,
+                Text(
+                  'Categories',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                SwitchListTile(
-                  title: const Text('Night Mode (10 PM - 6 AM)'),
-                  subtitle: const Text('Show only shops open late'),
-                  value: _nightMode,
-                  onChanged: (v) => setSheetState(() => _nightMode = v),
-                  activeColor: AppColors.warning,
-                ),
-                const SizedBox(height: 8),
-                const Text('Distance Radius', style: TextStyle(fontWeight: FontWeight.w600)),
-                Slider(
-                  value: _selectedRadius,
-                  min: 0.5, max: 10, divisions: 19,
-                  label: '${_selectedRadius.toStringAsFixed(1)} km',
-                  onChanged: (v) => setSheetState(() => _selectedRadius = v),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {});
-                      Navigator.pop(ctx);
-                      ref.read(shopProvider.notifier).fetchNearbyShops();
-                    },
-                    child: const Text('Apply Filters'),
+                Text(
+                  'See All',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                   ),
                 ),
               ],
             ),
-          );
-        });
-      },
+          ),
+        ),
+
+        // Categories Grid
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final cat = AppConstants.shopCategories[index % AppConstants.shopCategories.length];
+                final iconCode = AppConstants.categoryIcons[cat] ?? 0xe148;
+                return _buildCategoryCard(cat, IconData(iconCode, fontFamily: 'MaterialIcons'));
+              },
+              childCount: 4,
+            ),
+          ),
+        ),
+
+        // Recommended Header
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 30, 20, 16),
+            child: Text(
+              'Recommended for you',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+
+        // Shop Grid
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.8,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                if (shopState.shops.isEmpty) return const SizedBox.shrink();
+                final shop = shopState.shops[index % shopState.shops.length];
+                return _buildShopGridCard(shop);
+              },
+              childCount: shopState.shops.length,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(String title, IconData icon) {
+    return PremiumGlassCard(
+      borderRadius: 20,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9));
+  }
+
+  Widget _buildShopGridCard(dynamic shop) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                image: DecorationImage(
+                  image: CachedNetworkImageProvider(shop.logo),
+                  fit: BoxFit.cover,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  if (shop.isVerified)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.verified, color: AppColors.primary, size: 16),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            shop.shopName,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                shop.rating.toStringAsFixed(1),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '• ${shop.category}',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.textLight,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1),
+    );
+  }
+
+  Widget _buildMapView(dynamic shopState) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.map_rounded, size: 64, color: AppColors.primary.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            'Map View Coming Soon',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Explore shops on a visual map grid.',
+            style: GoogleFonts.inter(color: AppColors.textLight),
+          ),
+        ],
+      ),
     );
   }
 }
+
 
 
 
