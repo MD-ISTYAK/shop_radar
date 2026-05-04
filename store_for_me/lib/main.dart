@@ -44,13 +44,15 @@ import 'presentation/screens/referral_screen.dart';
 import 'presentation/screens/order_scanner_screen.dart';
 import 'presentation/screens/kyc_upload_screen.dart';
 import 'presentation/screens/delivery_order_details_screen.dart';
-import 'presentation/screens/subscription_screen.dart';
-// P2P Sharing - temporarily disabled
-// import 'features/sharing/presentation/screens/sharing_home_screen.dart';
-// import 'features/sharing/presentation/screens/device_discovery_screen.dart';
-// import 'features/sharing/presentation/screens/file_selector_screen.dart';
-// import 'features/sharing/presentation/screens/file_transfer_screen.dart';
-// import 'features/sharing/presentation/screens/receive_screen.dart';
+import 'features/sharing/presentation/screens/sharing_home_screen.dart';
+import 'features/sharing/presentation/screens/device_discovery_screen.dart';
+import 'features/sharing/presentation/screens/file_selector_screen.dart';
+import 'features/sharing/presentation/screens/file_transfer_screen.dart';
+import 'features/sharing/presentation/screens/receive_screen.dart';
+import 'features/sharing/presentation/screens/send_screen.dart';
+import 'features/sharing/presentation/screens/history_screen.dart';
+import 'features/sharing/presentation/screens/web_share_screen.dart';
+import 'features/sharing/presentation/screens/permissions_screen.dart';
 import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
 import 'presentation/screens/edit_profile_screen.dart';
@@ -61,7 +63,6 @@ import 'services/notification_service.dart';
 import 'presentation/screens/magico_files_screen.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/screens/snap_camera_screen.dart';
-import 'services/app_lifecycle_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,9 +70,6 @@ Future<void> main() async {
   // Initialize Firebase and Notifications
   await FirebaseService.initialize();
   await NotificationService().initialize();
-  
-  // Register lifecycle observer for video cache cleanup
-  AppLifecycleManager().register();
   
   runApp(const ProviderScope(child: ShopRadarApp()));
 }
@@ -180,33 +178,38 @@ class ShopRadarApp extends ConsumerWidget {
             return _buildRoute(const SettingsScreen(), settings);
           case '/referral':
             return _buildRoute(const ReferralScreen(), settings);
-          case '/subscription':
-            return _buildRoute(const SubscriptionScreen(), settings);
           case '/order-scanner':
             return _buildRoute(const OrderScannerScreen(), settings);
           case '/delivery-order-details':
             final delivery = settings.arguments as Map<String, dynamic>;
             return _buildRoute(DeliveryOrderDetailsScreen(delivery: delivery), settings);
-          // P2P Sharing routes - temporarily disabled
-          // case '/sharing':
-          //   return _buildRoute(const SharingHomeScreen(), settings);
-          // case '/sharing/discovery':
-          //   return _buildRoute(const DeviceDiscoveryScreen(), settings);
-          // case '/sharing/selector':
-          //   final args = settings.arguments as Map<String, dynamic>;
-          //   return _buildRoute(FileSelectorScreen(
-          //     targetDevice: args['device'],
-          //     myName: args['myName'],
-          //   ), settings);
-          // case '/sharing/transfer':
-          //   final args = settings.arguments as Map<String, dynamic>?;
-          //   return _buildRoute(FileTransferScreen(
-          //     device: args?['device'],
-          //     files: args?['files'],
-          //     myName: args?['myName'],
-          //   ), settings);
-          // case '/sharing/receive':
-          //   return _buildRoute(const ReceiveScreen(), settings);
+          case '/sharing':
+            return _buildRoute(const SharingHomeScreen(), settings);
+          case '/sharing/discovery':
+            return _buildRoute(const DeviceDiscoveryScreen(), settings);
+          case '/sharing/selector':
+            final args = settings.arguments as Map<String, dynamic>;
+            return _buildRoute(FileSelectorScreen(
+              targetDevice: args['device'],
+              myName: args['myName'],
+            ), settings);
+          case '/sharing/transfer':
+            final args = settings.arguments as Map<String, dynamic>?;
+            return _buildRoute(FileTransferScreen(
+              device: args?['device'],
+              files: args?['files'],
+              myName: args?['myName'],
+            ), settings);
+          case '/sharing/receive':
+            return _buildRoute(const ReceiveScreen(), settings);
+          case '/sharing/send':
+            return _buildRoute(const SendScreen(), settings);
+          case '/sharing/history':
+            return _buildRoute(const HistoryScreen(), settings);
+          case '/sharing/web_share':
+            return _buildRoute(const WebShareScreen(), settings);
+          case '/sharing/permissions':
+            return _buildRoute(const PermissionsScreen(), settings);
           case '/reels':
             return _buildRoute(const ReelsScreen(), settings);
           case '/edit-profile':

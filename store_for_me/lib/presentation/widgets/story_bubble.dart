@@ -1,93 +1,104 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../data/models/social_models.dart';
+import '../../core/theme/app_theme.dart';
+import 'premium_widgets.dart';
 
 class StoryBubble extends StatelessWidget {
-  final StoryGroupModel group;
+  final StoryGroupModel? group;
+  final String? imageUrl;
+  final String? name;
   final bool isAddStory;
+  final bool isVerified;
+  final bool hasUnseenStories;
   final VoidCallback onTap;
 
   const StoryBubble({
     super.key,
-    required this.group,
+    this.group,
+    this.imageUrl,
+    this.name,
     this.isAddStory = false,
+    this.isVerified = false,
+    this.hasUnseenStories = true,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final displayImageUrl = isAddStory ? imageUrl : (group?.stories.isNotEmpty == true ? group!.stories.first.mediaUrl : imageUrl);
+    final displayName = isAddStory ? 'Your story' : (group?.username ?? name ?? 'User');
+    final displayVerified = group?.userId != null ? false : isVerified; 
+    final displayHasUnseen = group?.hasUnseenStories ?? hasUnseenStories;
+
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 68,
-              height: 68,
+              padding: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: isAddStory
-                    ? null
-                    : group.hasUnseenStories
-                        ? LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFFF58529),
-                              Color(0xFFDD2A7B),
-                              Color(0xFF8134AF),
-                              Color(0xFF515BD4),
-                            ],
-                          )
-                        : const LinearGradient(
-                            colors: [Color(0xFFD1D5DB), Color(0xFFD1D5DB)],
-                          ),
-                border: isAddStory
-                    ? Border.all(color: Theme.of(context).dividerColor, width: 2)
-                    : null,
+                gradient: displayHasUnseen
+                    ? const LinearGradient(
+                        colors: [AppColors.primary, AppColors.accent, AppColors.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : LinearGradient(
+                        colors: [AppColors.textLight.withOpacity(0.2), AppColors.textLight.withOpacity(0.2)],
+                      ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Theme.of(context).cardColor,
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: isAddStory
-                      ? CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.primary.withAlpha(20),
-                          child: const Icon(Icons.add, color: AppColors.primary, size: 28),
-                        )
-                      : CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Theme.of(context).dividerColor.withAlpha(50),
-                          backgroundImage: group.displayProfilePic.isNotEmpty
-                              ? CachedNetworkImageProvider(group.displayProfilePic)
-                              : null,
-                          child: group.displayProfilePic.isEmpty
-                              ? Icon(Icons.person, size: 24, color: Theme.of(context).textTheme.bodySmall?.color)
-                              : null,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Stack(
+                  children: [
+                    PremiumAvatar(imageUrl: displayImageUrl, size: 62, hasBorder: false),
+                    if (displayVerified)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.verified, color: AppColors.primary, size: 16),
                         ),
+                      ),
+                    if (isAddStory)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                          child: const Icon(Icons.add, color: Colors.white, size: 18),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 8),
             SizedBox(
-              width: 72,
+              width: 70,
               child: Text(
-                isAddStory ? 'Your story' : group.username,
+                displayName,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isAddStory ? Theme.of(context).textTheme.bodyMedium?.color : Theme.of(context).textTheme.bodyLarge?.color,
-                ),
               ),
             ),
           ],
@@ -96,6 +107,7 @@ class StoryBubble extends StatelessWidget {
     );
   }
 }
+
 
 
 

@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../providers/sharing_provider.dart';
 import '../../data/models/sharing_models.dart';
@@ -14,117 +16,71 @@ class ReceiveScreen extends ConsumerStatefulWidget {
   ConsumerState<ReceiveScreen> createState() => _ReceiveScreenState();
 }
 
-class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
+class _ReceiveScreenState extends ConsumerState<ReceiveScreen>
+    with TickerProviderStateMixin {
   bool _permissionsGranted = false;
+  late AnimationController _pulseController;
+  late AnimationController _radarController;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+    _radarController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
     _checkPermissions();
   }
 
-  Future<void> _checkPermissions() async {
-    Map<Permission, PermissionStatus> statuses = {};
-    
-    // Base permissions for all Android versions
-    List<Permission> permissions = [];
-    
-    if (Platform.isAndroid) {
-      // Check Android version (simplified check for SDK 33)
-      // Note: In a real app, you'd use device_info_plus, but we can infer from Permission behavior
-      
-      // Request storage/media permissions
-      final storageStatus = await Permission.storage.status;
-      if (storageStatus.isDenied || storageStatus.isLimited) {
-        // On Android 13+, Permission.storage might not be the right one
-        permissions.add(Permission.storage);
-        // Add media permissions for Android 13+
-        permissions.add(Permission.photos);
-        permissions.add(Permission.videos);
-        permissions.add(Permission.audio);
-      }
-
-      // Location/Nearby for WiFi Discovery
-      permissions.add(Permission.location);
-      permissions.add(Permission.nearbyWifiDevices);
-    }
-
-    if (permissions.isNotEmpty) {
-      statuses = await permissions.request();
-    }
-
-    bool allGranted = true;
-    
-    // On Android 13+, Permission.storage will be denied, but media permissions might be granted
-    // We check if at least some critical ones are granted
-    if (Platform.isAndroid) {
-      final locGranted = statuses[Permission.location]?.isGranted ?? await Permission.location.isGranted;
-      final nearbyGranted = statuses[Permission.nearbyWifiDevices]?.isGranted ?? await Permission.nearbyWifiDevices.isGranted;
-      
-      // Storage logic: either storage is granted (old Android) or media ones are granted (new Android)
-      final storageGranted = statuses[Permission.storage]?.isGranted ?? await Permission.storage.isGranted;
-      final mediaGranted = (statuses[Permission.photos]?.isGranted ?? await Permission.photos.isGranted) ||
-                          (statuses[Permission.videos]?.isGranted ?? await Permission.videos.isGranted);
-      
-      allGranted = (locGranted || nearbyGranted) && (storageGranted || mediaGranted);
-    }
-
-    if (allGranted) {
-      setState(() => _permissionsGranted = true);
-      _initReceive();
-    } else {
-      // Check if any critical one is permanently denied
-      bool permanentlyDenied = false;
-      for (var s in statuses.values) {
-        if (s.isPermanentlyDenied) permanentlyDenied = true;
-      }
-      
-      if (permanentlyDenied) {
-        _showPermissionDeniedDialog();
-      } else {
-        // Optional: show a snackbar if partially denied
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Some permissions were denied. Discovery or saving might fail.')),
-          );
-        }
-      }
-    }
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _radarController.dispose();
+    super.dispose();
   }
 
-  void _showPermissionDeniedDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Storage Permission Required'),
-        content: const Text('To receive and save files, please grant storage permission in app settings.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              openAppSettings();
-              Navigator.pop(context);
-            },
-            child: const Text('Settings'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _checkPermissions() async {
+    List<Permission> permissions = [];
+    if (Platform.isAndroid) {
+      permissions.addAll([
+        Permission.storage,
+        Permission.photos,
+        Permission.location,
+        Permission.nearbyWifiDevices,
+      ]);
+    }
+    final statuses = await permissions.request();
+
+    bool granted = true;
+    if (Platform.isAndroid) {
+      final loc = await Permission.location.isGranted;
+      final storage = await Permission.storage.isGranted ||
+          await Permission.manageExternalStorage.isGranted;
+      granted = loc && storage;
+    }
+
+    if (mounted) setState(() => _permissionsGranted = granted);
+
+    if (granted) {
+      _initReceive();
+    } else {
+      bool anyPerm = statuses.values.any((s) => s.isPermanentlyDenied);
+      if (anyPerm && mounted) {
+        Navigator.pushReplacementNamed(context, '/sharing/permissions');
+      }
+    }
   }
 
   void _initReceive() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authProvider);
-      final myName = authState.user?.name ?? 'Shop Radar User';
+      final myName = authState.user?.name ?? 'File Share User';
       ref.read(sharingProvider.notifier).startReceiveMode(myName);
     });
-  }
-
-  @override
-  void dispose() {
-    // We don't stop receive mode on dispose because the user might want to continue receiving in background
-    // until they explicitly stop it or the transfer finishes.
-    super.dispose();
   }
 
   @override
@@ -136,11 +92,10 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
       ..sort((a, b) => b.id.compareTo(a.id));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Receive Files', style: TextStyle(fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () {
             if (transfers.isNotEmpty && !_allCompleted(transfers)) {
               _showExitDialog();
@@ -149,279 +104,462 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
             }
           },
         ),
+        title: const Text('Receive', style: TextStyle(fontWeight: FontWeight.w700)),
         actions: [
           if (state.isReceiving)
             TextButton(
-              onPressed: () => ref.read(sharingProvider.notifier).stopReceiveMode(),
-              child: const Text('Stop', style: TextStyle(color: AppColors.error)),
+              onPressed: () =>
+                  ref.read(sharingProvider.notifier).stopReceiveMode(),
+              child: const Text('Stop',
+                  style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
             ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildStatusBanner(state, transfers),
-          Expanded(
-            child: transfers.isEmpty
-                ? _buildEmptyState(state)
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: transfers.length,
-                    itemBuilder: (context, index) {
-                      return _buildTransferCard(transfers[index]);
-                    },
-                  ),
-          ),
-          if (transfers.isNotEmpty && _allCompleted(transfers))
-            _buildActionFooter(),
-        ],
-      ),
+      body: transfers.isEmpty
+          ? _buildWaitingUI(state)
+          : _buildTransferUI(state, transfers),
     );
   }
 
   bool _allCompleted(List<TransferProgress> transfers) {
     if (transfers.isEmpty) return false;
-    return transfers.every((t) => 
-        t.status == TransferStatus.completed || t.status == TransferStatus.failed);
+    return transfers.every((t) =>
+        t.status == TransferStatus.completed ||
+        t.status == TransferStatus.failed);
   }
 
-  Widget _buildStatusBanner(SharingState state, List<TransferProgress> transfers) {
-    if (!state.isReceiving) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        color: AppColors.error.withAlpha(20),
-        child: const Text(
-          'Receive mode is OFF',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
-        ),
-      );
-    }
-
-    if (transfers.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        color: AppColors.success.withAlpha(20),
-        child: const Text(
-          'Ready to receive. Waiting for sender...',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold),
-        ),
-      );
-    }
-
-    final first = transfers.first;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      color: AppColors.primary.withAlpha(10),
-      child: Row(
+  Widget _buildWaitingUI(SharingState state) {
+    return SingleChildScrollView(
+      child: Column(
         children: [
-          const Icon(Icons.download_rounded, color: AppColors.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+          // Status chip
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: state.isReceiving
+                  ? AppColors.success.withAlpha(20)
+                  : AppColors.error.withAlpha(20),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: state.isReceiving
+                    ? AppColors.success.withAlpha(60)
+                    : AppColors.error.withAlpha(60),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Receiving from ${first.peerName}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: state.isReceiving
+                        ? AppColors.success
+                        : AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
-                  '${transfers.length} files total',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  state.isReceiving
+                      ? 'Discoverable — Waiting for sender...'
+                      : 'Receive mode OFF',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: state.isReceiving
+                        ? AppColors.success
+                        : AppColors.error,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
           ),
-          if (!_allCompleted(transfers))
-            const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+          const SizedBox(height: 40),
+
+          // Radar animation
+          _buildRadarAnimation(state),
+          const SizedBox(height: 40),
+
+          // Device info
+          _buildDeviceCard(),
+          const SizedBox(height: 20),
+
+          // QR code
+          _buildQrSection(),
+
+          if (!_permissionsGranted) ...[
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ElevatedButton.icon(
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/sharing/permissions'),
+                icon: const Icon(Icons.security_rounded),
+                label: const Text('Grant Permissions'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  backgroundColor: AppColors.error,
+                ),
+              ),
             ),
+          ],
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(SharingState state) {
-    if (!_permissionsGranted) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.security_rounded, size: 80, color: AppColors.error),
-            const SizedBox(height: 24),
-            const Text(
-              'Permission Required',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 48),
-              child: Text(
-                'Storage permission is needed to save incoming files to your device.',
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _checkPermissions,
-              child: const Text('Grant Permission'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildRadarAnimation(SharingState state) {
+    return SizedBox(
+      width: 240,
+      height: 240,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          const Icon(Icons.wifi_tethering_rounded, size: 80, color: AppColors.divider),
-          const SizedBox(height: 24),
-          const Text(
-            'Your device is visible',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: Text(
-              'Ask the sender to select your device and send files.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
+          // Animated rings
+          ...List.generate(3, (i) {
+            return AnimatedBuilder(
+              animation: _pulseController,
+              builder: (_, __) {
+                final progress = (_pulseController.value + i / 3) % 1.0;
+                return Opacity(
+                  opacity: (1 - progress) * 0.4,
+                  child: Transform.scale(
+                    scale: 0.4 + progress * 0.6,
+                    child: Container(
+                      width: 240,
+                      height: 240,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF3B82F6),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+          // Radar sweep
+          if (state.isReceiving)
+            AnimatedBuilder(
+              animation: _radarController,
+              builder: (_, __) {
+                return CustomPaint(
+                  painter: _RadarPainter(
+                    angle: _radarController.value * 2 * pi,
+                    color: const Color(0xFF3B82F6),
+                  ),
+                  size: const Size(200, 200),
+                );
+              },
+            ),
+          // Center icon
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3B82F6).withAlpha(80),
+                  blurRadius: 20,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.download_rounded,
+              color: Colors.white,
+              size: 44,
             ),
           ),
-          const SizedBox(height: 32),
-          if (!state.isReceiving)
-            ElevatedButton(
-              onPressed: _initReceive,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-              child: const Text('Restart Receive Mode'),
-            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDeviceCard() {
+    final authState = ref.read(authProvider);
+    final deviceName = authState.user?.name ?? 'File Share User';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.phone_android_rounded,
+                color: Color(0xFF3B82F6), size: 26),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Your Device',
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+              Text(
+                deviceName,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQrSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'Scan to Connect',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ask sender to scan this QR code',
+            style: TextStyle(
+                fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          QrImageView(
+            data: 'fileshare://receive?device=MyDevice&port=5555',
+            version: QrVersions.auto,
+            size: 140,
+            backgroundColor: Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransferUI(
+      SharingState state, List<TransferProgress> transfers) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: const Color(0xFF3B82F6).withAlpha(15),
+          child: Row(
+            children: [
+              const Icon(Icons.download_rounded, color: Color(0xFF3B82F6)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Receiving from ${transfers.first.peerName ?? "Unknown"}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${transfers.length} file(s)',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              if (!_allCompleted(transfers))
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: transfers.length,
+            itemBuilder: (context, index) =>
+                _buildTransferCard(transfers[index]),
+          ),
+        ),
+        if (_allCompleted(transfers)) _buildSuccessFooter(),
+      ],
     );
   }
 
   Widget _buildTransferCard(TransferProgress transfer) {
     final isDone = transfer.status == TransferStatus.completed;
     final isFailed = transfer.status == TransferStatus.failed;
+    final progressColor = isDone
+        ? AppColors.success
+        : isFailed
+            ? AppColors.error
+            : const Color(0xFF3B82F6);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isDone ? AppColors.success.withAlpha(100) : AppColors.divider.withAlpha(50),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDone
+              ? AppColors.success.withAlpha(80)
+              : AppColors.divider,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _getStatusIcon(transfer.status),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        transfer.fileName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        '${(transfer.bytesSent / (1024 * 1024)).toStringAsFixed(1)} / ${(transfer.totalBytes / (1024 * 1024)).toStringAsFixed(1)} MB',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!isDone && !isFailed)
-                  Text(
-                    '${(transfer.speed / 1024).toStringAsFixed(1)} MB/s',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: transfer.progress,
-                minHeight: 6,
-                backgroundColor: AppColors.divider.withAlpha(100),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isDone ? AppColors.success : (isFailed ? AppColors.error : AppColors.primary),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isDone
+                    ? Icons.check_circle_rounded
+                    : isFailed
+                        ? Icons.error_rounded
+                        : Icons.downloading_rounded,
+                color: progressColor,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      transfer.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      '${_fmt(transfer.bytesSent)} / ${_fmt(transfer.totalBytes)}',
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
               ),
+              if (!isDone && !isFailed)
+                Text(
+                  '${(transfer.speed / (1024 * 1024)).toStringAsFixed(1)} MB/s',
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: transfer.progress,
+              minHeight: 7,
+              backgroundColor: AppColors.divider,
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            ),
+          ),
+          if (!isDone && !isFailed) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${(transfer.progress * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _getStatusIcon(TransferStatus status) {
-    switch (status) {
-      case TransferStatus.completed:
-        return const Icon(Icons.check_circle, color: AppColors.success, size: 24);
-      case TransferStatus.failed:
-        return const Icon(Icons.error, color: AppColors.error, size: 24);
-      case TransferStatus.receiving:
-      case TransferStatus.sending:
-        return const Icon(Icons.downloading, color: AppColors.primary, size: 24);
-      default:
-        return const Icon(Icons.schedule, color: AppColors.divider, size: 24);
-    }
+  String _fmt(int bytes) {
+    if (bytes < 1024) return '${bytes}B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
-  Widget _buildActionFooter() {
+  Widget _buildSuccessFooter() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.success.withAlpha(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            offset: const Offset(0, -2),
+            color: Colors.black.withAlpha(15),
             blurRadius: 10,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                ref.read(sharingProvider.notifier).resetTransfer();
-                Navigator.pop(context);
-              },
-              child: const Text('Back to Home'),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.check_circle_rounded,
+                    color: AppColors.success, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Transfer Completed Successfully!',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: AppColors.success),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                ref.read(sharingProvider.notifier).resetTransfer();
-                Navigator.pushReplacementNamed(context, '/magico/files');
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('View Files'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      ref.read(sharingProvider.notifier).resetTransfer();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Done'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ref.read(sharingProvider.notifier).resetTransfer();
+                      Navigator.pushNamed(context, '/sharing/history');
+                    },
+                    icon: const Icon(Icons.history_rounded, size: 18),
+                    label: const Text('View History'),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6)),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -429,23 +567,71 @@ class _ReceiveScreenState extends ConsumerState<ReceiveScreen> {
   void _showExitDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Stop Receiving?'),
-        content: const Text('An active transfer is in progress. Leaving this screen might interrupt it.'),
+        content: const Text(
+            'A transfer is in progress. Leaving might interrupt it.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back
+              Navigator.pop(ctx);
+              Navigator.pop(context);
             },
-            child: const Text('Stop & Exit', style: TextStyle(color: AppColors.error)),
+            child: const Text('Stop & Exit',
+                style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
     );
   }
+}
+
+// Radar painter
+class _RadarPainter extends CustomPainter {
+  final double angle;
+  final Color color;
+
+  _RadarPainter({required this.angle, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    // Draw sweep gradient
+    final paint = Paint()
+      ..shader = SweepGradient(
+        startAngle: angle - pi / 3,
+        endAngle: angle,
+        colors: [
+          Colors.transparent,
+          color.withAlpha(80),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, radius, paint);
+
+    // Draw sweep line
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawLine(
+      center,
+      Offset(
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
+      ),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RadarPainter oldDelegate) =>
+      oldDelegate.angle != angle;
 }

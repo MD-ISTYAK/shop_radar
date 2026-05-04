@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
-import '../providers/deal_provider.dart';
+import '../providers/social_provider.dart';
 import '../providers/notification_provider.dart';
-import '../widgets/shop_card.dart';
-import '../widgets/common_widgets.dart';
+import '../widgets/post_card.dart';
+import '../widgets/story_bubble.dart';
+import '../widgets/premium_widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,367 +19,198 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _searchController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
+      ref.read(socialProvider.notifier).fetchFeed();
       ref.read(shopProvider.notifier).fetchNearbyShops();
-      ref.read(dealProvider.notifier).fetchTrendingDeals();
       ref.read(notificationProvider.notifier).fetchNotifications();
     });
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final socialState = ref.watch(socialProvider);
     final shopState = ref.watch(shopProvider);
     final authState = ref.watch(authProvider);
-    final dealState = ref.watch(dealProvider);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await ref.read(shopProvider.notifier).fetchNearbyShops();
-            await ref.read(dealProvider.notifier).fetchTrendingDeals();
-          },
-          child: CustomScrollView(
-            slivers: [
-              // === HEADER ===
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.primary, AppColors.primaryDark],
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hi, ${authState.user?.name.split(' ').first ?? 'there'}! 👋',
-                                  style: TextStyle(
-                                    fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
-                                  ),
-                                ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Discover shops around you',
-                                  style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(200)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Notification bell
-                          Stack(
-                            children: [
-                              IconButton(
-                                onPressed: () => Navigator.pushNamed(context, '/notifications'),
-                                icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
-                              ),
-                              if (ref.watch(notificationProvider).unreadCount > 0)
-                                Positioned(
-                                  right: 6, top: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                                    child: Text(
-                                      '${ref.watch(notificationProvider).unreadCount}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          // Cart icon
-                          IconButton(
-                            onPressed: () => Navigator.pushNamed(context, '/cart'),
-                            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 26),
-                            tooltip: 'Cart',
-                          ),
-                          // Emergency SOS
-                          IconButton(
-                            onPressed: () => Navigator.pushNamed(context, '/emergency'),
-                            icon: const Icon(Icons.emergency, color: Colors.redAccent, size: 26),
-                            tooltip: 'Emergency SOS',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Search bar
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 10)],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (v) => ref.read(shopProvider.notifier).setSearchQuery(v),
-                          decoration: InputDecoration(
-                            hintText: 'Search shops, products...',
-                            prefixIcon: Icon(Icons.search, color: Theme.of(context).textTheme.bodySmall?.color),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            suffixIcon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_searchController.text.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.clear, size: 20),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      ref.read(shopProvider.notifier).setSearchQuery('');
-                                    },
-                                  ),
-                                IconButton(
-                                  icon: const Icon(Icons.mic, color: AppColors.primary),
-                                  onPressed: () {
-                                    // TODO: Voice search
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1),
-                    ],
-                  ),
-                ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // === PREMIUM BRAND HEADER ===
+          SliverAppBar(
+            floating: true,
+            pinned: false,
+            elevation: 0,
+            toolbarHeight: 70,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            title: Text(
+              'Shop Radar',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: AppColors.primary,
+                letterSpacing: -1,
               ),
+            ),
+            actions: [
+              _buildAppBarIcon(Icons.search_rounded, () {}),
+              _buildAppBarIcon(Icons.notifications_none_rounded, () => Navigator.pushNamed(context, '/notifications'), 
+                count: ref.watch(notificationProvider).unreadCount),
+              _buildAppBarIcon(Icons.emergency_outlined, () => Navigator.pushNamed(context, '/emergency'), color: Colors.redAccent),
+              const SizedBox(width: 8),
+            ],
+          ),
 
-              // === QUICK ACTIONS ===
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildQuickAction(Icons.map_rounded, 'Map View', AppColors.info, () => Navigator.pushNamed(context, '/discover')),
-                      _buildQuickAction(Icons.local_offer, 'Deals', AppColors.success, () => Navigator.pushNamed(context, '/deals')),
-                      _buildQuickAction(Icons.question_answer, 'Ask', AppColors.warning, () => Navigator.pushNamed(context, '/community')),
-                      _buildQuickAction(Icons.leaderboard, 'Badges', AppColors.primary, () => Navigator.pushNamed(context, '/badges')),
-                    ],
-                  ).animate().fadeIn(duration: 600.ms),
-                ),
-              ),
-
-              // === CATEGORIES ===
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 46,
+          // === FEATURED SHOPS (STORIES) ===
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 110,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: AppConstants.shopCategories.length,
+                    itemCount: shopState.shops.length + 1,
                     itemBuilder: (context, index) {
-                      final category = AppConstants.shopCategories[index];
-                      final isSelected = shopState.selectedCategory == category;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: FilterChip(
-                          selected: isSelected,
-                          label: Text(
-                            category,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isSelected ? Colors.white : AppColors.textSecondary,
-                            ),
-                          ),
-                          backgroundColor: Theme.of(context).cardColor,
-                          selectedColor: AppColors.primary,
-                          checkmarkColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: isSelected ? AppColors.primary : AppColors.divider),
-                          ),
-                          onSelected: (_) => ref.read(shopProvider.notifier).setCategory(category),
-                        ),
+                      if (index == 0) {
+                        return _buildCreateStoryBubble(authState.user?.avatar);
+                      }
+                      final shop = shopState.shops[index - 1];
+                      return StoryBubble(
+                        imageUrl: shop.logo,
+                        name: shop.shopName,
+                        isVerified: shop.isVerified,
+                        onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
                       );
                     },
                   ),
                 ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-              // === TRENDING DEALS BANNER ===
-              if (dealState.trendingDeals.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.local_fire_department, color: Colors.deepOrange, size: 22),
-                            const SizedBox(width: 6),
-                            const Text('Trending Deals', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                            const Spacer(),
-                            TextButton(
-                              onPressed: () => Navigator.pushNamed(context, '/deals'),
-                              child: const Text('See All'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        height: 120,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: dealState.trendingDeals.length.clamp(0, 5),
-                          itemBuilder: (context, index) {
-                            final deal = dealState.trendingDeals[index];
-                            return Container(
-                              width: 260,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [AppColors.primary.withAlpha(220), AppColors.accent.withAlpha(200)],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    deal.title,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(deal.shopName, style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 12)),
-                                  const Spacer(),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                                        child: Text(
-                                          '${deal.discountPercent}% OFF',
-                                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        '₹${deal.dealPrice.toInt()}',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ).animate().fadeIn(delay: (100 * index).ms);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Divider(color: AppColors.textLight.withValues(alpha: 0.1), thickness: 1),
                 ),
-
-              // === NEARBY SHOPS ===
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                  child: Row(
-                    children: [
-                      const Text('Nearby Shops', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.sort, size: 18),
-                        label: const Text('Sort', style: TextStyle(fontSize: 13)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              if (shopState.isLoading)
-                const SliverFillRemaining(
-                  child: LoadingIndicator(message: 'Finding nearby shops...'),
-                )
-              else if (shopState.shops.isEmpty)
-                SliverFillRemaining(
-                  child: EmptyStateWidget(
-                    icon: Icons.store_outlined,
-                    title: 'No shops found',
-                    subtitle: 'Try a different search or category',
-                    buttonText: 'Refresh',
-                    onButtonPressed: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final shop = shopState.shops[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: ShopCard(
-                          shop: shop,
-                          onTap: () => Navigator.pushNamed(context, '/shop-details', arguments: shop.id),
-                        ),
-                      ).animate().fadeIn(delay: (60 * index).ms).slideY(begin: 0.05);
-                    },
-                    childCount: shopState.shops.length,
-                  ),
-                ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            ],
+              ],
+            ).animate().fadeIn(duration: 400.ms),
           ),
-        ),
+
+          // === FEED FEED SECTION ===
+          if (socialState.isLoading && socialState.feed.isEmpty)
+            const SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
+          else if (socialState.feed.isEmpty)
+            _buildEmptyFeed()
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final post = socialState.feed[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: PostCard(post: post),
+                    ).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1, curve: Curves.easeOutQuad);
+                  },
+                  childCount: socialState.feed.length,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
+  Widget _buildAppBarIcon(IconData icon, VoidCallback onTap, {int count = 0, Color? color}) {
+    return Stack(
+      children: [
+        IconButton(
+          onPressed: onTap,
+          icon: Icon(icon, color: color ?? AppColors.textPrimary, size: 26),
+        ),
+        if (count > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text(
+                '$count',
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCreateStoryBubble(String? avatarUrl) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
       child: Column(
         children: [
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(
-              color: (color ?? Colors.transparent).withAlpha(25),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 26),
+          Stack(
+            children: [
+              PremiumAvatar(imageUrl: avatarUrl, size: 68),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                    child: const Icon(Icons.add, color: Colors.white, size: 12),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            'Your Story',
+            style: GoogleFonts.inter(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyFeed() {
+    return SliverFillRemaining(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.auto_awesome_mosaic_rounded, size: 64, color: AppColors.textLight.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text(
+            'Nothing to see here yet',
+            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textLight),
+          ),
+          Text(
+            'Follow shops to see their updates',
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.textLight),
+          ),
+          const SizedBox(height: 24),
+          PremiumButton(
+            text: 'Discover Shops',
+            onPressed: () {},
+            width: 160,
+            height: 44,
+          ),
         ],
       ),
     );
   }
 }
-
-
-
-
 
 
 
