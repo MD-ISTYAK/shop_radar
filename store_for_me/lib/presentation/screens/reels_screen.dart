@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
-import '../providers/social_provider.dart';
-import '../providers/data_saver_provider.dart';
+import 'package:store_for_me/core/constants/app_constants.dart';
+import 'package:store_for_me/core/theme/app_theme.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
+import 'package:store_for_me/presentation/providers/data_saver_provider.dart';
+import 'package:store_for_me/presentation/widgets/comment_sheet.dart';
+import 'package:store_for_me/presentation/widgets/share_to_dm_sheet.dart';
+import 'package:store_for_me/data/models/social_models.dart';
 
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
@@ -200,14 +203,14 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                   _buildSideAction(
                     icon: Icons.chat_bubble_outline,
                     label: _formatCount(reel.commentsCount),
-                    onTap: () {},
+                    onTap: () => _showComments(reel.id),
                   ),
                   const SizedBox(height: 16),
                   // Share
                   _buildSideAction(
                     icon: Icons.send_outlined,
                     label: 'Share',
-                    onTap: () {},
+                    onTap: () => _showShareToDM(reel),
                   ),
                 ],
               ),
@@ -322,6 +325,39 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
           ],
         ),
       ),
+    );
+  }
+
+  void _showComments(String reelId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CommentSheet(
+        postId: reelId,
+        initialComments: const [], // Will fetch from API
+      ),
+    );
+  }
+
+  void _showShareToDM(ReelModel reel) {
+    // Map Reel to PostModel for the Share Sheet
+    final post = PostModel(
+      id: reel.id,
+      userId: reel.userId,
+      username: reel.username,
+      profilePic: reel.profilePic,
+      content: reel.caption,
+      videoUrl: reel.videoUrl,
+      type: 'reel',
+      createdAt: reel.createdAt,
+    );
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareToDMSheet(post: post),
     );
   }
 }

@@ -9,13 +9,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:pro_image_editor/pro_image_editor.dart';
-import '../../core/theme/app_theme.dart';
-import '../providers/social_provider.dart';
+import 'package:store_for_me/core/theme/app_theme.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
 import 'package:dio/dio.dart';
-import '../widgets/stickers/sticker_tools_panel.dart';
-import '../widgets/stickers/interactive_sticker_canvas.dart';
-import '../widgets/stickers/music_picker_sheet.dart';
-import '../../data/models/social_models.dart';
+import 'package:store_for_me/presentation/widgets/stickers/sticker_tools_panel.dart';
+import 'package:store_for_me/presentation/widgets/stickers/interactive_sticker_canvas.dart';
+import 'package:store_for_me/presentation/widgets/stickers/music_picker_sheet.dart';
+import 'package:store_for_me/data/models/social_models.dart';
 
 class SnapPreviewScreen extends ConsumerStatefulWidget {
   final String mediaPath;
@@ -137,11 +137,10 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
       final screenSize = MediaQuery.of(context).size;
       final formData = FormData.fromMap({
         'caption': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
-        if (widget.isVideo) 'video': [
-          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.mp4'),
-        ] else 'images': [
-          await MultipartFile.fromFile(widget.mediaPath, filename: 'snap.jpg'),
-        ],
+        'image': await MultipartFile.fromFile(
+          widget.mediaPath, 
+          filename: widget.isVideo ? 'snap.mp4' : 'snap.jpg'
+        ),
         'interactiveElements': jsonEncode(_stickers.map((s) => {
           'type': s.type,
           'x': s.position.dx / screenSize.width,

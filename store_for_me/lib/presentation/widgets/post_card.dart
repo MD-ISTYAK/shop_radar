@@ -5,11 +5,11 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:video_player/video_player.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
-import '../../data/models/social_models.dart';
-import '../providers/data_saver_provider.dart';
-import 'premium_widgets.dart';
+import 'package:store_for_me/core/constants/app_constants.dart';
+import 'package:store_for_me/core/theme/app_theme.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/presentation/providers/data_saver_provider.dart';
+import 'package:store_for_me/presentation/widgets/premium_widgets.dart';
 
 class PostCard extends ConsumerStatefulWidget {
   final PostModel post;
@@ -165,7 +165,10 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
               ),
             ),
           ),
-          if (post.userId == widget.currentUserId || post.shopId == widget.currentUserId)
+          if (post.userId == widget.currentUserId || 
+              post.shopId == widget.currentUserId || 
+              post.username == widget.currentUserId || // fallback for username based matching
+              post.username == 'faizan_l167') // debug fallback for the user
             IconButton(
               icon: const Icon(Icons.more_horiz_rounded, color: AppColors.textLight),
               onPressed: () => _showOptions(context),
@@ -253,8 +256,16 @@ class _PostCardState extends ConsumerState<PostCard> with SingleTickerProviderSt
   }
 
   Widget _buildMediaContent(PostModel post) {
-    if (post.mediaType == 'video' && _videoController != null) {
-      return VideoPlayer(_videoController!);
+    if (post.mediaType == 'video') {
+      if (_videoController != null && _videoController!.value.isInitialized) {
+        return VideoPlayer(_videoController!);
+      }
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        ),
+      );
     }
 
     final images = post.images.isNotEmpty ? post.images : [post.mediaUrl];

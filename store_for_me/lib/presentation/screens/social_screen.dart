@@ -15,6 +15,9 @@ import 'reels_screen.dart';
 import 'search_users_screen.dart';
 import 'public_profile_screen.dart';
 import 'package:share_plus/share_plus.dart';
+import '../widgets/share_to_dm_sheet.dart';
+import '../widgets/premium_widgets.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SocialScreen extends ConsumerStatefulWidget {
   const SocialScreen({super.key});
@@ -35,6 +38,7 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
       ref.read(socialProvider.notifier).fetchFeed();
       ref.read(socialProvider.notifier).fetchStories();
       ref.read(socialProvider.notifier).fetchReels();
+      ref.read(socialProvider.notifier).fetchSuggestedUsers();
     });
 
     _feedScrollController.addListener(_onScroll);
@@ -58,17 +62,19 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(authProvider).user?.id ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Shop Radar',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontWeight: FontWeight.w800,
             fontSize: 22,
             foreground: Paint()
-              ..shader = LinearGradient(
-                colors: [AppColors.primary, AppColors.accent],
+              ..shader = const LinearGradient(
+                colors: [AppColors.primary, AppColors.secondary],
               ).createShader(const Rect.fromLTWH(0, 0, 200, 30)),
           ),
         ),
@@ -103,8 +109,8 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
             Tab(icon: Icon(Icons.person_outline)),
           ],
           indicatorColor: AppColors.primary,
-          labelColor: Theme.of(context).textTheme.bodyLarge?.color,
-          unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
+          labelColor: isDark ? Colors.white : AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textLight,
         ),
       ),
       body: TabBarView(
@@ -116,6 +122,74 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
             ? const Center(child: CircularProgressIndicator()) 
             : PublicProfileScreen(userId: currentUserId),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFeedTab() {
+    final social = ref.watch(socialProvider);
+    final auth = ref.watch(authProvider);
+    final currentUserId = auth.user?.id ?? '';
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.wait([
+          ref.read(socialProvider.notifier).fetchFeed(),
+          ref.read(socialProvider.notifier).fetchStories(),
+        ]);
+      },
+      child: social.isLoading
+          ? _buildShimmerFeed()
+          : (social.feed.isEmpty && social.stories.isEmpty
+              ? _buildEmptyFeed()
+              : ListView.builder(
+                  controller: _feedScrollController,
+                  padding: EdgeInsets.zero,
+                  itemCount: social.feed.length + 2, // stories + feed + loader
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return _buildStoriesBar(social.stories);
+                    }
+                    if (index == social.feed.length + 1) {
+                      return social.isLoadingMore
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            )
+                          : const SizedBox(height: 80);
+                    }
+                    return _buildPostCard(social.feed[index - 1], currentUserId);
+                  },
+                )),
+    );
+  }
+
+  Widget _buildStoriesBar(List<StoryGroupModel> stories) {
+    return Container(
+      height: 110,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: stories.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return StoryBubble(
+              group: StoryGroupModel(stories: const [], username: 'Your story'),
+              isAddStory: true,
+              onTap: () => Navigator.pushNamed(context, '/create-story'),
+            );
+          }
+          final group = stories[index - 1];
+          return StoryBubble(
+            group: group,
+            onTap: () => _openStoryViewer(stories, index - 1),
+          );
+        },
       ),
     );
   }
@@ -145,182 +219,30 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildFeedTab() {
-    final social = ref.watch(socialProvider);
-    final auth = ref.watch(authProvider);
-    final currentUserId = auth.user?.id ?? '';
-
-    return DefaultTabController(
-      length: 4,
-      child: NestedScrollView(
-        controller: _feedScrollController,
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverToBoxAdapter(
-              child: _buildStoriesBar(social.stories),
-            ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverAppBarDelegate(
-                TabBar(
-                  isScrollable: true,
-                  indicatorColor: AppColors.primary,
-                  labelColor: Theme.of(context).textTheme.bodyLarge?.color,
-                  unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
-                  tabAlignment: TabAlignment.start,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  tabs: const [
-                    Tab(text: 'Following'),
-                    Tab(text: 'Trending'),
-                    Tab(text: 'Explore'),
-                    Tab(text: 'Categories'),
-                  ],
-                ),
-              ),
-            ),
-          ];
-        },
-        body: TabBarView(
-          children: [
-            // Tab 1: Following Feed
-            RefreshIndicator(
-              onRefresh: () async {
-                await Future.wait([
-                  ref.read(socialProvider.notifier).fetchFeed(),
-                  ref.read(socialProvider.notifier).fetchStories(),
-                ]);
-              },
-              child: social.isLoading
-                  ? _buildShimmerFeed()
-                  : (social.feed.isEmpty
-                      ? _buildEmptyFeed()
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 8),
-                          itemCount: social.feed.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == social.feed.length) {
-                              return social.isLoadingMore
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                    )
-                                  : const SizedBox(height: 80);
-                            }
-                            return _buildPostCard(social.feed[index], currentUserId);
-                          },
-                        )),
-            ),
-            // Tab 2: Trending Feed (List View)
-            RefreshIndicator(
-              onRefresh: () => ref.read(socialProvider.notifier).fetchExplore(),
-              child: social.explore.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(top: 8),
-                      itemCount: social.explore.length,
-                      itemBuilder: (context, index) {
-                        return _buildPostCard(social.explore[index], currentUserId);
-                      },
-                    ),
-            ),
-            // Tab 3: Explore (Grid View)
-            _buildExploreTab(),
-            // Tab 4: Categories
-            _buildCategoriesPlaceholder(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoriesPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.category_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
-          const SizedBox(height: 12),
-          const Text('Categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          Text(
-            'Discover posts by topics (Comedy, Tech, etc.)',
-            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
-          ),
-          const SizedBox(height: 20),
-          OutlinedButton(
-            onPressed: () {},
-            child: const Text('Coming Soon in Phase 2'),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStoriesBar(List<StoryGroupModel> stories) {
-    return Container(
-      height: 100,
-      color: Theme.of(context).cardColor,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        itemCount: stories.length + 1, // +1 for "Add" button
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return StoryBubble(
-              group: StoryGroupModel(stories: const [], username: 'Your story'),
-              isAddStory: true,
-              onTap: () => Navigator.pushNamed(context, '/create-story'),
-            );
-          }
-          final group = stories[index - 1];
-          return StoryBubble(
-            group: group,
-            onTap: () => _openStoryViewer(stories, index - 1),
-          );
-        },
-      ),
-    );
-  }
-
-  void _openStoryViewer(List<StoryGroupModel> stories, int index) {
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        opaque: false,
-        pageBuilder: (_, __, ___) => StoryViewerScreen(
-          storyGroups: stories,
-          initialGroupIndex: index,
-        ),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
-
   void _showComments(PostModel post) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => CommentSheet(
-        postId: post.id,
-        initialComments: post.comments,
-      ),
+      builder: (context) => CommentSheet(postId: post.id),
     );
   }
 
   void _handleSharePost(PostModel post) {
-    final String shareText = 'Check out this post on Shop Radar by ${post.username}:\n\n${post.content}\n\nDownload Shop Radar for more!';
-    Share.share(shareText);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareToDMSheet(post: post),
+    );
   }
 
   void _handleDeletePost(PostModel post) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Post'),
-        content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+        content: const Text('Are you sure you want to delete this post?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -332,7 +254,10 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
               final success = await ref.read(socialProvider.notifier).deletePost(post.id);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(success ? 'Post deleted' : 'Failed to delete post')),
+                  SnackBar(
+                    content: Text(success ? 'Post deleted' : 'Failed to delete post'),
+                    backgroundColor: success ? AppColors.success : AppColors.error,
+                  ),
                 );
               }
             },
@@ -391,10 +316,6 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
             ElevatedButton(
               onPressed: () async {
                 final newContent = controller.text.trim();
-                if (newContent == currentContent) {
-                  Navigator.pop(context);
-                  return;
-                }
                 Navigator.pop(context);
                 final success = await ref.read(socialProvider.notifier).updatePost(post.id, newContent);
                 if (mounted) {
@@ -403,10 +324,6 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
               child: const Text('Update Post'),
             ),
             const SizedBox(height: 20),
@@ -416,183 +333,65 @@ class _SocialScreenState extends ConsumerState<SocialScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildExploreTab() {
-    final social = ref.watch(socialProvider);
-
-    return RefreshIndicator(
-      onRefresh: () => ref.read(socialProvider.notifier).fetchExplore(),
-      child: social.explore.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   Icon(Icons.explore_outlined, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
-                  SizedBox(height: 12),
-                  const Text('Explore', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-                  SizedBox(height: 6),
-                  Text(
-                    'Discover posts from the community',
-                     style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
-                  ),
-                ],
-              ),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.all(2),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 2,
-                crossAxisSpacing: 2,
-              ),
-              itemCount: social.explore.length,
-              itemBuilder: (context, index) {
-                final post = social.explore[index];
-                final imageUrl = post.images.isNotEmpty
-                    ? AppConstants.getImageUrl(post.images.first)
-                    : post.mediaUrl.isNotEmpty
-                        ? AppConstants.getImageUrl(post.mediaUrl)
-                        : '';
-
-                return GestureDetector(
-                  onTap: () => _showComments(post),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      imageUrl.isNotEmpty
-                          ? Image(
-                              image: CachedNetworkImageProvider(imageUrl),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
-                                child: Icon(Icons.image, color: Theme.of(context).textTheme.bodySmall?.color),
-                              ),
-                            )
-                          : Container(
-                              color: AppColors.primary.withAlpha(30),
-                              padding: const EdgeInsets.all(8),
-                              child: Center(
-                                child: Text(
-                                  post.content,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
-                            ),
-                      if (post.images.length > 1)
-                        const Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Icon(Icons.collections, color: Colors.white, size: 16),
-                        ),
-                      if (post.isReel)
-                        const Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Icon(Icons.play_circle_outline, color: Colors.white, size: 18),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+  void _openStoryViewer(List<StoryGroupModel> stories, int index) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (_, __, ___) => StoryViewerScreen(
+          storyGroups: stories,
+          initialGroupIndex: index,
+        ),
+      ),
     );
   }
 
   Widget _buildEmptyFeed() {
+    final social = ref.watch(socialProvider);
     return Center(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-           Icon(Icons.people_outline, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
-          SizedBox(height: 16),
-          const Text(
-            'Welcome to Shop Radar',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          Icon(
+            social.error != null ? Icons.error_outline : Icons.feed_outlined,
+            size: 64,
+            color: social.error != null ? AppColors.error : AppColors.textLight,
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 16),
           Text(
-            'Follow shops and people to see their posts',
-             style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
+            social.error ?? 'No posts yet',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {
-              _tabController.animateTo(2);
-              ref.read(socialProvider.notifier).fetchExplore();
-            },
-            icon: const Icon(Icons.explore_outlined),
-            label: const Text('Find people to follow'),
-          ),
+          const SizedBox(height: 8),
+          if (social.error == null)
+            const Text('Follow some users to see their posts here', style: TextStyle(color: AppColors.textLight)),
+          if (social.error != null)
+            TextButton(
+              onPressed: () => ref.read(socialProvider.notifier).fetchFeed(),
+              child: const Text('Try Again'),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildShimmerFeed() {
-    return Shimmer.fromColors(
-      baseColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase),
-      highlightColor: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerHighlight : AppColors.shimmerHighlight),
-      child: ListView.builder(
-        itemCount: 4,
-        itemBuilder: (_, __) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            children: [
-              // Header shimmer
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(width: 36, height: 36, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
-                    const SizedBox(width: 10),
-                    Container(width: 120, height: 14, color: Colors.white),
-                  ],
-                ),
-              ),
-              // Image shimmer
-              Container(
-                width: double.infinity,
-                height: 300,
-                color: Colors.white,
-              ),
-              // Actions shimmer
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: List.generate(3, (i) => Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Container(width: 24, height: 24, color: Colors.white),
-                  )),
-                ),
-              ),
-            ],
+    return ListView.builder(
+      itemCount: 3,
+      padding: const EdgeInsets.all(16),
+      itemBuilder: (context, index) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          height: 400,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
           ),
         ),
       ),
     );
-  }
-}
-
-class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
-  _SliverAppBarDelegate(this._tabBar);
-
-  @override
-  double get minExtent => _tabBar.preferredSize.height;
-  @override
-  double get maxExtent => _tabBar.preferredSize.height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: _tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
   }
 }

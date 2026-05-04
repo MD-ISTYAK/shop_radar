@@ -63,6 +63,7 @@ import 'services/notification_service.dart';
 import 'presentation/screens/magico_files_screen.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/screens/snap_camera_screen.dart';
+import 'presentation/screens/product_listing_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -220,6 +221,9 @@ class ShopRadarApp extends ConsumerWidget {
             return _buildRoute(const MyBusinessesScreen(), settings);
           case '/snap-camera':
             return _buildRoute(const SnapCameraScreen(), settings);
+          case '/product-listing':
+            final category = settings.arguments as String;
+            return _buildRoute(ProductListingScreen(category: category), settings);
           case '/magico/files':
             return _buildRoute(const MagicoFilesScreen(), settings);
           default:
