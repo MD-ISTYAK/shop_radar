@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import '../../data/models/social_models.dart';
-import '../../services/api_service.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/services/api_service.dart';
 
 class SocialState {
   final List<PostModel> feed;
@@ -95,46 +95,26 @@ class SocialNotifier extends StateNotifier<SocialState> {
         cursor: refresh ? null : state.feedCursor,
         limit: 10,
       );
+      debugPrint('FETCH FEED RESPONSE: ${response.statusCode} - ${response.data}');
       
-      // Log response size for optimization tracking
-      final resSize = response.toString().length / 1024;
-      print('DEBUG: Feed API Response Size: ${resSize.toStringAsFixed(2)} KB');
-
       if (response.data['success'] == true) {
-        final posts = (response.data['data'] as List)
-            .map((e) => PostModel.fromJson(e))
-            .toList();
-        final nextCursor = response.data['nextCursor'] as String?;
-        final hasMore = posts.length >= 10 && nextCursor != null;
-
+        final List data = response.data['data'] ?? [];
+        final List<PostModel> posts = data.map((e) => PostModel.fromJson(e)).toList();
+        
         state = state.copyWith(
           feed: refresh ? posts : [...state.feed, ...posts],
           isLoading: false,
           isLoadingMore: false,
-          feedCursor: nextCursor ?? (posts.isNotEmpty ? posts.last.id : null),
-          hasMoreFeed: hasMore,
+          hasMoreFeed: posts.length == 10,
+          feedCursor: posts.isNotEmpty ? posts.last.createdAt.toIso8601String() : null,
+          error: null,
         );
       } else {
-        state = state.copyWith(isLoading: false, isLoadingMore: false);
+        state = state.copyWith(isLoading: false, isLoadingMore: false, error: response.data['message'] ?? 'Failed to load feed');
       }
     } catch (e) {
-      // Fallback to old pagination
-      try {
-        final response = await _api.getFeed();
-        if (response.data['success'] == true) {
-          final posts = (response.data['data'] as List)
-              .map((e) => PostModel.fromJson(e))
-              .toList();
-          state = state.copyWith(
-            feed: posts,
-            isLoading: false,
-            isLoadingMore: false,
-            hasMoreFeed: false,
-          );
-        }
-      } catch (_) {
-        state = state.copyWith(isLoading: false, isLoadingMore: false, error: 'Failed to load feed');
-      }
+      debugPrint('FETCH FEED ERROR: $e');
+      state = state.copyWith(isLoading: false, isLoadingMore: false, error: e.toString());
     }
   }
 
@@ -161,13 +141,16 @@ class SocialNotifier extends StateNotifier<SocialState> {
   Future<void> fetchStories() async {
     try {
       final response = await _api.getStories();
+      debugPrint('FETCH STORIES RESPONSE: ${response.data}');
       if (response.data['success'] == true) {
         final groups = (response.data['data'] as List)
             .map((e) => StoryGroupModel.fromJson(e))
             .toList();
+        debugPrint('FETCHED ${groups.length} STORY GROUPS');
         state = state.copyWith(stories: groups);
       }
     } catch (e) {
+      debugPrint('FETCH STORIES ERROR: $e');
       // ignore
     }
   }
@@ -304,16 +287,17 @@ class SocialNotifier extends StateNotifier<SocialState> {
   }
 
   // ===================== POST CREATION =====================
-  Future<bool> createPost(FormData data) async {
+  Future<bool> createPost(FormData data, {void Function(int, int)? onSendProgress}) async {
     try {
-      final response = await _api.createPost(data);
+      final response = await _api.createPost(data, onSendProgress: onSendProgress);
+      debugPrint('CREATE POST RESPONSE: ${response.statusCode} - ${response.data}');
       if (response.data['success'] == true) {
         await fetchFeed();
         await fetchReels();
         return true;
       }
     } catch (e) {
-      // ignore
+      debugPrint('CREATE POST ERROR: $e');
     }
     return false;
   }
@@ -371,22 +355,29 @@ class SocialNotifier extends StateNotifier<SocialState> {
 
     try {
       final response = await _api.deletePost(postId);
-      return response.data['success'] == true;
+      debugPrint('DELETE POST RESPONSE: ${response.data}');
+      if (response.data['success'] == true) {
+        return true;
+      }
+      return false;
     } catch (e) {
+      debugPrint('DELETE POST ERROR: $e');
       // Revert or refresh
       await fetchFeed();
       return false;
     }
   }
 
-  Future<bool> createStory(FormData data) async {
+  Future<bool> createStory(FormData data, {void Function(int, int)? onSendProgress}) async {
     try {
-      final response = await _api.createStory(data);
+      final response = await _api.createStory(data, onSendProgress: onSendProgress);
+      debugPrint('CREATE STORY RESPONSE: ${response.data}');
       if (response.data['success'] == true) {
         await fetchStories();
         return true;
       }
     } catch (e) {
+      debugPrint('CREATE STORY ERROR: $e');
       // ignore
     }
     return false;

@@ -5,7 +5,8 @@ import 'package:dio/dio.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
-import '../../services/video_compress_service.dart';
+import '../widgets/premium_widgets.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CreateStoryScreen extends ConsumerStatefulWidget {
   const CreateStoryScreen({super.key});
@@ -53,26 +54,13 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
 
     setState(() => _isSubmitting = true);
 
-    final formData = FormData();
-    formData.fields.add(MapEntry('caption', _captionController.text.trim()));
-
-    // Check if it's a video and compress it first
-    final isVideo = _selectedMedia!.path.toLowerCase().endsWith('.mp4') ||
-                    _selectedMedia!.path.toLowerCase().endsWith('.mov') ||
-                    _selectedMedia!.name.toLowerCase().endsWith('.mp4');
-
-    if (isVideo) {
-      final compressedFile = await VideoCompressService().compressVideo(_selectedMedia!.path);
-      formData.files.add(MapEntry(
-        'image',
-        await MultipartFile.fromFile(compressedFile.path, filename: compressedFile.path.split(Platform.pathSeparator).last),
-      ));
-    } else {
-      formData.files.add(MapEntry(
-        'image',
-        await MultipartFile.fromFile(_selectedMedia!.path, filename: _selectedMedia!.name),
-      ));
-    }
+    final formData = FormData.fromMap({
+      'caption': _captionController.text.trim(),
+      'image': await MultipartFile.fromFile(
+        _selectedMedia!.path,
+        filename: _selectedMedia!.name,
+      ),
+    });
 
     final success = await ref.read(socialProvider.notifier).createStory(formData);
 
@@ -101,19 +89,23 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Create Story'),
+        title: Text(
+          'Create Story',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).textTheme.titleLarge?.color,
+          ),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitStory,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                minimumSize: const Size(0, 36),
-              ),
-              child: _isSubmitting
-                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Share'),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: PremiumButton(
+              text: 'Share',
+              onPressed: _isSubmitting ? () {} : _submitStory,
+              width: 100,
+              height: 36,
+              isLoading: _isSubmitting,
+              isFullWidth: false,
             ),
           ),
         ],

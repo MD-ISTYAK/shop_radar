@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
-import '../../data/models/social_models.dart';
-import '../providers/social_provider.dart';
-import '../../services/api_service.dart';
+import 'package:store_for_me/core/constants/app_constants.dart';
+import 'package:store_for_me/core/theme/app_theme.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
+import 'package:store_for_me/services/api_service.dart';
 
 class CommentSheet extends ConsumerStatefulWidget {
   final String postId;

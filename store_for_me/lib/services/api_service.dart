@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../core/constants/app_constants.dart';
+import 'package:store_for_me/core/constants/app_constants.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -263,8 +263,8 @@ class ApiService {
       _dio.get('/payments/$orderId/status');
 
   // ===================== SOCIAL =====================
-  Future<Response> createPost(FormData data) =>
-      _dio.post('/social/posts', data: data);
+  Future<Response> createPost(FormData data, {void Function(int, int)? onSendProgress}) =>
+      _dio.post('/social/posts', data: data, onSendProgress: onSendProgress);
 
   Future<Response> getFeed({int page = 1, int limit = 20}) =>
       _dio.get('/social/feed', queryParameters: {'page': page, 'limit': limit});
@@ -308,8 +308,8 @@ class ApiService {
   Future<Response> getMyPosts({int page = 1, int limit = 20}) =>
       _dio.get('/social/my-posts', queryParameters: {'page': page, 'limit': limit});
 
-  Future<Response> createStory(FormData data) =>
-      _dio.post('/social/stories', data: data);
+  Future<Response> createStory(FormData data, {void Function(int, int)? onSendProgress}) =>
+      _dio.post('/social/stories', data: data, onSendProgress: onSendProgress);
 
   Future<Response> getStories() => _dio.get('/social/stories');
 

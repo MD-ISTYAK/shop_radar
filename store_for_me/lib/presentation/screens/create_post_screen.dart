@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
-import '../providers/social_provider.dart';
-import '../widgets/premium_widgets.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
+import 'package:store_for_me/presentation/widgets/premium_widgets.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   const CreatePostScreen({super.key});
@@ -21,6 +21,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   final List<XFile> _selectedImages = [];
   XFile? _selectedVideo;
   bool _isSubmitting = false;
+  double _uploadProgress = 0;
 
   Future<void> _pickImages() async {
     final picker = ImagePicker();
@@ -28,7 +29,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (images.isNotEmpty) {
       setState(() {
         _selectedImages.addAll(images.take(5 - _selectedImages.length));
-        _selectedVideo = null;
       });
     }
   }
@@ -39,7 +39,6 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     if (video != null) {
       setState(() {
         _selectedVideo = video;
-        _selectedImages.clear();
       });
     }
   }
@@ -52,27 +51,38 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _uploadProgress = 0;
+    });
 
-    final formData = FormData();
-    formData.fields.add(MapEntry('content', _contentController.text.trim()));
-    formData.fields.add(const MapEntry('type', 'post'));
+    final formData = FormData.fromMap({
+      'content': _contentController.text.trim(),
+      'type': 'post',
+      if (_selectedVideo != null)
+        'video': await MultipartFile.fromFile(
+          _selectedVideo!.path,
+          filename: _selectedVideo!.name,
+        ),
+      'images': [
+        for (var image in _selectedImages)
+          await MultipartFile.fromFile(
+            image.path,
+            filename: image.name,
+          ),
+      ],
+    });
 
-    if (_selectedVideo != null) {
-      formData.files.add(MapEntry(
-        'video',
-        await MultipartFile.fromFile(_selectedVideo!.path, filename: _selectedVideo!.name),
-      ));
-    } else {
-      for (var image in _selectedImages) {
-        formData.files.add(MapEntry(
-          'images',
-          await MultipartFile.fromFile(image.path, filename: image.name),
-        ));
-      }
-    }
-
-    final success = await ref.read(socialProvider.notifier).createPost(formData);
+    final success = await ref.read(socialProvider.notifier).createPost(
+      formData,
+      onSendProgress: (sent, total) {
+        if (total > 0) {
+          setState(() {
+            _uploadProgress = sent / total;
+          });
+        }
+      },
+    );
 
     setState(() => _isSubmitting = false);
 
@@ -104,27 +114,42 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         elevation: 0,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         leading: IconButton(
-          icon: Icon(Icons.close_rounded, color: AppColors.textPrimary, size: 24),
+          icon: Icon(Icons.close_rounded, 
+            color: Theme.of(context).iconTheme.color, 
+            size: 26),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Create Post',
-          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+          style: GoogleFonts.poppins(
+            fontSize: 18, 
+            fontWeight: FontWeight.w700, 
+            color: Theme.of(context).textTheme.titleLarge?.color
+          ),
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: PremiumButton(
-                text: 'Post',
-                onPressed: _isSubmitting ? () {} : _submitPost,
-                width: 80,
-                height: 36,
-                isLoading: _isSubmitting,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: PremiumButton(
+              text: 'Post',
+              onPressed: _isSubmitting ? () {} : _submitPost,
+              width: 80,
+              height: 36,
+              isLoading: _isSubmitting,
+              isFullWidth: false,
             ),
           ),
         ],
+        bottom: _isSubmitting
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(2),
+                child: LinearProgressIndicator(
+                  value: _uploadProgress,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              )
+            : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -182,11 +207,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             // Action Buttons
             Row(
               children: [
-                if (_selectedImages.length < 5 && _selectedVideo == null)
+                if (_selectedImages.length < 5)
                   Expanded(
                     child: _buildMediaAction('Add Photos', Icons.photo_library_rounded, _pickImages),
                   ),
-                if (_selectedImages.isEmpty && _selectedVideo == null) ...[
+                if (_selectedVideo == null) ...[
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildMediaAction('Add Video', Icons.video_camera_back_rounded, _pickVideo),

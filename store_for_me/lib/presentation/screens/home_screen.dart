@@ -5,11 +5,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shop_provider.dart';
-import '../providers/social_provider.dart';
-import '../providers/notification_provider.dart';
-import '../widgets/post_card.dart';
-import '../widgets/story_bubble.dart';
-import '../widgets/premium_widgets.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
+import 'package:store_for_me/presentation/providers/notification_provider.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/presentation/widgets/post_card.dart';
+import 'package:store_for_me/presentation/widgets/story_bubble.dart';
+import 'package:store_for_me/presentation/widgets/comment_sheet.dart';
+import 'package:store_for_me/presentation/widgets/share_to_dm_sheet.dart';
+import 'package:store_for_me/presentation/widgets/premium_widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(socialProvider.notifier).fetchFeed();
       ref.read(shopProvider.notifier).fetchNearbyShops();
       ref.read(notificationProvider.notifier).fetchNotifications();
+      ref.read(socialProvider.notifier).fetchSuggestedUsers();
     });
   }
 
@@ -113,7 +117,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final post = socialState.feed[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 20),
-                      child: PostCard(post: post),
+                      child: PostCard(
+                        post: post,
+                        currentUserId: authState.user?.id,
+                        onLike: () => ref.read(socialProvider.notifier).toggleLike(post.id),
+                        onComment: () => _showComments(context, post),
+                        onShare: () => _showShareToDM(context, post),
+                        onSave: () => ref.read(socialProvider.notifier).toggleSavePost(post.id),
+                      ),
                     ).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1, curve: Curves.easeOutQuad);
                   },
                   childCount: socialState.feed.length,
@@ -208,6 +219,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showComments(BuildContext context, PostModel post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CommentSheet(
+        postId: post.id,
+        initialComments: post.comments,
+      ),
+    );
+  }
+
+  void _showShareToDM(BuildContext context, PostModel post) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareToDMSheet(post: post),
     );
   }
 }
