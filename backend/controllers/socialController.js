@@ -673,16 +673,18 @@ const createStory = async (req, res, next) => {
   try {
     const userId = req.user._id;
 
-    if (!req.file) {
+    const file = req.file || (req.files && (req.files.image?.[0] || req.files.video?.[0]));
+
+    if (!file) {
       return res.status(400).json({ success: false, message: 'Media is required for stories' });
     }
 
     const storyData = {
       userId,
       ownerId: userId,
-      mediaUrl: req.file.path,
-      imageUrl: req.file.path, // backward compat
-      mediaType: req.file.mimetype?.startsWith('video') ? 'video' : 'image',
+      mediaUrl: file.path,
+      imageUrl: file.path, // backward compat
+      mediaType: file.mimetype?.startsWith('video') ? 'video' : 'image',
       caption: req.body.caption || '',
       interactiveElements: req.body.interactiveElements ? JSON.parse(req.body.interactiveElements) : [],
       music: req.body.music ? JSON.parse(req.body.music) : null,

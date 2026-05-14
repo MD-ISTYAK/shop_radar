@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/snap_filters.dart';
+import 'package:image_picker/image_picker.dart';
 import 'snap_preview_screen.dart';
 
 class SnapCameraScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
   String _selectedFilterName = 'Original';
   double _brightness = 0.0;
   bool _showSettings = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -162,6 +164,30 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
     }
   }
 
+  void _pickFromGallery() async {
+    try {
+      final XFile? media = await _picker.pickMedia();
+      if (media != null && mounted) {
+        final isVideo = media.path.toLowerCase().endsWith('.mp4') || 
+                        media.path.toLowerCase().endsWith('.mov');
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SnapPreviewScreen(
+              mediaPath: media.path,
+              isVideo: isVideo,
+              filter: SnapFilters.allFilters[_selectedFilterName]!,
+              filterName: _selectedFilterName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error picking from gallery: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
@@ -271,9 +297,7 @@ class _SnapCameraScreenState extends State<SnapCameraScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildIconButton(Icons.photo_library, () {
-                        // Open Gallery logic
-                      }),
+                      _buildIconButton(Icons.photo_library, _pickFromGallery),
                       _buildCaptureButton(),
                       _buildIconButton(Icons.flip_camera_ios, _switchCamera),
                     ],

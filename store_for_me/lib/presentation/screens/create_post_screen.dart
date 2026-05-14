@@ -56,22 +56,29 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       _uploadProgress = 0;
     });
 
-    final formData = FormData.fromMap({
+    final postMap = <String, dynamic>{
       'content': _contentController.text.trim(),
       'type': 'post',
-      if (_selectedVideo != null)
-        'video': await MultipartFile.fromFile(
-          _selectedVideo!.path,
-          filename: _selectedVideo!.name,
-        ),
-      'images': [
+    };
+
+    if (_selectedVideo != null) {
+      postMap['video'] = await MultipartFile.fromFile(
+        _selectedVideo!.path,
+        filename: _selectedVideo!.name,
+      );
+    }
+
+    if (_selectedImages.isNotEmpty) {
+      postMap['images'] = [
         for (var image in _selectedImages)
           await MultipartFile.fromFile(
             image.path,
             filename: image.name,
           ),
-      ],
-    });
+      ];
+    }
+
+    final formData = FormData.fromMap(postMap);
 
     final success = await ref.read(socialProvider.notifier).createPost(
       formData,

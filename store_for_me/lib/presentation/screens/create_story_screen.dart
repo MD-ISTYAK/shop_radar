@@ -54,9 +54,15 @@ class _CreateStoryScreenState extends ConsumerState<CreateStoryScreen> {
 
     setState(() => _isSubmitting = true);
 
+    final isVideo = _selectedMedia!.name.toLowerCase().endsWith('.mp4') ||
+        _selectedMedia!.name.toLowerCase().endsWith('.mov') ||
+        _selectedMedia!.name.toLowerCase().endsWith('.avi') ||
+        _selectedMedia!.name.toLowerCase().endsWith('.mkv');
+    final fieldName = isVideo ? 'video' : 'image';
+
     final formData = FormData.fromMap({
       'caption': _captionController.text.trim(),
-      'image': await MultipartFile.fromFile(
+      fieldName: await MultipartFile.fromFile(
         _selectedMedia!.path,
         filename: _selectedMedia!.name,
       ),

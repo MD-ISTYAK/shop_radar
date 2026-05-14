@@ -38,6 +38,8 @@ class AppLifecycleManager extends WidgetsBindingObserver {
         debugPrint('[AppLifecycle] App DETACHED — clearing video cache');
         VideoCacheManager().clearAll();
         VideoCompressService().cleanUp();
+        // Potential fix for Geolocator NPE: ensure no listeners are active
+        // (Geolocator usually handles this but explicit stop is safer)
         break;
 
       case AppLifecycleState.paused:

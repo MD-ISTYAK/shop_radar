@@ -289,13 +289,20 @@ class SocialNotifier extends StateNotifier<SocialState> {
   // ===================== POST CREATION =====================
   Future<bool> createPost(FormData data, {void Function(int, int)? onSendProgress}) async {
     try {
+      debugPrint('CREATE POST: Sending to ${_api.dio.options.baseUrl}/social/posts');
       final response = await _api.createPost(data, onSendProgress: onSendProgress);
       debugPrint('CREATE POST RESPONSE: ${response.statusCode} - ${response.data}');
       if (response.data['success'] == true) {
         await fetchFeed();
         await fetchReels();
         return true;
+      } else {
+        debugPrint('CREATE POST FAILED: ${response.data['message']}');
       }
+    } on DioException catch (e) {
+      debugPrint('CREATE POST DIO ERROR: ${e.type} - ${e.response?.statusCode}');
+      debugPrint('CREATE POST DIO RESPONSE: ${e.response?.data}');
+      debugPrint('CREATE POST DIO MESSAGE: ${e.message}');
     } catch (e) {
       debugPrint('CREATE POST ERROR: $e');
     }
@@ -370,15 +377,21 @@ class SocialNotifier extends StateNotifier<SocialState> {
 
   Future<bool> createStory(FormData data, {void Function(int, int)? onSendProgress}) async {
     try {
+      debugPrint('CREATE STORY: Sending to ${_api.dio.options.baseUrl}/social/stories');
       final response = await _api.createStory(data, onSendProgress: onSendProgress);
       debugPrint('CREATE STORY RESPONSE: ${response.data}');
       if (response.data['success'] == true) {
         await fetchStories();
         return true;
+      } else {
+        debugPrint('CREATE STORY FAILED: ${response.data['message']}');
       }
+    } on DioException catch (e) {
+      debugPrint('CREATE STORY DIO ERROR: ${e.type} - ${e.response?.statusCode}');
+      debugPrint('CREATE STORY DIO RESPONSE: ${e.response?.data}');
+      debugPrint('CREATE STORY DIO MESSAGE: ${e.message}');
     } catch (e) {
       debugPrint('CREATE STORY ERROR: $e');
-      // ignore
     }
     return false;
   }

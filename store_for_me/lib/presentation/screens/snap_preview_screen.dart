@@ -12,6 +12,7 @@ import 'package:pro_image_editor/pro_image_editor.dart';
 import 'package:store_for_me/core/theme/app_theme.dart';
 import 'package:store_for_me/presentation/providers/social_provider.dart';
 import 'package:dio/dio.dart';
+import '../../services/video_compress_service.dart';
 import 'package:store_for_me/presentation/widgets/stickers/sticker_tools_panel.dart';
 import 'package:store_for_me/presentation/widgets/stickers/interactive_sticker_canvas.dart';
 import 'package:store_for_me/presentation/widgets/stickers/music_picker_sheet.dart';
@@ -135,9 +136,10 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     setState(() => _isSaving = true);
     try {
       final screenSize = MediaQuery.of(context).size;
-      final formData = FormData.fromMap({
+      final fieldName = widget.isVideo ? 'video' : 'image';
+      final storyMap = <String, dynamic>{
         'caption': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
-        'image': await MultipartFile.fromFile(
+        fieldName: await MultipartFile.fromFile(
           widget.mediaPath, 
           filename: widget.isVideo ? 'snap.mp4' : 'snap.jpg'
         ),
@@ -149,8 +151,11 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
           'rotation': s.rotation,
           'data': s.data,
         }).toList()),
-        if (_music != null) 'music': jsonEncode(_music!.toJson()),
-      });
+      };
+      if (_music != null) {
+        storyMap['music'] = jsonEncode(_music!.toJson());
+      }
+      final formData = FormData.fromMap(storyMap);
 
       final success = await ref.read(socialProvider.notifier).createStory(formData);
       if (mounted) {
@@ -173,11 +178,9 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     try {
       final screenSize = MediaQuery.of(context).size;
       final compressedFile = await VideoCompressService().compressVideo(widget.mediaPath);
-      final formData = FormData.fromMap({
+      final postMap = <String, dynamic>{
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
-        'video': [
-          await MultipartFile.fromFile(compressedFile.path, filename: 'snap.mp4'),
-        ],
+        'video': await MultipartFile.fromFile(compressedFile.path, filename: 'snap.mp4'),
         'interactiveElements': jsonEncode(_stickers.map((s) => {
           'type': s.type,
           'x': s.position.dx / screenSize.width,
@@ -186,8 +189,11 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
           'rotation': s.rotation,
           'data': s.data,
         }).toList()),
-        if (_music != null) 'music': jsonEncode(_music!.toJson()),
-      });
+      };
+      if (_music != null) {
+        postMap['music'] = jsonEncode(_music!.toJson());
+      }
+      final formData = FormData.fromMap(postMap);
 
       final success = await ref.read(socialProvider.notifier).createPost(formData);
       if (mounted) {

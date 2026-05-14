@@ -89,7 +89,7 @@ router.get('/users/suggested', protect, getSuggestedUsers);
 router.get('/users/:userId/posts', getUserPosts);
 
 // ===================== STORIES =====================
-router.post('/stories', upload.single('image'), createStory);
+router.post('/stories', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), createStory);
 router.get('/stories', getStories);
 router.post('/stories/:id/view', markStoryViewed);
 router.get('/my-stories', getMyStories);

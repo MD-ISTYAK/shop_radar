@@ -118,39 +118,41 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
   }
 
   Widget _buildExploreView(dynamic shopState) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        // Categories Header
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Categories',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/product-listing', arguments: 'All'),
-                  child: Text(
-                    'See All',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+    return RefreshIndicator(
+      onRefresh: () => ref.read(shopProvider.notifier).fetchNearbyShops(),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Categories Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Categories',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                ),
-              ],
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/product-listing', arguments: 'All'),
+                    child: Text(
+                      'See All',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
 
         // Categories Grid
         SliverPadding(
@@ -212,8 +214,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCategoryCard(String title, IconData icon) {
     return PremiumGlassCard(
