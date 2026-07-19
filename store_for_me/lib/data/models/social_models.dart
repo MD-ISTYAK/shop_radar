@@ -1,4 +1,5 @@
-import 'package:store_for_me/core/constants/app_constants.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/utils/time_utils.dart';
 
 // ===================== USER PROFILE =====================
 class UserProfileModel {
@@ -237,12 +238,6 @@ class PostModel {
       }
     } else {
       imagesList = (json['images'] as List?)?.map((e) => e.toString()).toList() ?? [];
-    }
-
-    // Auto-infer type if missing or if it's an image but has a video extension
-    if (mType == 'image' && (mUrl.toLowerCase().endsWith('.mp4') || mUrl.toLowerCase().endsWith('.mov') || vUrl.isNotEmpty)) {
-      mType = 'video';
-      if (vUrl.isEmpty) vUrl = mUrl;
     }
 
     return PostModel(

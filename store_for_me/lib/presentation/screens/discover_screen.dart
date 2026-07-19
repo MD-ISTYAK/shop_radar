@@ -136,15 +136,12 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
                     color: AppColors.textPrimary,
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/product-listing', arguments: 'All'),
-                  child: Text(
-                    'See All',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
+                Text(
+                  'See All',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -164,14 +161,11 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                final cat = AppConstants.shopCategories[index + 1]; // Skip 'All'
+                final cat = AppConstants.shopCategories[index % AppConstants.shopCategories.length];
                 final iconCode = AppConstants.categoryIcons[cat] ?? 0xe148;
-                return GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/product-listing', arguments: cat),
-                  child: _buildCategoryCard(cat, IconData(iconCode, fontFamily: 'MaterialIcons')),
-                );
+                return _buildCategoryCard(cat, IconData(iconCode, fontFamily: 'MaterialIcons'));
               },
-              childCount: 6,
+              childCount: 4,
             ),
           ),
         ),
@@ -227,13 +221,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> with SingleTick
           Text(
             title,
             style: GoogleFonts.poppins(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ],
       ),
