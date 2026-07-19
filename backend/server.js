@@ -107,7 +107,7 @@ app.use(cors(corsOptions));
 // Rate limiting — general
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 100000, // Temporarily increased for local development
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
@@ -117,13 +117,14 @@ app.use('/api/', generalLimiter);
 // Rate limiting — auth (strict)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100000, // Temporarily increased for local development
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many login attempts, please try again after 15 minutes.' },
 });
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
+// Temporarily disabled for local development
+// app.use('/api/auth/login', authLimiter);
+// app.use('/api/auth/register', authLimiter);
 
 // Razorpay webhook needs raw body — must come BEFORE express.json()
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));

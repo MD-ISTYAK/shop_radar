@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
-import '../providers/social_provider.dart';
-import '../providers/data_saver_provider.dart';
-import '../widgets/report_dialog.dart';
-import '../../services/video_cache_manager.dart';
+import 'package:store_for_me/core/constants/app_constants.dart';
+import 'package:store_for_me/core/theme/app_theme.dart';
+import 'package:store_for_me/presentation/providers/social_provider.dart';
+import 'package:store_for_me/presentation/providers/data_saver_provider.dart';
+import 'package:store_for_me/presentation/widgets/comment_sheet.dart';
+import 'package:store_for_me/presentation/widgets/share_to_dm_sheet.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/services/video_cache_manager.dart';
+import 'package:store_for_me/presentation/widgets/report_dialog.dart';
 
 class ReelsScreen extends ConsumerStatefulWidget {
   const ReelsScreen({super.key});
@@ -192,7 +195,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                       ? CachedNetworkImage(
                           imageUrl: _getOptimizedThumb(reel.thumbnailUrl, isDataSaver),
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+                          placeholder: (_, _) => Center(child: CircularProgressIndicator(color: Colors.white)),
                         )
                       : Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
@@ -270,6 +273,13 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> with AutomaticKeepAli
                   // Report / More
                   _buildSideAction(
                     icon: Icons.more_vert_rounded,
+                    label: 'More',
+                    onTap: () => _showReelOptions(context, ref, reel),
+                  ),
+                  const SizedBox(height: 16),
+                  // More Options
+                  _buildSideAction(
+                    icon: Icons.more_horiz_rounded,
                     label: 'More',
                     onTap: () => _showReelOptions(context, ref, reel),
                   ),

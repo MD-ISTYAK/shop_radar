@@ -29,11 +29,24 @@ class ApiService {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
-          debugPrint('[API] ${options.method} ${options.path}');
+          debugPrint('--> [API REQUEST] ${options.method} ${options.baseUrl}${options.path}');
+          if (options.queryParameters.isNotEmpty) {
+            debugPrint('Query Params: ${options.queryParameters}');
+          }
+          if (options.data != null) {
+            if (options.data is FormData) {
+              final fields = (options.data as FormData).fields.map((e) => '${e.key}: ${e.value}').toList();
+              final files = (options.data as FormData).files.map((e) => '${e.key}: ${e.value.filename}').toList();
+              debugPrint('Body (FormData): Fields: $fields, Files: $files');
+            } else {
+              debugPrint('Body: ${options.data}');
+            }
+          }
           handler.next(options);
         },
         onResponse: (response, handler) {
-          debugPrint('[API] ${response.statusCode} ${response.requestOptions.path}');
+          debugPrint('<-- [API RESPONSE] ${response.statusCode} ${response.requestOptions.method} ${response.requestOptions.path}');
+          debugPrint('Response Body: ${response.data}');
           handler.next(response);
         },
         onError: (error, handler) async {
@@ -62,8 +75,9 @@ class ApiService {
             } catch (_) {}
             _isRefreshing = false;
           }
-          debugPrint('[API ERR] ${error.response?.statusCode} ${error.requestOptions.path}');
-          debugPrint('[API ERR RESPONSE] ${error.response?.data}');
+          debugPrint('<-- [API ERROR] ${error.response?.statusCode} ${error.requestOptions.method} ${error.requestOptions.path}');
+          debugPrint('Error Message: ${error.message}');
+          debugPrint('Error Response Body: ${error.response?.data}');
           handler.next(error);
         },
       ),

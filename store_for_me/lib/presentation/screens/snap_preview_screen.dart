@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:gal/gal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,11 +10,11 @@ import 'package:pro_image_editor/pro_image_editor.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/social_provider.dart';
 import 'package:dio/dio.dart';
-import '../widgets/stickers/sticker_tools_panel.dart';
-import '../widgets/stickers/interactive_sticker_canvas.dart';
-import '../widgets/stickers/music_picker_sheet.dart';
-import '../../data/models/social_models.dart';
-import '../../services/video_compress_service.dart';
+import 'package:store_for_me/presentation/widgets/stickers/sticker_tools_panel.dart';
+import 'package:store_for_me/presentation/widgets/stickers/interactive_sticker_canvas.dart';
+import 'package:store_for_me/presentation/widgets/stickers/music_picker_sheet.dart';
+import 'package:store_for_me/data/models/social_models.dart';
+import 'package:store_for_me/services/video_compress_service.dart';
 
 class SnapPreviewScreen extends ConsumerStatefulWidget {
   final String mediaPath;
@@ -37,7 +35,6 @@ class SnapPreviewScreen extends ConsumerStatefulWidget {
 }
 
 class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
-  final List<OverlayText> _overlays = [];
   final GlobalKey _repaintKey = GlobalKey();
   VideoPlayerController? _videoController;
   bool _isSaving = false;
@@ -66,6 +63,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
   }
 
   Future<void> _postEditedImage(Uint8List bytes) async {
+    final screenSize = MediaQuery.of(context).size;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -84,8 +82,6 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
       } catch (e) {
         debugPrint('Failed to save to gallery: $e');
       }
-
-      final screenSize = MediaQuery.of(context).size;
       final formData = FormData.fromMap({
         'content': 'Captured via Shop Radar Snap Mode 📸 #SnapMode #${widget.filterName}',
         'images': [
@@ -118,19 +114,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
     }
   }
 
-  void _saveVideoToGallery() async {
-    setState(() => _isSaving = true);
-    try {
-      await Gal.putVideo(widget.mediaPath);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Gallery!')));
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to save')));
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
+
 
   void _postToStoryDirectly() async {
     setState(() => _isSaving = true);
@@ -256,7 +240,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
       if (type == 'location') hint = 'Enter location name';
       if (type == 'poll') hint = 'Ask a question...';
 
-      final TextEditingController _textCtrl = TextEditingController(text: prefix);
+      final TextEditingController textCtrl = TextEditingController(text: prefix);
       
       final result = await showDialog<String>(
         context: context,
@@ -264,7 +248,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
           backgroundColor: const Color(0xFF1E1E1E),
           title: Text('Add $type', style: const TextStyle(color: Colors.white)),
           content: TextField(
-            controller: _textCtrl,
+            controller: textCtrl,
             style: const TextStyle(color: Colors.white),
             autofocus: true,
             decoration: InputDecoration(
@@ -280,7 +264,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
               child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context, _textCtrl.text),
+              onPressed: () => Navigator.pop(context, textCtrl.text),
               child: const Text('Add', style: TextStyle(color: Colors.blueAccent)),
             ),
           ],
@@ -299,7 +283,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
   void _showTextEditor(StickerData sticker) {
     if (sticker.type != 'text') return;
     
-    final TextEditingController _controller = TextEditingController(text: sticker.data['text'] ?? '');
+    final TextEditingController textController = TextEditingController(text: sticker.data['text'] ?? '');
     
     showDialog(
       context: context,
@@ -312,7 +296,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: _controller,
+                controller: textController,
                 autofocus: true,
                 style: const TextStyle(color: Colors.black, fontSize: 20),
                 decoration: const InputDecoration(border: InputBorder.none, hintText: 'Enter text...'),
@@ -320,7 +304,7 @@ class _SnapPreviewScreenState extends ConsumerState<SnapPreviewScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  _canvasKey.currentState?.updateStickerData(sticker.id, {'text': _controller.text});
+                  _canvasKey.currentState?.updateStickerData(sticker.id, {'text': textController.text});
                   Navigator.pop(context);
                 },
                 child: const Text('Done'),
