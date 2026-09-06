@@ -245,7 +245,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: (partner.isOnline ? AppColors.success : (Colors.black) ?? Colors.transparent).withAlpha(40),
+                    color: (partner.isOnline ? AppColors.success : Colors.black).withAlpha(40),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -301,7 +301,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                         );
                       }
                     },
-                    activeColor: Colors.white,
+                    activeThumbColor: Colors.white,
                     activeTrackColor: Colors.white.withAlpha(100),
                   ),
                 ],
@@ -446,8 +446,8 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.map_outlined, color: (Theme.of(context).textTheme.bodySmall?.color ?? (Colors.grey) ?? Colors.transparent).withAlpha(100), size: 48),
-                    SizedBox(height: 12),
+                    Icon(Icons.map_outlined, color: (Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey).withAlpha(100), size: 48),
+                    const SizedBox(height: 12),
                     Text('No deliveries available nearby', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color)),
                     Text('Try moving to a busier area', style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12)),
                   ],
@@ -477,9 +477,9 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: (color ?? Colors.transparent).withAlpha(30), width: 1.5),
+        border: Border.all(color: color.withAlpha(30), width: 1.5),
         boxShadow: [
-          BoxShadow(color: (color ?? Colors.transparent).withAlpha(10), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(color: color.withAlpha(10), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -528,7 +528,7 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (isActive ? AppColors.primary : (AppColors.accent) ?? Colors.transparent).withAlpha(15),
+                    color: (isActive ? AppColors.primary : AppColors.accent).withAlpha(15),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(isActive ? Icons.directions_bike : Icons.shopping_bag_outlined, 
@@ -573,28 +573,30 @@ class _DeliveryPartnerScreenState extends ConsumerState<DeliveryPartnerScreen> {
                   Text('2.4 km away', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
                 ],
                 const Spacer(),
-                if (isActive)
+                if (isActive) ...[
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary),
+                    tooltip: 'Verify OTP & Complete',
+                    onPressed: () => _showCompletionSheet(deliveryId),
+                  ),
+                  const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
-                      debugPrint('--- NAVIGATION START ---');
-                      debugPrint('Target: /delivery-order-details');
-                      debugPrint('Delivery ID: ${delivery?['_id']}');
-                      if (delivery == null) {
-                        debugPrint('ERROR: delivery object is NULL');
-                      } else {
+                      if (delivery != null) {
                         Navigator.pushNamed(context, '/delivery-order-details', arguments: delivery);
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: (delivery?['status'] == 'out_for_delivery' || delivery?['status'] == 'picked_up') ? AppColors.success : AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     child: Text(
                       (delivery?['status'] == 'out_for_delivery' || delivery?['status'] == 'picked_up') ? 'Deliver to Customer' : 'Pickup Order', 
                       style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)
                     ),
-                  )
+                  ),
+                ]
                 else
                   ElevatedButton(
                     onPressed: () async {

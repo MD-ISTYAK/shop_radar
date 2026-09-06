@@ -180,11 +180,25 @@ class ShopNotifier extends StateNotifier<ShopState> {
     }
     return false;
   }
+
+  void clearSearch() {
+    state = state.copyWith(searchQuery: '');
+    fetchNearbyShops();
+  }
 }
 
 final shopProvider = StateNotifierProvider<ShopNotifier, ShopState>((ref) {
   return ShopNotifier();
 });
 
-
-
+final shopFiltersProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  try {
+    final response = await ApiService().getShopFilters();
+    if (response.data != null && response.data['success'] == true) {
+      return Map<String, dynamic>.from(response.data);
+    }
+  } catch (e) {
+    debugPrint('Failed to load shop filters from backend: $e');
+  }
+  return {};
+});

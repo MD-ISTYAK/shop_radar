@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import 'package:uuid/uuid.dart';
 
 class StickerData {
@@ -117,7 +116,7 @@ class InteractiveStickerCanvasState extends State<InteractiveStickerCanvas> {
         MediaQuery.of(context).size.height / 2,
       );
       _stickers.add(StickerData(
-        id: const Uuid().v4(),
+        id: Uuid().v4(),
         type: type,
         data: data,
         position: screenCenter,
@@ -151,7 +150,7 @@ class InteractiveStickerCanvasState extends State<InteractiveStickerCanvas> {
     final sticker = _stickers.firstWhere((s) => s.id == id);
     setState(() {
       _stickers.add(sticker.copyWith(
-        id: const Uuid().v4(),
+        id: Uuid().v4(),
         position: sticker.position + const Offset(20, 20),
       ));
       _saveHistory();

@@ -135,7 +135,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: (typeConfig.gradient[0] ?? Colors.transparent).withAlpha(50),
+                        color: typeConfig.gradient[0].withAlpha(50),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -161,7 +161,7 @@ class _MyBusinessesScreenState extends ConsumerState<MyBusinessesScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: (typeConfig.gradient[0] ?? Colors.transparent).withAlpha(15),
+                              color: typeConfig.gradient[0].withAlpha(15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(

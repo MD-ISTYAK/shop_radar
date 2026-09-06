@@ -141,9 +141,11 @@ app.use(hpp());
 // Static files for uploads
 app.use('/uploads', express.static(uploadsDir));
 
-// API Routes — Core
+// API Routes — Core & Business
 app.use('/api/auth', authRoutes);
 app.use('/api/shops', shopRoutes);
+app.use('/api/businesses', shopRoutes);
+app.use('/api/business', businessRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
@@ -178,13 +180,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/emergency', emergencyRoutes);
 app.use('/api/chat', chatRoutes);
 
-// API Routes — Business
-app.use('/api/business', businessRoutes);
-
-// API Routes — Moderation (admin only)
+// API Routes — Moderation & Subscription
 app.use('/api/moderation', moderationRoutes);
-
-// API Routes — Subscription
 app.use('/api/subscription', subscriptionRoutes);
 
 // Health check

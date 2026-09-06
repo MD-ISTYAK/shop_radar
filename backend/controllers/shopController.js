@@ -13,7 +13,26 @@ const logger = require('../config/logger');
 // @route   POST /api/shops
 const createShop = async (req, res, next) => {
   try {
-    const { shopName, category, description, address, longitude, latitude, openingTime, closingTime, phone } = req.body;
+    const {
+      shopName,
+      category,
+      description,
+      address,
+      longitude,
+      latitude,
+      openingTime,
+      closingTime,
+      phone,
+      businessType = 'shop',
+      isMobile = false,
+      serviceType = 'both',
+      upiId = '',
+      whatsappNumber = '',
+      website = '',
+      deliveryRadius = 5,
+      hasHomeDelivery = true,
+      hasSelfPickup = true,
+    } = req.body;
 
     // --- Subscription Limit Check ---
     const user = await User.findById(req.user._id);
@@ -51,11 +70,20 @@ const createShop = async (req, res, next) => {
       address,
       location: {
         type: 'Point',
-        coordinates: [parseFloat(longitude), parseFloat(latitude)],
+        coordinates: [parseFloat(longitude || 0), parseFloat(latitude || 0)],
       },
       openingTime,
       closingTime,
       phone,
+      businessType,
+      isMobile: isMobile === true || isMobile === 'true',
+      serviceType,
+      upiId,
+      whatsappNumber,
+      website,
+      deliveryRadius: parseFloat(deliveryRadius || 5),
+      hasHomeDelivery: hasHomeDelivery === true || hasHomeDelivery === 'true',
+      hasSelfPickup: hasSelfPickup === true || hasSelfPickup === 'true',
     };
 
     // Handle file uploads (Cloudinary gives full URL in path)
@@ -395,6 +423,106 @@ const getOwnerShop = async (req, res, next) => {
   }
 };
 
+// @desc    Get business categories, modes, and filters
+// @route   GET /api/shops/filters
+const getShopFilters = async (req, res, next) => {
+  try {
+    const categories = [
+      'Grocery',
+      'Electronics',
+      'Clothing',
+      'Food & Restaurant',
+      'Pharmacy',
+      'Books & Stationery',
+      'Hardware',
+      'Beauty & Personal Care',
+      'Sports',
+      'Home & Furniture',
+      'Salon',
+      'Clinic',
+      'Repair',
+      'Petrol Pump',
+      'Mechanic',
+      'Doctor',
+      'Government Office',
+      'Coaching Centre',
+      'Bakery',
+      'Jewellery',
+      'Pet Store',
+      'AC & Appliance Repair',
+      'Plumbing & Electrician',
+      'Street Carts & Tea Stalls',
+      'Gyms & Fitness',
+      'Salons & Beauty',
+      'Clinics & Medical',
+      'Automobile & Mechanic',
+      'Home Services',
+      'Other',
+    ];
+
+    const businessModes = [
+      { id: 'shops', label: 'Shops & Retail', icon: 'storefront' },
+      { id: 'carts', label: 'Street Carts & Stalls', icon: 'emoji_food_beverage' },
+      { id: 'services', label: 'Services & Repair', icon: 'home_repair_service' },
+      { id: 'gyms', label: 'Gyms & Fitness', icon: 'fitness_center' },
+      { id: 'food', label: 'Food & Dining', icon: 'restaurant' },
+    ];
+
+    const subCategoriesByBusinessType = {
+      'Shops & Retail': [
+        'All Shops',
+        'Grocery & Kirana',
+        'Electronics & Mobile',
+        'Clothing & Fashion',
+        'Pharmacy & Medical',
+        'Hardware & Electrical',
+        'Stationery & Books',
+      ],
+      'Street Carts & Stalls': [
+        'All Carts & Stalls',
+        'Tea & Coffee Stalls',
+        'Fruit & Vegetable Carts',
+        'Chaat & Street Food',
+        'Juice & Shakes',
+        'Flower & Puja Vendors',
+      ],
+      'Services & Repair': [
+        'All Services',
+        'AC & Appliance Repair',
+        'Plumbing & Electrician',
+        'Automobile & Bike Mechanic',
+        'Salons & Home Beauty',
+        'House Cleaning & Painting',
+        'Doctor & Home Clinic Visit',
+      ],
+      'Gyms & Fitness': [
+        'All Gyms',
+        'Unisex Fitness Gym',
+        'Crossfit & Cardio',
+        'Yoga & Meditation Studio',
+        'Zumba & Dance Club',
+        'Personal Trainer & Rehab',
+      ],
+      'Food & Dining': [
+        'All Food',
+        'Restaurants & Dhabas',
+        'Fast Food & Pizza',
+        'Sweets & Bakery',
+        'Cafes & Juice Bar',
+      ],
+    };
+
+    res.status(200).json({
+      success: true,
+      categories,
+      businessModes,
+      subCategoriesByBusinessType,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createShop,
   getNearbyShops,
@@ -404,4 +532,5 @@ module.exports = {
   updateShopStatus,
   updateCrowdLevel,
   getOwnerShop,
+  getShopFilters,
 };

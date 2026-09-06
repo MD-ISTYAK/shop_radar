@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { createShop, getNearbyShops, getShopById, updateShop, toggleStatus, updateShopStatus, updateCrowdLevel, getOwnerShop } = require('../controllers/shopController');
+const { createShop, getNearbyShops, getShopById, updateShop, toggleStatus, updateShopStatus, updateCrowdLevel, getOwnerShop, getShopFilters } = require('../controllers/shopController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 const { shopValidation } = require('../middlewares/validationMiddleware');
 
@@ -21,10 +21,11 @@ const shopUpload = upload.fields([
 
 // Public routes
 router.get('/nearby', getNearbyShops);
+router.get('/filters', getShopFilters);
 
-// Protected routes (owner only) - must be BEFORE /:id to avoid catching 'owner' as id
-router.get('/owner/my-shop', protect, authorize('owner'), getOwnerShop);
-router.post('/', protect, authorize('owner'), shopUpload, shopValidation, createShop);
+// Protected routes (Any logged-in user can register a business; owner operations require auth)
+router.get('/owner/my-shop', protect, getOwnerShop);
+router.post('/', protect, shopUpload, shopValidation, createShop);
 router.put('/:id', protect, authorize('owner'), shopUpload, updateShop);
 router.patch('/:id/toggle-status', protect, authorize('owner'), toggleStatus);
 router.patch('/:id/status', protect, authorize('owner'), updateShopStatus);

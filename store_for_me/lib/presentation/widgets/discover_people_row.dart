@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/models/social_models.dart';
 import '../providers/social_provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/public_profile_screen.dart';

@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
+import 'lib/core/constants/app_constants.dart';
 
 void main() {
-  var dio = Dio(BaseOptions(baseUrl: 'http://192.168.1.9:5000/api'));
+  var dio = Dio(BaseOptions(baseUrl: AppConstants.baseUrl));
   var options = RequestOptions(path: '/delivery-partner/register');
   var uri = dio.options.baseUrl + options.path; // Dio handles it differently
   print(uri);

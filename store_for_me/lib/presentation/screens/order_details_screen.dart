@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/order_model.dart';
-import '../widgets/common_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/utils/time_utils.dart';
 
@@ -56,7 +55,7 @@ class OrderDetailsScreen extends ConsumerWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: (_getStatusColor(order.status) ?? Colors.transparent).withAlpha(25),
+                    color: _getStatusColor(order.status).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -93,16 +92,16 @@ class OrderDetailsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      'Verification Code',
+                      'Service / Pickup Verification OTP',
                       style: TextStyle(
                         color: Theme.of(context).textTheme.bodyMedium?.color,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      order.userOtp,
+                      order.userOtp.isNotEmpty ? order.userOtp : (order.pickupCode.isNotEmpty ? order.pickupCode : '----'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 36,
@@ -112,10 +111,11 @@ class OrderDetailsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Show this code to the shop owner to verify handover',
+                      'Provide this OTP to the merchant or technician to complete service / delivery fulfillment.',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Theme.of(context).textTheme.bodySmall?.color,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -260,7 +260,6 @@ class OrderDetailsScreen extends ConsumerWidget {
 
     return Column(
       children: order.timeline.map((event) {
-        final isActive = true; // Events recorded in the timeline are inherently completed
         final time = TimeUtils.formatIST(event.timestamp, pattern: 'hh:mm a');
 
         return Padding(
@@ -273,21 +272,15 @@ class OrderDetailsScreen extends ConsumerWidget {
                   Container(
                     width: 20,
                     height: 20,
-                    decoration: BoxDecoration(
-                      color: isActive ? AppColors.success : AppColors.card,
+                    decoration: const BoxDecoration(
+                      color: AppColors.success,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isActive ? AppColors.success : AppColors.divider,
-                        width: 2,
-                      ),
                     ),
-                    child: isActive
-                        ? Icon(Icons.check, size: 12, color: Colors.white)
-                        : null,
+                    child: const Icon(Icons.check, size: 12, color: Colors.white),
                   ),
                 ],
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,12 +288,8 @@ class OrderDetailsScreen extends ConsumerWidget {
                     Text(
                       event.status.replaceAll('_', ' ').toUpperCase(),
                       style: TextStyle(
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isActive
-                            ? Theme.of(context).textTheme.bodyLarge?.color
-                            : AppColors.textLight,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
                       ),
                     ),
                     if (event.note.isNotEmpty) ...[

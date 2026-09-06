@@ -28,7 +28,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _discountController = TextEditingController(text: '0');
-  final _stockController = TextEditingController();
+  final _stockController = TextEditingController(text: '10');
+  final _durationController = TextEditingController(text: '1 Hour');
+  
+  String _selectedItemType = 'product'; // 'product' or 'service'
+  String _selectedBookingType = 'instant'; // 'instant' or 'appointment'
+  
   final ImagePicker _picker = ImagePicker();
   List<XFile> _selectedImages = [];
   List<String> _existingImageUrls = [];
@@ -46,6 +51,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       _priceController.text = product.price.toStringAsFixed(0);
       _discountController.text = product.discount.toStringAsFixed(0);
       _stockController.text = product.stock.toString();
+      _durationController.text = product.serviceDuration;
+      _selectedItemType = product.itemType;
+      _selectedBookingType = product.bookingType;
       _existingImageUrls = List.from(product.images);
     }
   }
@@ -57,6 +65,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _priceController.dispose();
     _discountController.dispose();
     _stockController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 
@@ -141,7 +150,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
@@ -158,14 +167,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
-                'Add Product Images',
+                'Add Item Photos',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 4),
               Text(
-                '${5 - totalCurrent} more image(s) allowed',
+                '${5 - totalCurrent} more photo(s) allowed',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 20),
@@ -179,7 +188,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
                 ),
                 title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Select multiple images'),
+                subtitle: const Text('Select multiple photos'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImages();
@@ -219,7 +228,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         'description': _descController.text.trim(),
         'price': _priceController.text.trim(),
         'discount': _discountController.text.trim(),
-        'stock': _stockController.text.trim(),
+        'stock': _selectedItemType == 'service' ? '999' : _stockController.text.trim(),
+        'itemType': _selectedItemType,
+        'serviceDuration': _durationController.text.trim(),
+        'bookingType': _selectedBookingType,
       };
 
       // Attach new images
@@ -242,7 +254,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'Product updated successfully!' : 'Product added successfully!'),
+            content: Text(_isEditing ? 'Item updated successfully!' : 'Item / Service added successfully!'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -269,12 +281,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     final totalImages = _existingImageUrls.length + _selectedImages.length;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Product' : 'Add Product'),
+        title: Text(_isEditing ? 'Edit Item / Service' : 'Add Item or Service'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -285,20 +298,120 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- 1. LISTING TYPE SELECTOR (Product vs Service) ---
+              Text(
+                'Listing Type',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedItemType = 'product'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _selectedItemType == 'product'
+                              ? AppColors.primary
+                              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _selectedItemType == 'product'
+                                ? AppColors.primary
+                                : Colors.grey.withAlpha(60),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.shopping_bag_outlined,
+                              color: _selectedItemType == 'product' ? Colors.white : AppColors.primary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Physical Product',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: _selectedItemType == 'product' ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                            Text(
+                              'Goods, Grocery, Food',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _selectedItemType == 'product' ? Colors.white70 : Theme.of(context).textTheme.bodySmall?.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedItemType = 'service'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _selectedItemType == 'service'
+                              ? AppColors.primary
+                              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _selectedItemType == 'service'
+                                ? AppColors.primary
+                                : Colors.grey.withAlpha(60),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.home_repair_service_outlined,
+                              color: _selectedItemType == 'service' ? Colors.white : AppColors.primary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Bookable Service',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: _selectedItemType == 'service' ? Colors.white : Theme.of(context).textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                            Text(
+                              'AC Repair, Gym, Stall',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _selectedItemType == 'service' ? Colors.white70 : Theme.of(context).textTheme.bodySmall?.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
               // Image upload section
               Text(
-                'Product Images',
+                'Photos & Media',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
-                'Add up to 5 images • First image is the cover',
+                'Add up to 5 photos • First photo is the primary cover',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
 
               SizedBox(
-                height: 110,
+                height: 100,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
@@ -307,29 +420,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       GestureDetector(
                         onTap: _showImageSourceDialog,
                         child: Container(
-                          width: 110,
-                          height: 110,
+                          width: 100,
+                          height: 100,
                           margin: const EdgeInsets.only(right: 10),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withAlpha(15),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: AppColors.primary.withAlpha(60),
                               width: 1.5,
-                              strokeAlign: BorderSide.strokeAlignInside,
                             ),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.add_photo_alternate_rounded,
-                                  size: 32, color: AppColors.primary.withAlpha(180)),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Add',
+                                  size: 28, color: AppColors.primary.withAlpha(180)),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Add Photo',
                                 style: TextStyle(
                                   color: AppColors.primary,
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -338,58 +450,38 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                       ),
 
-                    // Existing images from server
+                    // Existing images
                     ..._existingImageUrls.asMap().entries.map((entry) {
                       final index = entry.key;
                       final url = entry.value;
                       return Container(
-                        width: 110,
-                        height: 110,
+                        width: 100,
+                        height: 100,
                         margin: const EdgeInsets.only(right: 10),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                               child: CachedNetworkImage(
                                 imageUrl: AppConstants.getImageUrl(url),
-                                width: 110,
-                                height: 110,
+                                width: 100,
+                                height: 100,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
-                                errorWidget: (_, __, ___) => Container(
-                                  color: AppColors.primaryLight.withAlpha(30),
-                                  child: Icon(Icons.broken_image, color: Theme.of(context).textTheme.bodySmall?.color),
+                                errorWidget: (context, url, error) => Container(
+                                  color: Colors.grey.withAlpha(30),
+                                  child: const Icon(Icons.broken_image),
                                 ),
                               ),
                             ),
-                            if (index == 0 && _selectedImages.isEmpty)
-                              Positioned(
-                                bottom: 6,
-                                left: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Cover',
-                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                              ),
                             Positioned(
-                              top: 4,
-                              right: 4,
+                              top: 4, right: 4,
                               child: GestureDetector(
                                 onTap: () => _removeExistingImage(index),
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withAlpha(150),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  decoration: const BoxDecoration(
+                                      color: Colors.black54, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 12),
                                 ),
                               ),
                             ),
@@ -398,54 +490,34 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       );
                     }),
 
-                    // Newly selected local images
+                    // Selected images
                     ..._selectedImages.asMap().entries.map((entry) {
                       final index = entry.key;
                       final file = entry.value;
-                      final isFirstOverall = _existingImageUrls.isEmpty && index == 0;
                       return Container(
-                        width: 110,
-                        height: 110,
+                        width: 100,
+                        height: 100,
                         margin: const EdgeInsets.only(right: 10),
                         child: Stack(
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                               child: Image.file(
                                 File(file.path),
-                                width: 110,
-                                height: 110,
+                                width: 100,
+                                height: 100,
                                 fit: BoxFit.cover,
                               ),
                             ),
-                            if (isFirstOverall)
-                              Positioned(
-                                bottom: 6,
-                                left: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Cover',
-                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                              ),
                             Positioned(
-                              top: 4,
-                              right: 4,
+                              top: 4, right: 4,
                               child: GestureDetector(
                                 onTap: () => _removeNewImage(index),
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withAlpha(150),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  decoration: const BoxDecoration(
+                                      color: Colors.black54, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 12),
                                 ),
                               ),
                             ),
@@ -456,21 +528,66 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
+              // Title Field
               CustomTextField(
                 controller: _nameController,
-                label: 'Product Name',
-                prefixIcon: Icons.shopping_bag,
-                validator: (v) => Validators.validateRequired(v, 'Product name'),
+                label: _selectedItemType == 'service' ? 'Service Name' : 'Product Name',
+                hint: _selectedItemType == 'service'
+                    ? 'e.g. AC Deep Cleaning & Servicing'
+                    : 'e.g. Fresh Tea Leaves 500g',
+                prefixIcon: _selectedItemType == 'service' ? Icons.build : Icons.shopping_bag,
+                validator: (v) => Validators.validateRequired(v, 'Name'),
               ),
               const SizedBox(height: 16),
 
+              // Service Duration Field (If Service)
+              if (_selectedItemType == 'service') ...[
+                CustomTextField(
+                  controller: _durationController,
+                  label: 'Estimated Service Duration',
+                  hint: 'e.g. 45 Mins, 1 Hour, 1 Day',
+                  prefixIcon: Icons.timer_outlined,
+                ),
+                const SizedBox(height: 16),
+                const Text('Booking Fulfillment Mode',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Instant Booking'),
+                      selected: _selectedBookingType == 'instant',
+                      onSelected: (_) => setState(() => _selectedBookingType = 'instant'),
+                      selectedColor: AppColors.primary,
+                      labelStyle: TextStyle(
+                        color: _selectedBookingType == 'instant' ? Colors.white : null,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('Slot Appointment'),
+                      selected: _selectedBookingType == 'appointment',
+                      onSelected: (_) => setState(() => _selectedBookingType = 'appointment'),
+                      selectedColor: AppColors.primary,
+                      labelStyle: TextStyle(
+                        color: _selectedBookingType == 'appointment' ? Colors.white : null,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+
               CustomTextField(
                 controller: _descController,
-                label: 'Description',
+                label: 'Description & Highlights',
+                hint: 'Details, scope of work, warranty, or ingredients...',
                 prefixIcon: Icons.description,
-                maxLines: 4,
+                maxLines: 3,
               ),
               const SizedBox(height: 16),
 
@@ -479,7 +596,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   Expanded(
                     child: CustomTextField(
                       controller: _priceController,
-                      label: 'Price (₹)',
+                      label: _selectedItemType == 'service' ? 'Service Rate (₹)' : 'Price (₹)',
                       prefixIcon: Icons.currency_rupee,
                       keyboardType: TextInputType.number,
                       validator: Validators.validatePrice,
@@ -498,18 +615,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
               const SizedBox(height: 16),
 
-              CustomTextField(
-                controller: _stockController,
-                label: 'Stock Quantity',
-                prefixIcon: Icons.inventory,
-                keyboardType: TextInputType.number,
-                validator: Validators.validateStock,
-              ),
+              if (_selectedItemType == 'product')
+                CustomTextField(
+                  controller: _stockController,
+                  label: 'Available Stock Quantity',
+                  prefixIcon: Icons.inventory,
+                  keyboardType: TextInputType.number,
+                  validator: Validators.validateStock,
+                ),
+
               const SizedBox(height: 32),
 
               CustomButton(
-                text: _isEditing ? 'Update Product' : 'Add Product',
-                icon: _isEditing ? Icons.save : Icons.add,
+                text: _isEditing
+                    ? 'Update ${_selectedItemType == 'service' ? 'Service' : 'Product'}'
+                    : 'Publish ${_selectedItemType == 'service' ? 'Service Listing' : 'Product Listing'}',
+                icon: _isEditing ? Icons.save : Icons.add_circle,
                 isLoading: _isLoading,
                 onPressed: _handleSubmit,
               ),
@@ -521,12 +642,3 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 }
-
-
-
-
-
-
-
-
-

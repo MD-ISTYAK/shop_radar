@@ -32,6 +32,13 @@ class ShopModel {
   final bool isVerified;
   final double? distance;
   final String? distanceFormatted;
+  final String businessType; // 'shop', 'cart', 'service', 'gym'
+  final bool isMobile;
+  final String serviceType; // 'at_home', 'at_center', 'both'
+  final String upiId;
+  final double deliveryRadius;
+  final bool hasHomeDelivery;
+  final bool hasSelfPickup;
 
   ShopModel({
     required this.id,
@@ -67,6 +74,13 @@ class ShopModel {
     this.isVerified = false,
     this.distance,
     this.distanceFormatted,
+    this.businessType = 'shop',
+    this.isMobile = false,
+    this.serviceType = 'both',
+    this.upiId = '',
+    this.deliveryRadius = 5.0,
+    this.hasHomeDelivery = true,
+    this.hasSelfPickup = true,
   });
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
@@ -106,6 +120,13 @@ class ShopModel {
       isVerified: json['isVerified'] ?? false,
       distance: json['distance']?.toDouble(),
       distanceFormatted: json['distanceFormatted'],
+      businessType: json['businessType'] ?? 'shop',
+      isMobile: json['isMobile'] ?? false,
+      serviceType: json['serviceType'] ?? 'both',
+      upiId: json['upiId'] ?? '',
+      deliveryRadius: (json['deliveryRadius'] ?? 5.0).toDouble(),
+      hasHomeDelivery: json['hasHomeDelivery'] ?? true,
+      hasSelfPickup: json['hasSelfPickup'] ?? true,
     );
   }
 
@@ -118,10 +139,18 @@ class ShopModel {
         'closingTime': closingTime,
         'phone': phone,
         'whatsappNumber': whatsappNumber,
+        'website': website,
         'is24x7': is24x7,
         'queueEnabled': queueEnabled,
         'features': features,
         'operatingDays': operatingDays,
+        'businessType': businessType,
+        'isMobile': isMobile,
+        'serviceType': serviceType,
+        'upiId': upiId,
+        'deliveryRadius': deliveryRadius,
+        'hasHomeDelivery': hasHomeDelivery,
+        'hasSelfPickup': hasSelfPickup,
       };
 
   bool get isOpen {
@@ -180,7 +209,7 @@ class ShopModel {
 
   String get whatsappLink {
     final number = whatsappNumber.isNotEmpty ? whatsappNumber : phone;
-    return 'https://wa.me/91$number?text=Hi, I found your shop on Shop Radar. I\'d like to enquire.';
+    return 'https://wa.me/91$number?text=Hi, I found your business on Shop Radar. I\'d like to enquire.';
   }
 
   bool get hasWhatsApp => whatsappNumber.isNotEmpty || phone.isNotEmpty;

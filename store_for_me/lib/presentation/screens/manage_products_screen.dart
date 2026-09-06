@@ -26,7 +26,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Products'),
+        title: const Text('Manage Items & Services'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -34,18 +34,19 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
+            tooltip: 'Add Item or Service',
             onPressed: () => Navigator.pushNamed(context, '/add-product'),
           ),
         ],
       ),
       body: productState.isLoading
-          ? const LoadingIndicator()
+          ? const LoadingIndicator(message: 'Loading inventory...')
           : productState.ownerProducts.isEmpty
               ? EmptyStateWidget(
                   icon: Icons.inventory_2_outlined,
-                  title: 'No products yet',
-                  subtitle: 'Add your first product to start selling',
-                  buttonText: 'Add Product',
+                  title: 'No Items or Services Listed',
+                  subtitle: 'Add your physical products or bookable services to start accepting orders',
+                  buttonText: '+ Add First Listing',
                   onButtonPressed: () => Navigator.pushNamed(context, '/add-product'),
                 )
               : ListView.builder(
@@ -53,80 +54,131 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                   itemCount: productState.ownerProducts.length,
                   itemBuilder: (context, index) {
                     final product = productState.ownerProducts[index];
+                    final isService = product.isService;
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: Offset(0, 2))],
+                        boxShadow: [
+                          BoxShadow(color: AppColors.shadow, blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            // Product image
+                            // Product / Service Thumbnail
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: SizedBox(
-                                width: 70,
-                                height: 70,
+                                width: 72,
+                                height: 72,
                                 child: product.images.isNotEmpty
                                     ? CachedNetworkImage(
                                         imageUrl: AppConstants.getImageUrl(product.images.first),
                                         fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
-                                        errorWidget: (_, __, ___) => Container(
-                                          color: AppColors.primaryLight.withAlpha(51),
-                                          child: const Icon(Icons.shopping_bag, color: AppColors.primary),
+                                        errorWidget: (context, url, error) => Container(
+                                          color: AppColors.primaryLight.withAlpha(50),
+                                          child: Icon(
+                                            isService ? Icons.home_repair_service : Icons.shopping_bag,
+                                            color: AppColors.primary,
+                                          ),
                                         ),
                                       )
                                     : Container(
-                                        color: AppColors.primaryLight.withAlpha(51),
-                                        child: const Icon(Icons.shopping_bag, color: AppColors.primary),
+                                        color: AppColors.primaryLight.withAlpha(50),
+                                        child: Icon(
+                                          isService ? Icons.home_repair_service : Icons.shopping_bag,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                               ),
                             ),
                             const SizedBox(width: 12),
 
-                            // Info
+                            // Details
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    product.name,
-                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isService
+                                              ? Colors.amber.withAlpha(30)
+                                              : AppColors.primary.withAlpha(20),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          isService ? 'SERVICE' : 'PRODUCT',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: isService ? Colors.amber.shade900 : AppColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          product.name,
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '₹${product.discountedPrice.toStringAsFixed(0)}',
+                                    '₹${product.discountedPrice.toStringAsFixed(0)} ${isService ? '(${product.serviceDuration})' : ''}',
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w800,
                                       color: AppColors.primary,
+                                      fontSize: 15,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: product.inStock
-                                              ? AppColors.success.withAlpha(26)
-                                              : AppColors.error.withAlpha(26),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          product.inStock ? 'In Stock (${product.stock})' : 'Out of Stock',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: product.inStock ? AppColors.success : AppColors.error,
+                                      if (!isService)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: product.inStock
+                                                ? AppColors.success.withAlpha(26)
+                                                : AppColors.error.withAlpha(26),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            product.inStock ? 'Stock (${product.stock})' : 'Out of Stock',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: product.inStock ? AppColors.success : AppColors.error,
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withAlpha(26),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'Mode: ${product.bookingType.toUpperCase()}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.blue,
+                                            ),
                                           ),
                                         ),
-                                      ),
                                       if (product.hasDiscount) ...[
                                         const SizedBox(width: 8),
                                         Container(
@@ -156,10 +208,10 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                               children: [
                                 IconButton(
                                   onPressed: () {
-                                    // Edit product
                                     Navigator.pushNamed(context, '/add-product', arguments: product);
                                   },
                                   icon: const Icon(Icons.edit, color: AppColors.info, size: 20),
+                                  tooltip: 'Edit',
                                 ),
                                 IconButton(
                                   onPressed: () async {
@@ -167,7 +219,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                                       context: context,
                                       builder: (ctx) => AlertDialog(
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        title: const Text('Delete Product'),
+                                        title: const Text('Delete Listing'),
                                         content: Text('Delete "${product.name}"?'),
                                         actions: [
                                           TextButton(
@@ -186,6 +238,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                                     }
                                   },
                                   icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                                  tooltip: 'Delete',
                                 ),
                               ],
                             ),
@@ -198,14 +251,8 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.pushNamed(context, '/add-product'),
         icon: const Icon(Icons.add),
-        label: const Text('Add Product'),
+        label: const Text('Add Listing'),
       ),
     );
   }
 }
-
-
-
-
-
-

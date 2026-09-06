@@ -124,6 +124,8 @@ class ApiService {
 
   Future<Response> getShopById(String id) => _dio.get('/shops/$id');
 
+  Future<Response> getShopFilters() => _dio.get('/shops/filters');
+
   Future<Response> createShop(FormData data) =>
       _dio.post('/shops', data: data);
 
@@ -392,7 +394,7 @@ class ApiService {
         'targetType': targetType,
         'targetId': targetId,
         'reason': reason,
-        if (description != null) 'description': description,
+        'description': ?description,
       });
 
   // Saved posts

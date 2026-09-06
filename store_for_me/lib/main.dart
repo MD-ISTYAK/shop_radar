@@ -51,10 +51,8 @@ import 'presentation/screens/subscription_screen.dart';
 // import 'features/sharing/presentation/screens/file_selector_screen.dart';
 // import 'features/sharing/presentation/screens/file_transfer_screen.dart';
 // import 'features/sharing/presentation/screens/receive_screen.dart';
-import 'dart:io';
 import 'presentation/screens/reels_screen.dart';
 import 'presentation/screens/edit_profile_screen.dart';
-import 'presentation/screens/start_business_screen.dart';
 import 'presentation/screens/my_businesses_screen.dart';
 import 'services/firebase_service.dart';
 import 'services/notification_service.dart';
@@ -212,7 +210,7 @@ class ShopRadarApp extends ConsumerWidget {
           case '/edit-profile':
             return _buildRoute(const EditProfileScreen(), settings);
           case '/start-business':
-            return _buildRoute(const StartBusinessScreen(), settings);
+            return _buildRoute(const AddShopScreen(), settings);
           case '/my-businesses':
             return _buildRoute(const MyBusinessesScreen(), settings);
           case '/snap-camera':

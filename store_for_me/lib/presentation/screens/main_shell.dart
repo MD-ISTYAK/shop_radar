@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/socket_service.dart';
 import 'home_screen.dart';
-import 'discover_screen.dart';
 import 'orders_screen.dart';
 import 'social_screen.dart';
 import 'profile_screen.dart';
 import '../../services/notification_service.dart';
+import '../providers/locale_provider.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -21,7 +21,6 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    DiscoverScreen(),
     OrdersScreen(),
     SocialScreen(),
     ProfileScreen(),
@@ -55,6 +54,9 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localeNotifier = ref.watch(localeProvider.notifier);
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -62,26 +64,25 @@ class _MainShellState extends ConsumerState<MainShell> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
+          color: isDark ? const Color(0xFF18181B) : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: AppColors.shadow.withAlpha(30),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+              color: Colors.black.withAlpha(isDark ? 80 : 20),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
             ),
           ],
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-                _buildNavItem(1, Icons.explore_outlined, Icons.explore, 'Discover'),
-                _buildNavItem(2, Icons.shopping_bag_outlined, Icons.shopping_bag, 'Orders'),
-                _buildNavItem(3, Icons.people_outline, Icons.people, 'Social'),
-                _buildNavItem(4, Icons.person_outline, Icons.person, 'Profile'),
+                _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, localeNotifier.translate('home')),
+                _buildNavItem(1, Icons.shopping_bag_outlined, Icons.shopping_bag_rounded, localeNotifier.translate('my_orders')),
+                _buildNavItem(2, Icons.people_outline_rounded, Icons.people_rounded, localeNotifier.translate('social')),
+                _buildNavItem(3, Icons.person_outline_rounded, Icons.person_rounded, localeNotifier.translate('profile')),
               ],
             ),
           ),
@@ -97,14 +98,14 @@ class _MainShellState extends ConsumerState<MainShell> {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 16 : 12,
-          vertical: 8,
+          horizontal: isActive ? 18 : 12,
+          vertical: 10,
         ),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary.withAlpha(25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: isActive ? AppColors.primary.withAlpha(30) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -115,13 +116,14 @@ class _MainShellState extends ConsumerState<MainShell> {
               size: 24,
             ),
             if (isActive) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   fontSize: 13,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],

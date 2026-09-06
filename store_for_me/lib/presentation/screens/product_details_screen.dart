@@ -18,7 +18,6 @@ class ProductDetailsScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   int _quantity = 1;
-  int _currentImageIndex = 0;
 
   @override
   void initState() {
@@ -37,6 +36,8 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
       return const Scaffold(body: LoadingIndicator());
     }
 
+    final isService = product.isService;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Column(
@@ -46,7 +47,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image carousel
+                  // Image Carousel / Header
                   Stack(
                     children: [
                       SizedBox(
@@ -54,80 +55,54 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         child: product.images.isNotEmpty
                             ? PageView.builder(
                                 itemCount: product.images.length,
-                                onPageChanged: (i) => setState(() => _currentImageIndex = i),
                                 itemBuilder: (context, index) {
                                   return CachedNetworkImage(
                                     imageUrl: AppConstants.getImageUrl(product.images[index]),
                                     fit: BoxFit.cover,
                                     width: double.infinity,
-                                    placeholder: (_, __) => Container(color: (Theme.of(context).brightness == Brightness.dark ? AppColors.darkShimmerBase : AppColors.shimmerBase)),
-                                    errorWidget: (_, __, ___) => _buildImagePlaceholder(),
+                                    errorWidget: (context, url, error) => _buildImagePlaceholder(isService),
                                   );
                                 },
                               )
-                            : _buildImagePlaceholder(),
+                            : _buildImagePlaceholder(isService),
                       ),
-                      // Back button
+                      // Back Button
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 16,
                         child: CircleAvatar(
                           backgroundColor: Colors.black38,
                           child: IconButton(
-                            icon: Icon(Icons.arrow_back, color: Colors.white),
+                            icon: const Icon(Icons.arrow_back, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ),
                       ),
-                      // Image indicators
-                      if (product.images.length > 1)
-                        Positioned(
-                          bottom: 16,
-                          left: 0,
-                          right: 0,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(
-                              product.images.length,
-                              (i) => Container(
-                                width: _currentImageIndex == i ? 24 : 8,
-                                height: 8,
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
-                                decoration: BoxDecoration(
-                                  color: _currentImageIndex == i
-                                      ? AppColors.primary
-                                      : Colors.white.withAlpha(128),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
+                      // Service / Product Badge Tag
+                      Positioned(
+                        top: MediaQuery.of(context).padding.top + 8,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isService ? Colors.amber.shade800 : AppColors.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isService ? 'SERVICE BOOKING' : 'PRODUCT FOR SALE',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
-                      // Discount badge
-                      if (product.hasDiscount)
-                        Positioned(
-                          top: MediaQuery.of(context).padding.top + 8,
-                          right: 16,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.error,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '-${product.discount.toInt()}% OFF',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
+                      ),
                     ],
                   ),
 
-                  // Product info
+                  // Item Info
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -135,11 +110,13 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                       children: [
                         Text(
                           product.name,
-                          style: Theme.of(context).textTheme.headlineMedium,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                        // Price
+                        // Price / Rate
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -147,10 +124,21 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                               '₹${product.discountedPrice.toStringAsFixed(0)}',
                               style: const TextStyle(
                                 fontSize: 28,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: AppColors.primary,
                               ),
                             ),
+                            if (isService) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                '/ ${product.serviceDuration}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                ),
+                              ),
+                            ],
                             if (product.hasDiscount) ...[
                               const SizedBox(width: 10),
                               Text(
@@ -166,42 +154,81 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Stock status
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: product.inStock
-                                ? AppColors.success.withAlpha(26)
-                                : AppColors.error.withAlpha(26),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            product.inStock
-                                ? 'In Stock (${product.stock} available)'
-                                : 'Out of Stock',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: product.inStock ? AppColors.success : AppColors.error,
+                        // Service / Product Tag Info
+                        if (isService) ...[
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withAlpha(20),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.withAlpha(60)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.verified_outlined, color: Colors.amber),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Verified Service • ${product.bookingType.toUpperCase()} Mode',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w700, fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      const Text(
+                                        'Fulfillment is verified via OTP upon service completion.',
+                                        style: TextStyle(fontSize: 11, color: Colors.black54),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+                        ] else ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: product.inStock
+                                  ? AppColors.success.withAlpha(26)
+                                  : AppColors.error.withAlpha(26),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              product.inStock
+                                  ? 'In Stock (${product.stock} items available)'
+                                  : 'Out of Stock',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: product.inStock ? AppColors.success : AppColors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+
                         const SizedBox(height: 20),
                         const Divider(),
                         const SizedBox(height: 16),
 
                         // Description
-                        Text('Description', style: Theme.of(context).textTheme.titleLarge),
+                        Text(isService ? 'Service Overview' : 'Description',
+                            style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 8),
                         Text(
                           product.description.isNotEmpty
                               ? product.description
-                              : 'No description available for this product.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+                              : 'No description provided.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(height: 1.5),
                         ),
                         const SizedBox(height: 24),
 
-                        // Quantity selector
-                        if (product.inStock) ...[
+                        // Quantity Selector (For Products Only)
+                        if (!isService && product.inStock) ...[
                           Text('Quantity', style: Theme.of(context).textTheme.titleLarge),
                           const SizedBox(height: 12),
                           Row(
@@ -240,76 +267,147 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
             ),
           ),
 
-          // Bottom bar
-          if (product.inStock)
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, -2))],
-              ),
-              child: Row(
-                children: [
-                  // Total
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Total', style: Theme.of(context).textTheme.bodySmall),
-                        Text(
-                          '₹${(product.discountedPrice * _quantity).toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: CustomButton(
-                      text: 'Add to Cart',
-                      icon: Icons.shopping_cart,
-                      onPressed: () async {
-                        final added = await ref.read(cartProvider.notifier).addToCart(
-                          product.id,
-                          quantity: _quantity,
-                        );
-                        if (added && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('✅ Added to cart!'),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              action: SnackBarAction(
-                                label: 'View Cart',
-                                textColor: Colors.white,
-                                onPressed: () => Navigator.pushNamed(context, '/cart'),
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
+          // Bottom Bar (Buy Now vs Book Service)
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: const Offset(0, -2))
+              ],
             ),
+            child: Row(
+              children: [
+                // Total
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(isService ? 'Service Rate' : 'Total Amount',
+                          style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        '₹${(product.discountedPrice * _quantity).toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: isService
+                      ? CustomButton(
+                          text: 'Book Service',
+                          icon: Icons.calendar_today,
+                          onPressed: () => _showBookingSlotSheet(context, product),
+                        )
+                      : CustomButton(
+                          text: 'Add to Cart',
+                          icon: Icons.shopping_cart,
+                          onPressed: () async {
+                            final added =
+                                await ref.read(cartProvider.notifier).addToCart(
+                                      product.id,
+                                      quantity: _quantity,
+                                    );
+                            if (added && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('✅ Added to cart!'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
+                                  action: SnackBarAction(
+                                    label: 'View Cart',
+                                    textColor: Colors.white,
+                                    onPressed: () =>
+                                        Navigator.pushNamed(context, '/cart'),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildImagePlaceholder() {
+  void _showBookingSlotSheet(BuildContext context, dynamic product) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Schedule Service Slot',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.schedule, color: AppColors.primary),
+                title: Text('Duration: ${product.serviceDuration}'),
+                subtitle: const Text('Vendor will arrive/confirm at scheduled time.'),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final added = await ref
+                        .read(cartProvider.notifier)
+                        .addToCart(product.id, quantity: 1);
+                    if (added && context.mounted) {
+                      Navigator.pushNamed(context, '/cart');
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Proceed to Confirm Booking'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImagePlaceholder(bool isService) {
     return Container(
       width: double.infinity,
       height: 350,
-      color: AppColors.primaryLight.withAlpha(51),
-      child: const Icon(Icons.shopping_bag, size: 80, color: AppColors.primary),
+      color: AppColors.primaryLight.withAlpha(50),
+      child: Icon(
+        isService ? Icons.home_repair_service : Icons.shopping_bag,
+        size: 80,
+        color: AppColors.primary,
+      ),
     );
   }
 }
@@ -337,13 +435,3 @@ class _QuantityButton extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-

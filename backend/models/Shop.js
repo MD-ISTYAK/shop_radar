@@ -13,6 +13,37 @@ const shopSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    businessType: {
+      type: String,
+      enum: ['shop', 'cart', 'service', 'gym'],
+      default: 'shop',
+    },
+    isMobile: {
+      type: Boolean,
+      default: false,
+    },
+    serviceType: {
+      type: String,
+      enum: ['at_home', 'at_center', 'both'],
+      default: 'both',
+    },
+    upiId: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    deliveryRadius: {
+      type: Number,
+      default: 5,
+    },
+    hasHomeDelivery: {
+      type: Boolean,
+      default: true,
+    },
+    hasSelfPickup: {
+      type: Boolean,
+      default: true,
+    },
     category: {
       type: String,
       required: [true, 'Category is required'],
@@ -39,6 +70,14 @@ const shopSchema = new mongoose.Schema(
         'Bakery',
         'Jewellery',
         'Pet Store',
+        'AC & Appliance Repair',
+        'Plumbing & Electrician',
+        'Street Carts & Tea Stalls',
+        'Gyms & Fitness',
+        'Salons & Beauty',
+        'Clinics & Medical',
+        'Automobile & Mechanic',
+        'Home Services',
         'Other',
       ],
     },
@@ -182,10 +221,13 @@ const shopSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Create 2dsphere index for geospatial queries
+// High-performance compound indexes for large scale production
 shopSchema.index({ location: '2dsphere' });
+shopSchema.index({ location: '2dsphere', category: 1, status: 1 });
+shopSchema.index({ location: '2dsphere', businessType: 1, status: 1 });
 shopSchema.index({ category: 1, status: 1 });
-shopSchema.index({ trendingScore: -1 });
-shopSchema.index({ ownerId: 1 });
+shopSchema.index({ businessType: 1, status: 1 });
+shopSchema.index({ trendingScore: -1, rating: -1 });
+shopSchema.index({ ownerId: 1, status: 1 });
 
 module.exports = mongoose.model('Shop', shopSchema);

@@ -48,9 +48,13 @@ class WalletNotifier extends StateNotifier<WalletState> {
   Future<bool> addMoney(double amount, String paymentId) async {
     try {
       final res = await _api.addMoneyToWallet(amount, paymentId);
-      final wallet = WalletModel.fromJson(res.data['data']);
-      state = state.copyWith(wallet: wallet);
-      return true;
+      if (res.data['success'] == true && res.data['data'] != null) {
+        final wallet = WalletModel.fromJson(res.data['data']);
+        state = state.copyWith(wallet: wallet);
+        await fetchTransactions();
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }

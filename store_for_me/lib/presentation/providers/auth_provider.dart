@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/user_model.dart';
@@ -164,6 +165,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(error: _extractError(e));
       return false;
+    }
+  }
+
+  Future<void> refreshProfile() async {
+    try {
+      final response = await _api.getProfile();
+      if (response.data != null && response.data['success'] == true) {
+        final user = UserModel.fromJson(response.data['data']);
+        await _authService.saveUser(user);
+        state = state.copyWith(user: user);
+      }
+    } catch (e) {
+      debugPrint('Failed to refresh user profile: $e');
     }
   }
 

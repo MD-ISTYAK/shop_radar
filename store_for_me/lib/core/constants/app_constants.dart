@@ -1,21 +1,32 @@
 class AppConstants {
   AppConstants._();
 
-  // API — Change this IP when switching devices ss
-  static const String _ip = '192.168.1.19';
-  static const bool useLocal = false; // Toggle this for local testing
+  // Environment & Configuration variables (can be overridden with --dart-define)
+  static const String _ip =
+      String.fromEnvironment('API_IP', defaultValue: '192.168.1.69');
+  static const bool useLocal =
+      bool.fromEnvironment('USE_LOCAL', defaultValue: true);
 
-  static const String baseUrl = useLocal
-      ? 'http://$_ip:5000/api'
-      : 'https://shop-radar-z0xe.onrender.com/api';
+  static const String baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: useLocal
+        ? 'http://$_ip:5000/api'
+        : 'https://shop-radar-z0xe.onrender.com/api',
+  );
 
-  static const String wsUrl = useLocal
-      ? 'http://$_ip:5000'
-      : 'https://shop-radar-z0xe.onrender.com';
+  static const String wsUrl = String.fromEnvironment(
+    'WS_URL',
+    defaultValue: useLocal
+        ? 'http://$_ip:5000'
+        : 'https://shop-radar-z0xe.onrender.com',
+  );
 
-  static const String uploadsUrl = useLocal
-      ? 'http://$_ip:5000'
-      : ''; // Cloudinary URLs are absolute
+  static const String uploadsUrl = String.fromEnvironment(
+    'UPLOADS_URL',
+    defaultValue: useLocal
+        ? 'http://$_ip:5000'
+        : '', // Cloudinary URLs are absolute
+  );
 
   /// Helper to get full image URL, handles both local and Cloudinary paths
   static String getImageUrl(String? path) {
@@ -30,34 +41,115 @@ class AppConstants {
   static const String userKey = 'user_data';
 
   // Google Maps API Key
-  static const String googleMapsApiKey =
-      'AIzaSyDzCAoTb1j3706Uf-3G2gI1CrJmiMJxd7s';
+  static const String googleMapsApiKey = String.fromEnvironment(
+    'GOOGLE_MAPS_API_KEY',
+    defaultValue: 'AIzaSyDzCAoTb1j3706Uf-3G2gI1CrJmiMJxd7s',
+  );
 
   // Razorpay Key
-  static const String razorpayKey = 'rzp_test_SkCbaMDux0GpYx';
+  static const String razorpayKey = String.fromEnvironment(
+    'RAZORPAY_KEY',
+    defaultValue: 'rzp_test_SkCbaMDux0GpYx',
+  );
 
   // Agora App ID
-  static const String agoraAppId = 'your_agora_app_id_here';
+  static const String agoraAppId = String.fromEnvironment(
+    'AGORA_APP_ID',
+    defaultValue: '',
+  );
 
-  // Shop categories (expanded)
+  // Business & Service Types
+  static const List<String> businessTypes = [
+    'All',
+    'Shops & Retail',
+    'Services & Repair',
+    'Street Carts & Stalls',
+    'Gyms & Fitness',
+    'Food & Dining',
+  ];
+
+  // Dynamic Sub-Categories for simple Indian user navigation
+  static const Map<String, List<String>> subCategoriesByBusinessType = {
+    'All': [
+      'All',
+      'Grocery',
+      'AC & Appliance Repair',
+      'Plumbing & Electrician',
+      'Street Carts & Tea Stalls',
+      'Gyms & Fitness',
+      'Salons & Beauty',
+      'Clinics & Medical',
+      'Food & Restaurant',
+      'Automobile & Mechanic',
+      'Home Services',
+      'Electronics',
+      'Clothing',
+      'Pharmacy',
+      'Hardware',
+      'Bakery',
+      'Other',
+    ],
+    'Shops & Retail': [
+      'All Shops',
+      'Kirana & Grocery',
+      'Electronics & Mobile',
+      'Clothing & Fashion',
+      'Pharmacy & Medical',
+      'Hardware & Tools',
+      'Bakery & Sweets',
+      'Books & Stationery',
+      'Jewellery',
+    ],
+    'Services & Repair': [
+      'All Services',
+      'AC & Fridge Repair',
+      'Plumbing & Electrician',
+      'Motorcycle & Car Mechanic',
+      'Home Cleaning & Service',
+      'Salons & Beauty Care',
+      'Doctor & Clinic Visit',
+    ],
+    'Street Carts & Stalls': [
+      'All Carts & Stalls',
+      'Tea & Coffee Stall',
+      'Vegetable & Fruit Cart',
+      'Chaat & Street Food',
+      'Juice & Coconut Cart',
+      'Fast Food & Snacks',
+    ],
+    'Gyms & Fitness': [
+      'All Fitness',
+      'Gym & Weights',
+      'Yoga & Meditation',
+      'Zumba & Fitness Studio',
+    ],
+    'Food & Dining': [
+      'All Food',
+      'Restaurants & Dhabas',
+      'Fast Food & Pizza',
+      'Sweets & Bakery',
+      'Cafes & Juice Bar',
+    ],
+  };
+
+  // Shop & Service categories (expanded for all local businesses)
   static const List<String> shopCategories = [
     'All',
     'Grocery',
+    'AC & Appliance Repair',
+    'Plumbing & Electrician',
+    'Street Carts & Tea Stalls',
+    'Gyms & Fitness',
+    'Salons & Beauty',
+    'Clinics & Medical',
+    'Food & Restaurant',
+    'Automobile & Mechanic',
+    'Home Services',
     'Electronics',
     'Clothing',
-    'Food & Restaurant',
     'Pharmacy',
     'Books & Stationery',
     'Hardware',
-    'Beauty & Personal Care',
-    'Sports',
-    'Home & Furniture',
-    'Salon',
-    'Clinic',
-    'Repair',
-    'Petrol Pump',
-    'Mechanic',
-    'Doctor',
     'Bakery',
     'Jewellery',
     'Pet Store',
@@ -108,15 +200,15 @@ class AppConstants {
   // Supported languages
   static const Map<String, String> supportedLanguages = {
     'en': 'English',
-    'hi': 'Hindi',
-    'ta': 'Tamil',
-    'te': 'Telugu',
-    'bn': 'Bengali',
-    'mr': 'Marathi',
-    'gu': 'Gujarati',
-    'kn': 'Kannada',
-    'ml': 'Malayalam',
-    'pa': 'Punjabi',
+    'hi': 'हिंदी (Hindi)',
+    'bn': 'বাংলা (Bengali)',
+    'mr': 'मराठी (Marathi)',
+    'te': 'తెలుగు (Telugu)',
+    'ta': 'தமிழ் (Tamil)',
+    'gu': 'ગુજરાતી (Gujarati)',
+    'kn': 'ಕನ್ನಡ (Kannada)',
+    'pa': 'ਪੰਜਾਬੀ (Punjabi)',
+    'ml': 'മലയാളം (Malayalam)',
   };
 
   // Badge names and emoji
